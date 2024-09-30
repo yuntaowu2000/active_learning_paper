@@ -1,0 +1,1979 @@
+=====================Summary of Model BruSan14_log_utility======================
+Config: {
+ "batch_size": 1000,
+ "num_epochs": 200,
+ "lr": 0.001,
+ "loss_log_interval": 1,
+ "optimizer_type": "AdamW",
+ "sampling_method": "FixedGrid",
+ "loss_balancing": false,
+ "bernoulli_prob": 0.9999,
+ "loss_balancing_temp": 0.1,
+ "loss_balancing_alpha": 0.999,
+ "soft_adapt_interval": -1,
+ "loss_soft_attention": false
+}
+Latex Variable Mapping:
+{
+ "\\sigma_t^q": "sigq",
+ "\\sigma_t^\\theta": "sigtheta",
+ "\\sigma_t^\\eta": "sige",
+ "\\mu_t^\\eta": "mue",
+ "\\mu_t^q": "muq",
+ "\\mu_t^\\theta": "mutheta",
+ "\\rho": "rho",
+ "\\underline{a}": "ah",
+ "\\underline{\\delta}": "deltah",
+ "\\delta": "deltae",
+ "\\sigma": "sig",
+ "\\kappa": "kappa",
+ "\\eta": "e",
+ "\\theta": "theta",
+ "\\psi": "psi",
+ "\\iota": "iota",
+ "\\Phi": "phi"
+}
+User Defined Parameters:
+{
+ "sig": 0.1,
+ "deltae": 0.05,
+ "deltah": 0.05,
+ "rho": 0.06,
+ "r": 0.05,
+ "a": 0.11,
+ "ah": 0.07,
+ "kappa": 2
+}
+
+================================State Variables=================================
+e: [0.01, 0.99]
+
+=====================================Agents=====================================
+
+================================Agent Conditions================================
+
+==============================Endogenous Variables==============================
+Endogenous Variable Name: q
+EndogVar(
+  (model): KAN(
+    (biases): ModuleList(
+      (0): Linear(in_features=1, out_features=1, bias=False)
+    )
+    (act_fun): ModuleList(
+      (0): KANLayer(
+        (base_fun): SiLU()
+      )
+    )
+    (base_fun): SiLU()
+    (symbolic_fun): ModuleList(
+      (0): Symbolic_KANLayer()
+    )
+  )
+)
+Num parameters: 19
+--------------------------------------------------------------------------------
+Endogenous Variable Name: psi
+EndogVar(
+  (model): KAN(
+    (biases): ModuleList(
+      (0): Linear(in_features=1, out_features=1, bias=False)
+    )
+    (act_fun): ModuleList(
+      (0): KANLayer(
+        (base_fun): SiLU()
+      )
+    )
+    (base_fun): SiLU()
+    (symbolic_fun): ModuleList(
+      (0): Symbolic_KANLayer()
+    )
+  )
+)
+Num parameters: 19
+--------------------------------------------------------------------------------
+
+========================Endogenous Variables Conditions=========================
+endogvar_q_cond_q_min: q(SV)=-kappa*r + (kappa**2*r**2 + 1 + 2*ah*kappa)**0.5 with LHS evaluated at SV=[[0.0]] and RHS evaluated at r=0.05ah=0.07kappa=2
+Loss weight: 100
+--------------------------------------------------------------------------------
+endogvar_q_cond_q_max: q(SV)=-kappa*rho + (kappa**2*rho**2 + 1 + 2*a*kappa)**0.5 with LHS evaluated at SV=[[1.0]] and RHS evaluated at rho=0.06a=0.11kappa=2
+Loss weight: 100
+--------------------------------------------------------------------------------
+endogvar_psi_cond_psi_min: psi(SV)=0 with LHS evaluated at SV=[[0.0]]
+Loss weight: 100
+--------------------------------------------------------------------------------
+endogvar_psi_cond_psi_max: psi(SV)=1 with LHS evaluated at SV=[[1.0]]
+Loss weight: 100
+--------------------------------------------------------------------------------
+
+===================================Equations====================================
+
+==============================Endogenous Equations==============================
+
+==================================Constraints===================================
+
+=================================HJB Equations==================================
+
+====================================Systems=====================================
+crisis_region: 
+Activation Constraints:
+crisis_constraint: psi<1
+===============Equations================
+system_crisis_region_eq_1: 
+Raw input: $\iota = \frac{q^2-1}{ 2 * \kappa}$
+Parsed: iota=(q**(2)-1)/( 2 * kappa)
+system_crisis_region_eq_2: 
+Raw input: $\sigma_t^q = \frac{\sigma}{1 - \frac{1}{q} * \frac{\partial q}{\partial \eta} * (\psi - \eta)} - \sigma$
+Parsed: sigq=(sig)/(1 - (1)/(q) * q_e * (psi - e)) - sig
+system_crisis_region_eq_3: 
+Raw input: $\sigma_t^\eta = \frac{\psi - \eta}{\eta} * (\sigma + \sigma_t^q)$
+Parsed: sige=(psi - e)/(e) * (sig + sigq)
+system_crisis_region_eq_4: 
+Raw input: $\mu_t^\eta = (\sigma_t^\eta)^2 + \frac{a - \iota}{q} + (1-\psi) * (\underline{\delta} - \delta) - \rho$
+Parsed: mue=(sige)**(2) + (a - iota)/(q) + (1-psi) * (deltah - deltae) - rho
+
+==========Endogenous Equations==========
+system_crisis_region_endogeq_1: 
+Raw input: $(r*(1-\eta) + \rho * \eta) * q = \psi * a + (1-\psi) * \underline{a} - \iota$
+Parsed: (r*(1-e) + rho * e) * q=psi * a + (1-psi) * ah - iota
+Loss weight: 1.0
+----------------------------------------
+system_crisis_region_endogeq_2: 
+Raw input: $(\sigma + \sigma_t^q) ^2 * \frac{q * (\psi - \eta)}{\eta * (1-\eta)} = (a - \underline{a}) + (\underline{\delta} - \delta) * q$
+Parsed: (sig + sigq) **(2) * (q * (psi - e))/(e * (1-e))=(a - ah) + (deltah - deltae) * q
+Loss weight: 2
+----------------------------------------
+==============Constraints===============
+
+System loss weight: 1.0
+--------------------------------------------------------------------------------
+normal_region: 
+Activation Constraints:
+crisis_constraint: psi>=1
+===============Equations================
+system_normal_region_eq_1: 
+Raw input: $\iota = \frac{q^2-1}{ 2 * \kappa}$
+Parsed: iota=(q**(2)-1)/( 2 * kappa)
+system_normal_region_eq_2: 
+Raw input: $\sigma_t^q = \frac{\sigma}{1 - \frac{1}{q} * \frac{\partial q}{\partial \eta} * (1 - \eta)} - \sigma$
+Parsed: sigq=(sig)/(1 - (1)/(q) * q_e * (1 - e)) - sig
+system_normal_region_eq_3: 
+Raw input: $\sigma_t^\eta = \frac{1 - \eta}{\eta} * (\sigma + \sigma_t^q)$
+Parsed: sige=(1 - e)/(e) * (sig + sigq)
+system_normal_region_eq_4: 
+Raw input: $\mu_t^\eta = (\sigma_t^\eta)^2 + \frac{a - \iota}{q} - \rho$
+Parsed: mue=(sige)**(2) + (a - iota)/(q) - rho
+
+==========Endogenous Equations==========
+system_normal_region_endogeq_1: 
+Raw input: $(r*(1-\eta) + \rho * \eta) * q = a - \iota$
+Parsed: (r*(1-e) + rho * e) * q=a - iota
+Loss weight: 1.0
+----------------------------------------
+==============Constraints===============
+
+System loss weight: 1.0
+--------------------------------------------------------------------------------
+
+
+epoch 0: 
+train loss :: endogvar_q_cond_q_min: 0.0094,
+endogvar_q_cond_q_max: 0.0127,
+endogvar_psi_cond_psi_min: 0.0022,
+endogvar_psi_cond_psi_max: 0.0007,
+system_crisis_region: 3.7314,
+system_normal_region: 0.0547,
+total_loss: 6.2865,
+time elapsed :: 0.40004777908325195
+epoch 1: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0001,
+endogvar_psi_cond_psi_min: 0.0012,
+endogvar_psi_cond_psi_max: 0.0008,
+system_crisis_region: 3.2348,
+system_normal_region: 0.0000,
+total_loss: 3.4457,
+time elapsed :: 0.4619746208190918
+epoch 2: 
+train loss :: endogvar_q_cond_q_min: 0.0022,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0004,
+endogvar_psi_cond_psi_max: 0.0004,
+system_crisis_region: 1.4096,
+system_normal_region: 0.0038,
+total_loss: 1.7113,
+time elapsed :: 0.4823639392852783
+epoch 3: 
+train loss :: endogvar_q_cond_q_min: 0.0011,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0003,
+endogvar_psi_cond_psi_max: 0.0001,
+system_crisis_region: 0.3166,
+system_normal_region: 0.0645,
+total_loss: 0.5217,
+time elapsed :: 0.4287877082824707
+epoch 4: 
+train loss :: endogvar_q_cond_q_min: 0.0002,
+endogvar_q_cond_q_max: 0.0001,
+endogvar_psi_cond_psi_min: 0.0001,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0889,
+system_normal_region: 0.0091,
+total_loss: 0.1350,
+time elapsed :: 0.4201531410217285
+epoch 5: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0322,
+system_normal_region: 0.0041,
+total_loss: 0.0487,
+time elapsed :: 0.4484121799468994
+epoch 6: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0188,
+system_normal_region: 0.0077,
+total_loss: 0.0341,
+time elapsed :: 0.39577674865722656
+epoch 7: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0123,
+system_normal_region: 0.0113,
+total_loss: 0.0276,
+time elapsed :: 0.3831140995025635
+epoch 8: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0099,
+system_normal_region: 0.0056,
+total_loss: 0.0177,
+time elapsed :: 0.3700695037841797
+epoch 9: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.6724720001220703
+epoch 10: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.3149845600128174
+epoch 11: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07164978981018066
+epoch 12: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.0705873966217041
+epoch 13: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.06863641738891602
+epoch 14: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.08886003494262695
+epoch 15: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.06840896606445312
+epoch 16: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.0827169418334961
+epoch 17: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.06823849678039551
+epoch 18: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.08110857009887695
+epoch 19: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.06809735298156738
+epoch 20: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.08409929275512695
+epoch 21: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07534646987915039
+epoch 22: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07422089576721191
+epoch 23: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07532739639282227
+epoch 24: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07495903968811035
+epoch 25: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.06976556777954102
+epoch 26: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07990241050720215
+epoch 27: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07473015785217285
+epoch 28: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.06774663925170898
+epoch 29: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.08639693260192871
+epoch 30: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07137417793273926
+epoch 31: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07412958145141602
+epoch 32: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07611966133117676
+epoch 33: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07321715354919434
+epoch 34: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07679867744445801
+epoch 35: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.0700540542602539
+epoch 36: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07080698013305664
+epoch 37: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.08411836624145508
+epoch 38: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07507205009460449
+epoch 39: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07485675811767578
+epoch 40: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07435250282287598
+epoch 41: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07485818862915039
+epoch 42: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.0768592357635498
+epoch 43: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.0822150707244873
+epoch 44: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07341217994689941
+epoch 45: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.06867837905883789
+epoch 46: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07597804069519043
+epoch 47: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07483577728271484
+epoch 48: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07446718215942383
+epoch 49: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07530593872070312
+epoch 50: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.08234715461730957
+epoch 51: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07343506813049316
+epoch 52: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.06786775588989258
+epoch 53: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07022428512573242
+epoch 54: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.08217906951904297
+epoch 55: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07996487617492676
+epoch 56: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.06702899932861328
+epoch 57: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07091951370239258
+epoch 58: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.0822293758392334
+epoch 59: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.06520938873291016
+epoch 60: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07761120796203613
+epoch 61: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.08376145362854004
+epoch 62: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07398414611816406
+epoch 63: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.0797884464263916
+epoch 64: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07011556625366211
+epoch 65: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.08168339729309082
+epoch 66: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07355308532714844
+epoch 67: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.06902885437011719
+epoch 68: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.08438396453857422
+epoch 69: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07207798957824707
+epoch 70: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.09157967567443848
+epoch 71: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.09196758270263672
+epoch 72: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.06946372985839844
+epoch 73: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07108926773071289
+epoch 74: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.08424019813537598
+epoch 75: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.0729057788848877
+epoch 76: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.0676116943359375
+epoch 77: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07644820213317871
+epoch 78: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07464933395385742
+epoch 79: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.0992281436920166
+epoch 80: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07578253746032715
+epoch 81: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.0734248161315918
+epoch 82: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07758569717407227
+epoch 83: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07469415664672852
+epoch 84: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.0723574161529541
+epoch 85: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07503771781921387
+epoch 86: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.06806707382202148
+epoch 87: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.0756673812866211
+epoch 88: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.08172941207885742
+epoch 89: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.06829118728637695
+epoch 90: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07012438774108887
+epoch 91: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07143044471740723
+epoch 92: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07513046264648438
+epoch 93: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.06212925910949707
+epoch 94: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07939887046813965
+epoch 95: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.08536171913146973
+epoch 96: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07368588447570801
+epoch 97: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07012343406677246
+epoch 98: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.0725855827331543
+epoch 99: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.08205485343933105
+epoch 100: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07533836364746094
+epoch 101: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.08043980598449707
+epoch 102: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07691574096679688
+epoch 103: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.06774449348449707
+epoch 104: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07536959648132324
+epoch 105: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.06724309921264648
+epoch 106: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07459616661071777
+epoch 107: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07840204238891602
+epoch 108: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07143640518188477
+epoch 109: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07466387748718262
+epoch 110: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07378768920898438
+epoch 111: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07169175148010254
+epoch 112: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07157087326049805
+epoch 113: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07730388641357422
+epoch 114: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07341313362121582
+epoch 115: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.06473398208618164
+epoch 116: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.08344602584838867
+epoch 117: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07106447219848633
+epoch 118: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07021164894104004
+epoch 119: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.06690478324890137
+epoch 120: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07578206062316895
+epoch 121: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07337403297424316
+epoch 122: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07623004913330078
+epoch 123: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.06543970108032227
+epoch 124: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07700133323669434
+epoch 125: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07264876365661621
+epoch 126: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.06686115264892578
+epoch 127: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.08026885986328125
+epoch 128: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.0726165771484375
+epoch 129: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.0723426342010498
+epoch 130: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.06562232971191406
+epoch 131: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.06639647483825684
+epoch 132: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07576704025268555
+epoch 133: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.0752568244934082
+epoch 134: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.0660243034362793
+epoch 135: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.08037257194519043
+epoch 136: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07241082191467285
+epoch 137: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07284212112426758
+epoch 138: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07170701026916504
+epoch 139: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07399368286132812
+epoch 140: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07109427452087402
+epoch 141: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.06563258171081543
+epoch 142: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07476949691772461
+epoch 143: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.0667421817779541
+epoch 144: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.0886223316192627
+epoch 145: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07788491249084473
+epoch 146: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.10008001327514648
+epoch 147: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.09131526947021484
+epoch 148: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07442021369934082
+epoch 149: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07544517517089844
+epoch 150: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07506132125854492
+epoch 151: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.0652153491973877
+epoch 152: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07742118835449219
+epoch 153: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.06447887420654297
+epoch 154: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07505464553833008
+epoch 155: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07868814468383789
+epoch 156: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07409882545471191
+epoch 157: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07207679748535156
+epoch 158: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.06711125373840332
+epoch 159: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07425141334533691
+epoch 160: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07496094703674316
+epoch 161: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07349538803100586
+epoch 162: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07686161994934082
+epoch 163: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07529807090759277
+epoch 164: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.0742959976196289
+epoch 165: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07062411308288574
+epoch 166: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07149529457092285
+epoch 167: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07087945938110352
+epoch 168: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07103085517883301
+epoch 169: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.06572508811950684
+epoch 170: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07811617851257324
+epoch 171: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.06241583824157715
+epoch 172: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.08015131950378418
+epoch 173: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07056665420532227
+epoch 174: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07432198524475098
+epoch 175: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07002711296081543
+epoch 176: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07591748237609863
+epoch 177: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07016563415527344
+epoch 178: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07728290557861328
+epoch 179: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07468605041503906
+epoch 180: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07468652725219727
+epoch 181: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07227587699890137
+epoch 182: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07059955596923828
+epoch 183: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.06140565872192383
+epoch 184: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.08383750915527344
+epoch 185: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07302355766296387
+epoch 186: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.06879091262817383
+epoch 187: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.08289074897766113
+epoch 188: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.06673598289489746
+epoch 189: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.08736419677734375
+epoch 190: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07589602470397949
+epoch 191: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.06985163688659668
+epoch 192: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.0675361156463623
+epoch 193: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07418107986450195
+epoch 194: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07747960090637207
+epoch 195: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07237553596496582
+epoch 196: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07540726661682129
+epoch 197: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07461810111999512
+epoch 198: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.0754709243774414
+epoch 199: 
+train loss :: endogvar_q_cond_q_min: 0.0000,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+system_crisis_region: 0.0084,
+system_normal_region: 0.0019,
+total_loss: 0.0116,
+time elapsed :: 0.07569646835327148
+training finished, total time :: 18.91228175163269

@@ -1,0 +1,557 @@
+============================Summary of Model cd2d_ts============================
+Config: {
+ "batch_size": 20,
+ "num_outer_iterations": 50,
+ "num_inner_iterations": 5000,
+ "lr": 0.001,
+ "loss_log_interval": 100,
+ "optimizer_type": "Adam",
+ "min_t": 0.0,
+ "max_t": 1.0,
+ "outer_loop_convergence_thres": 0.0001
+}
+Latex Variable Mapping:
+{
+ "J_e": "Je",
+ "J_h": "Jh",
+ "\\psi": "psi",
+ "\\iota": "iota",
+ "\\Phi": "Phi",
+ "\\hat{c}_e": "ce",
+ "\\hat{c}_h": "ch",
+ "\\mu_{ae}": "muae",
+ "\\sigma_{ae}": "sigae",
+ "\\theta_e": "thetae",
+ "\\theta_h": "thetah",
+ "\\sigma^{q,k}": "sigqk",
+ "\\sigma^{q,a}": "sigqa",
+ "\\sigma^{q,k,1}": "sigsigqk",
+ "\\sigma^{z,k}": "sigzk",
+ "\\sigma^{z,a}": "sigza",
+ "\\sigma_e^{J,k}": "sigJe_k",
+ "\\sigma_h^{J,k}": "sigJh_k",
+ "\\sigma_e^{J,a}": "sigJe_a",
+ "\\sigma_h^{J,a}": "sigJh_a",
+ "\\zeta_e^k": "zetae_k",
+ "\\zeta_e^a": "zetae_a",
+ "\\zeta_h^k": "zetah_k",
+ "\\zeta_h^a": "zetah_a",
+ "\\zeta_e^1": "zetae_1",
+ "\\zeta_e^2": "zetae_2",
+ "\\zeta_h^1": "zetah_1",
+ "\\zeta_h^2": "zetah_2",
+ "\\epsilon_e": "epse",
+ "\\epsilon_h": "epsh",
+ "\\mu^z": "muz",
+ "\\mu^q": "muq",
+ "\\mu_e^J": "muJe",
+ "\\mu_h^J": "muJh",
+ "\\mu_e^R": "muRe",
+ "\\mu_h^R": "muRh",
+ "\\hat{a_e}": "aebar",
+ "a_e": "ae",
+ "a_h": "ah",
+ "\\sigma": "sig",
+ "\\delta": "delta",
+ "\\kappa": "kappa",
+ "\\phi": "phi",
+ "\\gamma": "gamma",
+ "\\rho": "rho",
+ "\\lambda_d": "lambdad",
+ "\\underline{\\chi}": "chi_a",
+ "\\chi": "chi",
+ "\\bar{z}": "zbar"
+}
+User Defined Parameters:
+{
+ "ah": 0.03,
+ "sig": 0.1,
+ "delta": 0.05,
+ "kappa": 5,
+ "phi": 0.5,
+ "gamma": 5,
+ "rho": 0.05000000074505806,
+ "lambdad": 0.03,
+ "zbar": 0.1,
+ "chi_a": 1,
+ "v": 2.5,
+ "p": 0.01,
+ "fl": 0.1,
+ "fu": 0.2,
+ "aebar": 0.15000000000000002
+}
+
+================================State Variables=================================
+z: [0.01, 0.99]
+ae: [0.1, 0.2]
+t: [0.0, 1.0]
+
+=====================================Agents=====================================
+Agent Name: Je
+Agent(
+  (model): Sequential(
+    (linear_0): Linear(in_features=3, out_features=128, bias=True)
+    (activation_0): SiLU()
+    (linear_1): Linear(in_features=128, out_features=128, bias=True)
+    (activation_1): SiLU()
+    (linear_2): Linear(in_features=128, out_features=128, bias=True)
+    (activation_2): SiLU()
+    (linear_3): Linear(in_features=128, out_features=128, bias=True)
+    (activation_3): SiLU()
+    (final_layer): Linear(in_features=128, out_features=1, bias=True)
+    (positive_act): Softplus(beta=1.0, threshold=20.0)
+  )
+)
+Num parameters: 50177
+--------------------------------------------------------------------------------
+Agent Name: Jh
+Agent(
+  (model): Sequential(
+    (linear_0): Linear(in_features=3, out_features=128, bias=True)
+    (activation_0): SiLU()
+    (linear_1): Linear(in_features=128, out_features=128, bias=True)
+    (activation_1): SiLU()
+    (linear_2): Linear(in_features=128, out_features=128, bias=True)
+    (activation_2): SiLU()
+    (linear_3): Linear(in_features=128, out_features=128, bias=True)
+    (activation_3): SiLU()
+    (final_layer): Linear(in_features=128, out_features=1, bias=True)
+    (positive_act): Softplus(beta=1.0, threshold=20.0)
+  )
+)
+Num parameters: 50177
+--------------------------------------------------------------------------------
+
+================================Agent Conditions================================
+
+==============================Endogenous Variables==============================
+Endogenous Variable Name: q
+EndogVar(
+  (model): Sequential(
+    (linear_0): Linear(in_features=3, out_features=128, bias=True)
+    (activation_0): SiLU()
+    (linear_1): Linear(in_features=128, out_features=128, bias=True)
+    (activation_1): SiLU()
+    (linear_2): Linear(in_features=128, out_features=128, bias=True)
+    (activation_2): SiLU()
+    (linear_3): Linear(in_features=128, out_features=128, bias=True)
+    (activation_3): SiLU()
+    (final_layer): Linear(in_features=128, out_features=1, bias=True)
+    (positive_act): Softplus(beta=1.0, threshold=20.0)
+  )
+)
+Num parameters: 50177
+--------------------------------------------------------------------------------
+Endogenous Variable Name: chi
+EndogVar(
+  (model): Sequential(
+    (linear_0): Linear(in_features=3, out_features=128, bias=True)
+    (activation_0): SiLU()
+    (linear_1): Linear(in_features=128, out_features=128, bias=True)
+    (activation_1): SiLU()
+    (linear_2): Linear(in_features=128, out_features=128, bias=True)
+    (activation_2): SiLU()
+    (linear_3): Linear(in_features=128, out_features=128, bias=True)
+    (activation_3): SiLU()
+    (final_layer): Linear(in_features=128, out_features=1, bias=True)
+    (positive_act): Softplus(beta=1.0, threshold=20.0)
+  )
+)
+Num parameters: 50177
+--------------------------------------------------------------------------------
+
+========================Endogenous Variables Conditions=========================
+
+===================================Equations====================================
+eq_1: 
+Raw input: $\iota &= \frac{q - 1}{\kappa}$
+Parsed: iota=(q - 1)/(kappa)
+eq_2: 
+Raw input: $\Phi &= \frac{\log ( q)}{\kappa}$
+Parsed: Phi=(log ( q))/(kappa)
+eq_3: 
+Raw input: $\hat{c}_e &= \rho$
+Parsed: ce=rho
+eq_4: 
+Raw input: $\hat{c}_h &= \rho$
+Parsed: ch=rho
+eq_5: 
+Raw input: $\mu_{ae} &= p * (\hat{a_e} - a_e)$
+Parsed: muae=p * (aebar - ae)
+eq_6: 
+Raw input: $\sigma_{ae} &= v * (fu - a_e) * (a_e - fl)$
+Parsed: sigae=v * (fu - ae) * (ae - fl)
+eq_7: 
+Raw input: $\theta_e &= \frac{\chi}{z}$
+Parsed: thetae=(chi)/(z)
+eq_8: 
+Raw input: $\theta_h &= \frac{1 - \chi}{1 - z}$
+Parsed: thetah=(1 - chi)/(1 - z)
+eq_9: 
+Raw input: $\sigma^{q,k} &= \frac{\sigma}{1 - \frac{1}{q} * \frac{\partial q}{\partial z} * (\chi - z)} - \sigma$
+Parsed: sigqk=(sig)/(1 - (1)/(q) * q_z * (chi - z)) - sig
+eq_10: 
+Raw input: $\sigma^{q,a} &= \frac{\frac{1}{q} * \frac{\partial q}{\partial a_e} * \sigma_{ae}}{1 - \frac{1}{q} * \frac{\partial q}{\partial z} * (\chi - z)}$
+Parsed: sigqa=((1)/(q) * q_ae * sigae)/(1 - (1)/(q) * q_z * (chi - z))
+eq_11: 
+Raw input: $\sigma^{q,k,1} &= \sigma + \sigma^{q,k}$
+Parsed: sigsigqk=sig + sigqk
+eq_12: 
+Raw input: $\sigma^{z,k} &= \left(\theta_e - 1\right) * \sigma^{q,k,1}$
+Parsed: sigzk=(thetae - 1) * sigsigqk
+eq_13: 
+Raw input: $\sigma^{z,a} &= \left(\theta_e - 1\right) * \sigma^{q,a}$
+Parsed: sigza=(thetae - 1) * sigqa
+eq_14: 
+Raw input: $\sigma_e^{J,k} &= \frac{1}{J_e} * \frac{\partial J_e}{\partial z} * z * \sigma^{z,k}$
+Parsed: sigJe_k=(1)/(Je) * Je_z * z * sigzk
+eq_15: 
+Raw input: $\sigma_h^{J,k} &= \frac{1}{J_h} * \frac{\partial J_h}{\partial z} * z * \sigma^{z,k}$
+Parsed: sigJh_k=(1)/(Jh) * Jh_z * z * sigzk
+eq_16: 
+Raw input: $\sigma_e^{J,a} &= \frac{1}{J_e} * \left(\frac{\partial J_e}{\partial a_e} * \sigma_{ae} + \frac{\partial J_e}{\partial z} * z * \sigma^{z,a} \right)$
+Parsed: sigJe_a=(1)/(Je) * (Je_ae * sigae + Je_z * z * sigza )
+eq_17: 
+Raw input: $\sigma_h^{J,a} &= \frac{1}{J_h} * \left(\frac{\partial J_h}{\partial a_e} * \sigma_{ae} + \frac{\partial J_h}{\partial z} * z * \sigma^{z,a} \right)$
+Parsed: sigJh_a=(1)/(Jh) * (Jh_ae * sigae + Jh_z * z * sigza )
+eq_18: 
+Raw input: $\zeta_e^k &= -(1-\gamma) * \sigma_e^{J,k} + \sigma^{z,k} + \sigma^{q,k} + \gamma * \sigma$
+Parsed: zetae_k=-(1-gamma) * sigJe_k + sigzk + sigqk + gamma * sig
+eq_19: 
+Raw input: $\zeta_e^a &= -(1-\gamma) * \sigma_e^{J,a} + \sigma^{z,a} + \sigma^{q,a}$
+Parsed: zetae_a=-(1-gamma) * sigJe_a + sigza + sigqa
+eq_20: 
+Raw input: $\zeta_h^k &= -(1-\gamma) * \sigma_h^{J,k} - \frac{z}{1-z} * \sigma^{z,k} + \sigma^{q,k,1} + \gamma * \sigma$
+Parsed: zetah_k=-(1-gamma) * sigJh_k - (z)/(1-z) * sigzk + sigsigqk + gamma * sig
+eq_21: 
+Raw input: $\zeta_h^a &= -(1-\gamma) * \sigma_h^{J,a} - \frac{z}{1-z} * \sigma^{z,a} + \sigma^{q,a}$
+Parsed: zetah_a=-(1-gamma) * sigJh_a - (z)/(1-z) * sigza + sigqa
+eq_22: 
+Raw input: $\zeta_e^1 &= \zeta_e^k + \phi * \zeta_e^a$
+Parsed: zetae_1=zetae_k + phi * zetae_a
+eq_23: 
+Raw input: $\zeta_h^1 &= \zeta_h^k + \phi * \zeta_h^a$
+Parsed: zetah_1=zetah_k + phi * zetah_a
+eq_24: 
+Raw input: $\zeta_e^2 &= \zeta_e^a + \phi * \zeta_e^k$
+Parsed: zetae_2=zetae_a + phi * zetae_k
+eq_25: 
+Raw input: $\zeta_h^2 &= \zeta_h^a + \phi * \zeta_h^k$
+Parsed: zetah_2=zetah_a + phi * zetah_k
+eq_26: 
+Raw input: $\epsilon_e &= \sigma^{q,k,1} * \zeta_e^1 + \sigma^{q,a} * \zeta_e^2$
+Parsed: epse=sigsigqk * zetae_1 + sigqa * zetae_2
+eq_27: 
+Raw input: $\epsilon_h &= \sigma^{q,k,1} * \zeta_h^1 + \sigma^{q,a} * \zeta_h^2$
+Parsed: epsh=sigsigqk * zetah_1 + sigqa * zetah_2
+eq_28: 
+Raw input: $\mu^z &= \frac{a_e - \iota}{q} - \hat{c}_e+ (\theta_e - 1) * (\sigma^{q,k,1} * (\zeta_e^1 - \sigma^{q,k,1}) + \sigma^{q,a} * (\zeta_e^2 - \sigma^{q,a}) - 2 * \phi * \sigma^{q,k,1} * \sigma^{q,a})+ (1-\chi) * (\sigma^{q,k,1} * (\zeta_e^1 - \zeta_h^1) + \sigma^{q,a} * (\zeta_e^2 - \zeta_h^2)) + \frac{\lambda_d}{z} * (\bar{z} - z)$
+Parsed: muz=(ae - iota)/(q) - ce+ (thetae - 1) * (sigsigqk * (zetae_1 - sigsigqk) + sigqa * (zetae_2 - sigqa) - 2 * phi * sigsigqk * sigqa)+ (1-chi) * (sigsigqk * (zetae_1 - zetah_1) + sigqa * (zetae_2 - zetah_2)) + (lambdad)/(z) * (zbar - z)
+eq_29: 
+Raw input: $\mu^q &= \frac{1}{q} * \left( \frac{\partial q}{\partial z} * \mu^z * z + \frac{\partial q}{\partial a_e} * \mu_{ae} + \frac{1}{2} * \frac{\partial^2 q}{\partial z^2} * z^2 * ((\sigma^{z,k})^2 + (\sigma^{z,a})^2 + 2 * \phi * \sigma^{z,k} * \sigma^{z,a})\right)+ \frac{1}{q} * \left( \frac{1}{2} * \frac{\partial^2 q}{\partial a_e^2} * \sigma_{ae}^2 + \frac{\partial^2 q}{\partial z \partial a_e} * (\phi * \sigma^{z,k} + \sigma^{z,a})  * \sigma_{ae} * z\right)$
+Parsed: muq=(1)/(q) * ( q_z * muz * z + q_ae * muae + (1)/(2) * q_zz * z**(2) * ((sigzk)**(2) + (sigza)**(2) + 2 * phi * sigzk * sigza))+ (1)/(q) * ( (1)/(2) * q_aeae * sigae**(2) + q_zae * (phi * sigzk + sigza)  * sigae * z)
+eq_30: 
+Raw input: $\mu_e^J &= \frac{\gamma}{2} * ((\sigma_e^{J,k})^2 + (\sigma_e^{J,a})^2 + 2 * \phi * \sigma_e^{J,k} * \sigma_e^{J,a} + \sigma^2) - (\Phi - \delta) + (\gamma - 1) * ( \sigma_e^{J,k} * \sigma + \phi * \sigma * \sigma_e^{J,a}) - \rho * (\log(\rho) - \log(J_e) + \log(z*q))$
+Parsed: muJe=(gamma)/(2) * ((sigJe_k)**(2) + (sigJe_a)**(2) + 2 * phi * sigJe_k * sigJe_a + sig**(2)) - (Phi - delta) + (gamma - 1) * ( sigJe_k * sig + phi * sig * sigJe_a) - rho * (log(rho) - log(Je) + log(z*q))
+eq_31: 
+Raw input: $\mu_h^J &= \frac{\gamma}{2} * ((\sigma_h^{J,k})^2 + (\sigma_h^{J,a})^2 + 2*\phi*\sigma_h^{J,k} * \sigma_h^{J,a} + \sigma^2) - (\Phi-\delta) + (\gamma - 1) * (\sigma_h^{J,k}*\sigma + \phi*\sigma*\sigma_h^{J,a})- \rho * (\log(\rho) - \log(J_h) + \log((1-z)*q))$
+Parsed: muJh=(gamma)/(2) * ((sigJh_k)**(2) + (sigJh_a)**(2) + 2*phi*sigJh_k * sigJh_a + sig**(2)) - (Phi-delta) + (gamma - 1) * (sigJh_k*sig + phi*sig*sigJh_a)- rho * (log(rho) - log(Jh) + log((1-z)*q))
+eq_32: 
+Raw input: $\mu_e^R &= \frac{a_e - \iota}{q} + \Phi - \delta + \mu^q + \sigma * \sigma^{q,k} + \phi * \sigma * \sigma^{q,a}$
+Parsed: muRe=(ae - iota)/(q) + Phi - delta + muq + sig * sigqk + phi * sig * sigqa
+eq_33: 
+Raw input: $\mu_h^R &= \frac{a_h - \iota}{q} + \Phi - \delta + \mu^q + \sigma * \sigma^{q,k} + \phi * \sigma * \sigma^{q,a}$
+Parsed: muRh=(ah - iota)/(q) + Phi - delta + muq + sig * sigqk + phi * sig * sigqa
+eq_34: 
+Raw input: $r &= \mu_e^R - \chi * \epsilon_e - (1-\chi) * \epsilon_h$
+Parsed: r=muRe - chi * epse - (1-chi) * epsh
+eq_35: 
+Raw input: zmuz = z * muz
+Parsed: zmuz=z * muz
+eq_36: 
+Raw input: zsigzk = z * sigzk
+Parsed: zsigzk=z * sigzk
+eq_37: 
+Raw input: zsigza = z * sigza
+Parsed: zsigza=z * sigza
+
+==============================Endogenous Equations==============================
+endogeq_1: 
+Raw input: $\rho * q &= a_e - \iota$
+Parsed: rho * q=ae - iota
+Loss weight: 1.0
+--------------------------------------------------------------------------------
+endogeq_2: 
+Raw input: $\epsilon_e &= \epsilon_h$
+Parsed: epse=epsh
+Loss weight: 1.0
+--------------------------------------------------------------------------------
+
+==================================Constraints===================================
+
+=================================HJB Equations==================================
+hjbeq_1: 
+Raw input: $\frac{\partial J_e}{\partial t} + \frac{\partial J_e}{\partial z} * \mu^z * z + \frac{\partial J_e}{\partial a_e} * \mu_{ae} + \frac{1}{2} * \frac{\partial^2  J_e}{\partial z^2} * z^2 * \left( (\sigma^{z,k})^2 + (\sigma^{z,a})^2 + 2 * \phi * \sigma^{z,k}* \sigma^{z,a} \right) +\frac{1}{2} * \frac{\partial^2 J_e}{\partial a_e^2} * \sigma_{ae}^2 + \frac{\partial^2 J_e}{\partial z \partial a_e} * (\phi * \sigma^{z,k} + \sigma^{z,a}) * \sigma_{ae} * z - \mu_e^J * J_e$;
+Parsed: Je_t + Je_z * muz * z + Je_ae * muae + (1)/(2) * Je_zz * z**(2) * ( (sigzk)**(2) + (sigza)**(2) + 2 * phi * sigzk* sigza ) +(1)/(2) * Je_aeae * sigae**(2) + Je_zae * (phi * sigzk + sigza) * sigae * z - muJe * Je
+Loss weight: 1.0
+--------------------------------------------------------------------------------
+hjbeq_2: 
+Raw input: $\frac{\partial J_h}{\partial t} + \frac{\partial J_h}{\partial z} * \mu^z * z + \frac{\partial J_h}{\partial a_e} * \mu_{ae} + \frac{1}{2} * \frac{\partial^2  J_h}{\partial z^2} * z^2 * \left( (\sigma^{z,k})^2 + (\sigma^{z,a})^2 + 2 * \phi * \sigma^{z,k}* \sigma^{z,a} \right) + \frac{1}{2} * \frac{\partial^2 J_h}{\partial a_e^2} * \sigma_{ae}^2 + \frac{\partial^2 J_h}{\partial z \partial a_e} * (\phi * \sigma^{z,k} + \sigma^{z,a}) * \sigma_{ae} * z - \mu_h^J * J_h$;
+Parsed: Jh_t + Jh_z * muz * z + Jh_ae * muae + (1)/(2) * Jh_zz * z**(2) * ( (sigzk)**(2) + (sigza)**(2) + 2 * phi * sigzk* sigza ) + (1)/(2) * Jh_aeae * sigae**(2) + Jh_zae * (phi * sigzk + sigza) * sigae * z - muJh * Jh
+Loss weight: 1.0
+--------------------------------------------------------------------------------
+
+====================================Systems=====================================
+
+
+Outer Loop 0 Finished in 1036.8912s. Final Result:
+Je: Mean Value: 0.82593, Absolute Change: 0.17407, Relative Change:  0.17407
+Jh: Mean Value: 0.82800, Absolute Change: 0.17200, Relative Change:  0.17200
+q: Mean Value: 1.41616, Absolute Change: 0.41616, Relative Change:  0.41616
+chi: Mean Value: 0.60359, Absolute Change: 0.39641, Relative Change:  0.39641
+Outer Loop 1 Finished in 735.3075s. Final Result:
+Je: Mean Value: 0.69186, Absolute Change: 0.13407, Relative Change:  0.16457
+Jh: Mean Value: 0.69821, Absolute Change: 0.12979, Relative Change:  0.15846
+q: Mean Value: 1.39760, Absolute Change: 0.01857, Relative Change:  0.01354
+chi: Mean Value: 0.59949, Absolute Change: 0.01328, Relative Change:  0.05326
+Outer Loop 2 Finished in 605.5862s. Final Result:
+Je: Mean Value: 0.58497, Absolute Change: 0.10689, Relative Change:  0.15851
+Jh: Mean Value: 0.59541, Absolute Change: 0.10280, Relative Change:  0.14990
+q: Mean Value: 1.39790, Absolute Change: 0.00334, Relative Change:  0.00237
+chi: Mean Value: 0.59816, Absolute Change: 0.01736, Relative Change:  0.07315
+Outer Loop 3 Finished in 520.6267s. Final Result:
+Je: Mean Value: 0.49908, Absolute Change: 0.08588, Relative Change:  0.15216
+Jh: Mean Value: 0.51286, Absolute Change: 0.08255, Relative Change:  0.14193
+q: Mean Value: 1.39849, Absolute Change: 0.00380, Relative Change:  0.00272
+chi: Mean Value: 0.59004, Absolute Change: 0.01055, Relative Change:  0.02183
+Outer Loop 4 Finished in 467.8192s. Final Result:
+Je: Mean Value: 0.42914, Absolute Change: 0.06994, Relative Change:  0.14644
+Jh: Mean Value: 0.44565, Absolute Change: 0.06721, Relative Change:  0.13477
+q: Mean Value: 1.39930, Absolute Change: 0.00361, Relative Change:  0.00255
+chi: Mean Value: 0.58441, Absolute Change: 0.00585, Relative Change:  0.01648
+Outer Loop 5 Finished in 434.1318s. Final Result:
+Je: Mean Value: 0.37085, Absolute Change: 0.05830, Relative Change:  0.14279
+Jh: Mean Value: 0.39030, Absolute Change: 0.05535, Relative Change:  0.12820
+q: Mean Value: 1.39968, Absolute Change: 0.00103, Relative Change:  0.00074
+chi: Mean Value: 0.57933, Absolute Change: 0.00508, Relative Change:  0.01218
+Outer Loop 6 Finished in 399.4866s. Final Result:
+Je: Mean Value: 0.32342, Absolute Change: 0.04743, Relative Change:  0.13533
+Jh: Mean Value: 0.34444, Absolute Change: 0.04585, Relative Change:  0.12165
+q: Mean Value: 1.39960, Absolute Change: 0.00122, Relative Change:  0.00088
+chi: Mean Value: 0.57480, Absolute Change: 0.00454, Relative Change:  0.01045
+Outer Loop 7 Finished in 371.0489s. Final Result:
+Je: Mean Value: 0.28393, Absolute Change: 0.03949, Relative Change:  0.12985
+Jh: Mean Value: 0.30605, Absolute Change: 0.03839, Relative Change:  0.11572
+q: Mean Value: 1.39963, Absolute Change: 0.00099, Relative Change:  0.00071
+chi: Mean Value: 0.57143, Absolute Change: 0.00337, Relative Change:  0.00790
+Outer Loop 8 Finished in 352.9975s. Final Result:
+Je: Mean Value: 0.25073, Absolute Change: 0.03320, Relative Change:  0.12483
+Jh: Mean Value: 0.27368, Absolute Change: 0.03237, Relative Change:  0.11004
+q: Mean Value: 1.39964, Absolute Change: 0.00045, Relative Change:  0.00032
+chi: Mean Value: 0.56844, Absolute Change: 0.00300, Relative Change:  0.00697
+Outer Loop 9 Finished in 330.2289s. Final Result:
+Je: Mean Value: 0.22264, Absolute Change: 0.02809, Relative Change:  0.12001
+Jh: Mean Value: 0.24616, Absolute Change: 0.02752, Relative Change:  0.10478
+q: Mean Value: 1.39961, Absolute Change: 0.00014, Relative Change:  0.00010
+chi: Mean Value: 0.56588, Absolute Change: 0.00256, Relative Change:  0.00600
+Outer Loop 10 Finished in 319.9692s. Final Result:
+Je: Mean Value: 0.19884, Absolute Change: 0.02380, Relative Change:  0.11478
+Jh: Mean Value: 0.22260, Absolute Change: 0.02356, Relative Change:  0.09985
+q: Mean Value: 1.39974, Absolute Change: 0.00029, Relative Change:  0.00021
+chi: Mean Value: 0.56365, Absolute Change: 0.00223, Relative Change:  0.00542
+Outer Loop 11 Finished in 304.8159s. Final Result:
+Je: Mean Value: 0.17840, Absolute Change: 0.02044, Relative Change:  0.11060
+Jh: Mean Value: 0.20234, Absolute Change: 0.02026, Relative Change:  0.09505
+q: Mean Value: 1.39996, Absolute Change: 0.00025, Relative Change:  0.00018
+chi: Mean Value: 0.56180, Absolute Change: 0.00186, Relative Change:  0.00449
+Outer Loop 12 Finished in 293.7511s. Final Result:
+Je: Mean Value: 0.16082, Absolute Change: 0.01757, Relative Change:  0.10616
+Jh: Mean Value: 0.18481, Absolute Change: 0.01752, Relative Change:  0.09049
+q: Mean Value: 1.39998, Absolute Change: 0.00006, Relative Change:  0.00005
+chi: Mean Value: 0.56017, Absolute Change: 0.00164, Relative Change:  0.00396
+Outer Loop 13 Finished in 283.7204s. Final Result:
+Je: Mean Value: 0.14563, Absolute Change: 0.01520, Relative Change:  0.10194
+Jh: Mean Value: 0.16956, Absolute Change: 0.01525, Relative Change:  0.08629
+q: Mean Value: 1.39995, Absolute Change: 0.00013, Relative Change:  0.00009
+chi: Mean Value: 0.55877, Absolute Change: 0.00141, Relative Change:  0.00336
+Outer Loop 14 Finished in 274.5991s. Final Result:
+Je: Mean Value: 0.13243, Absolute Change: 0.01320, Relative Change:  0.09785
+Jh: Mean Value: 0.15621, Absolute Change: 0.01335, Relative Change:  0.08235
+q: Mean Value: 1.39999, Absolute Change: 0.00013, Relative Change:  0.00010
+chi: Mean Value: 0.55757, Absolute Change: 0.00120, Relative Change:  0.00286
+Outer Loop 15 Finished in 266.5643s. Final Result:
+Je: Mean Value: 0.12092, Absolute Change: 0.01151, Relative Change:  0.09392
+Jh: Mean Value: 0.14439, Absolute Change: 0.01182, Relative Change:  0.07923
+q: Mean Value: 1.40004, Absolute Change: 0.00009, Relative Change:  0.00007
+chi: Mean Value: 0.55660, Absolute Change: 0.00097, Relative Change:  0.00229
+Outer Loop 16 Finished in 256.7444s. Final Result:
+Je: Mean Value: 0.11084, Absolute Change: 0.01007, Relative Change:  0.09002
+Jh: Mean Value: 0.13408, Absolute Change: 0.01031, Relative Change:  0.07467
+q: Mean Value: 1.40012, Absolute Change: 0.00012, Relative Change:  0.00009
+chi: Mean Value: 0.55570, Absolute Change: 0.00090, Relative Change:  0.00207
+Outer Loop 17 Finished in 250.9020s. Final Result:
+Je: Mean Value: 0.10198, Absolute Change: 0.00886, Relative Change:  0.08635
+Jh: Mean Value: 0.12497, Absolute Change: 0.00911, Relative Change:  0.07106
+q: Mean Value: 1.40007, Absolute Change: 0.00014, Relative Change:  0.00010
+chi: Mean Value: 0.55496, Absolute Change: 0.00074, Relative Change:  0.00178
+Outer Loop 18 Finished in 246.5792s. Final Result:
+Je: Mean Value: 0.09416, Absolute Change: 0.00782, Relative Change:  0.08286
+Jh: Mean Value: 0.11686, Absolute Change: 0.00811, Relative Change:  0.06785
+q: Mean Value: 1.40014, Absolute Change: 0.00012, Relative Change:  0.00009
+chi: Mean Value: 0.55427, Absolute Change: 0.00069, Relative Change:  0.00168
+Outer Loop 19 Finished in 238.1487s. Final Result:
+Je: Mean Value: 0.08724, Absolute Change: 0.00692, Relative Change:  0.07947
+Jh: Mean Value: 0.10962, Absolute Change: 0.00724, Relative Change:  0.06469
+q: Mean Value: 1.40017, Absolute Change: 0.00008, Relative Change:  0.00006
+chi: Mean Value: 0.55368, Absolute Change: 0.00060, Relative Change:  0.00146
+Outer Loop 20 Finished in 233.8259s. Final Result:
+Je: Mean Value: 0.08109, Absolute Change: 0.00615, Relative Change:  0.07620
+Jh: Mean Value: 0.10315, Absolute Change: 0.00647, Relative Change:  0.06168
+q: Mean Value: 1.40019, Absolute Change: 0.00009, Relative Change:  0.00007
+chi: Mean Value: 0.55312, Absolute Change: 0.00056, Relative Change:  0.00141
+Outer Loop 21 Finished in 227.3150s. Final Result:
+Je: Mean Value: 0.07560, Absolute Change: 0.00549, Relative Change:  0.07313
+Jh: Mean Value: 0.09734, Absolute Change: 0.00581, Relative Change:  0.05881
+q: Mean Value: 1.40023, Absolute Change: 0.00011, Relative Change:  0.00008
+chi: Mean Value: 0.55261, Absolute Change: 0.00051, Relative Change:  0.00130
+Outer Loop 22 Finished in 222.5865s. Final Result:
+Je: Mean Value: 0.07069, Absolute Change: 0.00491, Relative Change:  0.07014
+Jh: Mean Value: 0.09210, Absolute Change: 0.00523, Relative Change:  0.05607
+q: Mean Value: 1.40025, Absolute Change: 0.00008, Relative Change:  0.00005
+chi: Mean Value: 0.55215, Absolute Change: 0.00046, Relative Change:  0.00119
+Outer Loop 23 Finished in 217.6993s. Final Result:
+Je: Mean Value: 0.06629, Absolute Change: 0.00440, Relative Change:  0.06709
+Jh: Mean Value: 0.08738, Absolute Change: 0.00473, Relative Change:  0.05348
+q: Mean Value: 1.40014, Absolute Change: 0.00012, Relative Change:  0.00009
+chi: Mean Value: 0.55173, Absolute Change: 0.00042, Relative Change:  0.00107
+Outer Loop 24 Finished in 214.3133s. Final Result:
+Je: Mean Value: 0.06234, Absolute Change: 0.00395, Relative Change:  0.06425
+Jh: Mean Value: 0.08310, Absolute Change: 0.00428, Relative Change:  0.05100
+q: Mean Value: 1.40015, Absolute Change: 0.00007, Relative Change:  0.00005
+chi: Mean Value: 0.55132, Absolute Change: 0.00041, Relative Change:  0.00101
+Outer Loop 25 Finished in 210.2968s. Final Result:
+Je: Mean Value: 0.05876, Absolute Change: 0.00357, Relative Change:  0.06166
+Jh: Mean Value: 0.07922, Absolute Change: 0.00388, Relative Change:  0.04864
+q: Mean Value: 1.40026, Absolute Change: 0.00011, Relative Change:  0.00008
+chi: Mean Value: 0.55096, Absolute Change: 0.00037, Relative Change:  0.00089
+Outer Loop 26 Finished in 205.9105s. Final Result:
+Je: Mean Value: 0.05554, Absolute Change: 0.00322, Relative Change:  0.05895
+Jh: Mean Value: 0.07569, Absolute Change: 0.00353, Relative Change:  0.04638
+q: Mean Value: 1.40031, Absolute Change: 0.00008, Relative Change:  0.00006
+chi: Mean Value: 0.55064, Absolute Change: 0.00033, Relative Change:  0.00083
+Outer Loop 27 Finished in 202.9976s. Final Result:
+Je: Mean Value: 0.05262, Absolute Change: 0.00292, Relative Change:  0.05641
+Jh: Mean Value: 0.07247, Absolute Change: 0.00322, Relative Change:  0.04423
+q: Mean Value: 1.40035, Absolute Change: 0.00008, Relative Change:  0.00006
+chi: Mean Value: 0.55034, Absolute Change: 0.00030, Relative Change:  0.00074
+Outer Loop 28 Finished in 198.7984s. Final Result:
+Je: Mean Value: 0.04997, Absolute Change: 0.00265, Relative Change:  0.05398
+Jh: Mean Value: 0.06952, Absolute Change: 0.00294, Relative Change:  0.04216
+q: Mean Value: 1.40037, Absolute Change: 0.00004, Relative Change:  0.00003
+chi: Mean Value: 0.55008, Absolute Change: 0.00026, Relative Change:  0.00066
+Outer Loop 29 Finished in 195.5279s. Final Result:
+Je: Mean Value: 0.04756, Absolute Change: 0.00241, Relative Change:  0.05162
+Jh: Mean Value: 0.06683, Absolute Change: 0.00269, Relative Change:  0.04019
+q: Mean Value: 1.40042, Absolute Change: 0.00008, Relative Change:  0.00006
+chi: Mean Value: 0.54983, Absolute Change: 0.00025, Relative Change:  0.00063
+Outer Loop 30 Finished in 193.0633s. Final Result:
+Je: Mean Value: 0.04537, Absolute Change: 0.00220, Relative Change:  0.04937
+Jh: Mean Value: 0.06436, Absolute Change: 0.00247, Relative Change:  0.03832
+q: Mean Value: 1.40044, Absolute Change: 0.00008, Relative Change:  0.00006
+chi: Mean Value: 0.54963, Absolute Change: 0.00021, Relative Change:  0.00055
+Outer Loop 31 Finished in 189.5122s. Final Result:
+Je: Mean Value: 0.04336, Absolute Change: 0.00201, Relative Change:  0.04720
+Jh: Mean Value: 0.06209, Absolute Change: 0.00227, Relative Change:  0.03651
+q: Mean Value: 1.40042, Absolute Change: 0.00008, Relative Change:  0.00006
+chi: Mean Value: 0.54942, Absolute Change: 0.00021, Relative Change:  0.00054
+Outer Loop 32 Finished in 187.1019s. Final Result:
+Je: Mean Value: 0.04152, Absolute Change: 0.00184, Relative Change:  0.04513
+Jh: Mean Value: 0.06001, Absolute Change: 0.00209, Relative Change:  0.03480
+q: Mean Value: 1.40029, Absolute Change: 0.00013, Relative Change:  0.00009
+chi: Mean Value: 0.54925, Absolute Change: 0.00018, Relative Change:  0.00048
+Outer Loop 33 Finished in 184.3349s. Final Result:
+Je: Mean Value: 0.03984, Absolute Change: 0.00168, Relative Change:  0.04314
+Jh: Mean Value: 0.05808, Absolute Change: 0.00192, Relative Change:  0.03316
+q: Mean Value: 1.40029, Absolute Change: 0.00006, Relative Change:  0.00005
+chi: Mean Value: 0.54908, Absolute Change: 0.00018, Relative Change:  0.00047
+Outer Loop 34 Finished in 180.9775s. Final Result:
+Je: Mean Value: 0.03829, Absolute Change: 0.00155, Relative Change:  0.04123
+Jh: Mean Value: 0.05631, Absolute Change: 0.00178, Relative Change:  0.03160
+q: Mean Value: 1.40025, Absolute Change: 0.00017, Relative Change:  0.00012
+chi: Mean Value: 0.54893, Absolute Change: 0.00015, Relative Change:  0.00042
+Outer Loop 35 Finished in 178.2994s. Final Result:
+Je: Mean Value: 0.03687, Absolute Change: 0.00142, Relative Change:  0.03939
+Jh: Mean Value: 0.05467, Absolute Change: 0.00164, Relative Change:  0.03010
+q: Mean Value: 1.40018, Absolute Change: 0.00011, Relative Change:  0.00008
+chi: Mean Value: 0.54878, Absolute Change: 0.00016, Relative Change:  0.00045
+Outer Loop 36 Finished in 175.6967s. Final Result:
+Je: Mean Value: 0.03556, Absolute Change: 0.00131, Relative Change:  0.03767
+Jh: Mean Value: 0.05315, Absolute Change: 0.00152, Relative Change:  0.02864
+q: Mean Value: 1.40018, Absolute Change: 0.00004, Relative Change:  0.00003
+chi: Mean Value: 0.54862, Absolute Change: 0.00015, Relative Change:  0.00041
+Outer Loop 37 Finished in 173.4710s. Final Result:
+Je: Mean Value: 0.03435, Absolute Change: 0.00121, Relative Change:  0.03599
+Jh: Mean Value: 0.05174, Absolute Change: 0.00141, Relative Change:  0.02727
+q: Mean Value: 1.40020, Absolute Change: 0.00008, Relative Change:  0.00006
+chi: Mean Value: 0.54851, Absolute Change: 0.00012, Relative Change:  0.00035
+Outer Loop 38 Finished in 171.0405s. Final Result:
+Je: Mean Value: 0.03323, Absolute Change: 0.00112, Relative Change:  0.03437
+Jh: Mean Value: 0.05044, Absolute Change: 0.00130, Relative Change:  0.02595
+q: Mean Value: 1.40013, Absolute Change: 0.00011, Relative Change:  0.00008
+chi: Mean Value: 0.54839, Absolute Change: 0.00013, Relative Change:  0.00037
+Outer Loop 39 Finished in 168.8342s. Final Result:
+Je: Mean Value: 0.03220, Absolute Change: 0.00103, Relative Change:  0.03283
+Jh: Mean Value: 0.04923, Absolute Change: 0.00121, Relative Change:  0.02470
+q: Mean Value: 1.40017, Absolute Change: 0.00011, Relative Change:  0.00008
+chi: Mean Value: 0.54829, Absolute Change: 0.00010, Relative Change:  0.00033
+Outer Loop 40 Finished in 166.7963s. Final Result:
+Je: Mean Value: 0.03124, Absolute Change: 0.00096, Relative Change:  0.03131
+Jh: Mean Value: 0.04810, Absolute Change: 0.00113, Relative Change:  0.02347
+q: Mean Value: 1.40032, Absolute Change: 0.00015, Relative Change:  0.00011
+chi: Mean Value: 0.54818, Absolute Change: 0.00012, Relative Change:  0.00038
+Outer Loop 41 Finished in 164.5977s. Final Result:
+Je: Mean Value: 0.03035, Absolute Change: 0.00089, Relative Change:  0.02992
+Jh: Mean Value: 0.04706, Absolute Change: 0.00105, Relative Change:  0.02235
+q: Mean Value: 1.40033, Absolute Change: 0.00006, Relative Change:  0.00004
+chi: Mean Value: 0.54810, Absolute Change: 0.00009, Relative Change:  0.00033
+Outer Loop 42 Finished in 160.9016s. Final Result:
+Je: Mean Value: 0.02953, Absolute Change: 0.00082, Relative Change:  0.02837
+Jh: Mean Value: 0.04608, Absolute Change: 0.00098, Relative Change:  0.02124
+q: Mean Value: 1.40026, Absolute Change: 0.00010, Relative Change:  0.00007
+chi: Mean Value: 0.54802, Absolute Change: 0.00011, Relative Change:  0.00043
+Outer Loop 43 Finished in 160.5457s. Final Result:
+Je: Mean Value: 0.02876, Absolute Change: 0.00077, Relative Change:  0.02717
+Jh: Mean Value: 0.04517, Absolute Change: 0.00091, Relative Change:  0.02018
+q: Mean Value: 1.40025, Absolute Change: 0.00007, Relative Change:  0.00005
+chi: Mean Value: 0.54793, Absolute Change: 0.00010, Relative Change:  0.00034
+Outer Loop 44 Finished in 159.9209s. Final Result:
+Je: Mean Value: 0.02805, Absolute Change: 0.00071, Relative Change:  0.02597
+Jh: Mean Value: 0.04432, Absolute Change: 0.00085, Relative Change:  0.01915
+q: Mean Value: 1.40022, Absolute Change: 0.00006, Relative Change:  0.00004
+chi: Mean Value: 0.54781, Absolute Change: 0.00013, Relative Change:  0.00041
+Outer Loop 45 Finished in 157.8599s. Final Result:
+Je: Mean Value: 0.02738, Absolute Change: 0.00067, Relative Change:  0.02484
+Jh: Mean Value: 0.04353, Absolute Change: 0.00079, Relative Change:  0.01822
+q: Mean Value: 1.40028, Absolute Change: 0.00013, Relative Change:  0.00010
+chi: Mean Value: 0.54772, Absolute Change: 0.00011, Relative Change:  0.00039
+Outer Loop 46 Finished in 156.3097s. Final Result:
+Je: Mean Value: 0.02676, Absolute Change: 0.00062, Relative Change:  0.02366
+Jh: Mean Value: 0.04279, Absolute Change: 0.00074, Relative Change:  0.01733
+q: Mean Value: 1.40032, Absolute Change: 0.00009, Relative Change:  0.00006
+chi: Mean Value: 0.54763, Absolute Change: 0.00011, Relative Change:  0.00042
+Outer Loop 47 Finished in 153.9176s. Final Result:
+Je: Mean Value: 0.02618, Absolute Change: 0.00058, Relative Change:  0.02261
+Jh: Mean Value: 0.04210, Absolute Change: 0.00069, Relative Change:  0.01650
+q: Mean Value: 1.40030, Absolute Change: 0.00007, Relative Change:  0.00005
+chi: Mean Value: 0.54758, Absolute Change: 0.00007, Relative Change:  0.00032
+Outer Loop 48 Finished in 152.6304s. Final Result:
+Je: Mean Value: 0.02564, Absolute Change: 0.00054, Relative Change:  0.02154
+Jh: Mean Value: 0.04145, Absolute Change: 0.00065, Relative Change:  0.01567
+q: Mean Value: 1.40024, Absolute Change: 0.00010, Relative Change:  0.00007
+chi: Mean Value: 0.54745, Absolute Change: 0.00014, Relative Change:  0.00045
+Outer Loop 49 Finished in 152.2753s. Final Result:
+Je: Mean Value: 0.02513, Absolute Change: 0.00051, Relative Change:  0.02070
+Jh: Mean Value: 0.04084, Absolute Change: 0.00061, Relative Change:  0.01495
+q: Mean Value: 1.40021, Absolute Change: 0.00013, Relative Change:  0.00009
+chi: Mean Value: 0.54741, Absolute Change: 0.00006, Relative Change:  0.00029
+training finished, total time :: 13519.106973409653
