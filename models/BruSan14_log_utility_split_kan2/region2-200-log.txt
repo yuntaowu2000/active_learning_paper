@@ -2,7 +2,7 @@
 Config: {
  "batch_size": 1000,
  "num_epochs": 200,
- "lr": 0.001,
+ "lr": 1,
  "loss_log_interval": 1,
  "optimizer_type": "AdamW",
  "sampling_method": "FixedGrid",
@@ -57,21 +57,20 @@ Endogenous Variable Name: q
 EndogVar(
   (model): KAN(
     (biases): ModuleList(
-      (0): Linear(in_features=2, out_features=1, bias=False)
-      (1): Linear(in_features=1, out_features=1, bias=False)
+      (0): Linear(in_features=1, out_features=1, bias=False)
     )
     (act_fun): ModuleList(
-      (0-1): 2 x KANLayer(
+      (0): KANLayer(
         (base_fun): SiLU()
       )
     )
     (base_fun): SiLU()
     (symbolic_fun): ModuleList(
-      (0-1): 2 x Symbolic_KANLayer()
+      (0): Symbolic_KANLayer()
     )
   )
 )
-Num parameters: 75
+Num parameters: 19
 --------------------------------------------------------------------------------
 
 ========================Endogenous Variables Conditions=========================
@@ -105,803 +104,803 @@ Loss weight: 1.0
 
 
 epoch 0: 
-train loss :: endogeq_1: 0.1678,
-total_loss: 0.1678,
-time elapsed :: 0.4861490726470947
+train loss :: endogeq_1: 0.0034,
+total_loss: 0.0034,
+time elapsed :: 0.14139962196350098
 epoch 1: 
-train loss :: endogeq_1: 0.0326,
-total_loss: 0.0326,
-time elapsed :: 0.43811583518981934
+train loss :: endogeq_1: 0.0001,
+total_loss: 0.0001,
+time elapsed :: 0.12497782707214355
 epoch 2: 
-train loss :: endogeq_1: 0.0169,
-total_loss: 0.0169,
-time elapsed :: 0.4495863914489746
+train loss :: endogeq_1: 0.0000,
+total_loss: 0.0000,
+time elapsed :: 0.1250312328338623
 epoch 3: 
-train loss :: endogeq_1: 0.0031,
-total_loss: 0.0031,
-time elapsed :: 0.41626405715942383
+train loss :: endogeq_1: 0.0000,
+total_loss: 0.0000,
+time elapsed :: 0.11674904823303223
 epoch 4: 
-train loss :: endogeq_1: 0.0002,
-total_loss: 0.0002,
-time elapsed :: 0.45980095863342285
+train loss :: endogeq_1: 0.0000,
+total_loss: 0.0000,
+time elapsed :: 0.13352704048156738
 epoch 5: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.4318053722381592
+time elapsed :: 0.12476849555969238
 epoch 6: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.4584026336669922
+time elapsed :: 0.14203834533691406
 epoch 7: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.4900643825531006
+time elapsed :: 0.12458968162536621
 epoch 8: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.4416382312774658
+time elapsed :: 0.13440442085266113
 epoch 9: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08335018157958984
+time elapsed :: 0.1344904899597168
 epoch 10: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08332395553588867
+time elapsed :: 0.130692720413208
 epoch 11: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08348774909973145
+time elapsed :: 0.125380277633667
 epoch 12: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08317780494689941
+time elapsed :: 0.1330113410949707
 epoch 13: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.09186339378356934
+time elapsed :: 0.1251692771911621
 epoch 14: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08309578895568848
+time elapsed :: 0.12462639808654785
 epoch 15: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08345580101013184
+time elapsed :: 0.14159011840820312
 epoch 16: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08319354057312012
+time elapsed :: 0.1421356201171875
 epoch 17: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.09177541732788086
+time elapsed :: 0.05848813056945801
 epoch 18: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08327341079711914
+time elapsed :: 0.033330678939819336
 epoch 19: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.09169554710388184
+time elapsed :: 0.025298118591308594
 epoch 20: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.09170246124267578
+time elapsed :: 0.03271842002868652
 epoch 21: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08418035507202148
+time elapsed :: 0.03307771682739258
 epoch 22: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.0908510684967041
+time elapsed :: 0.02520751953125
 epoch 23: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.09210705757141113
+time elapsed :: 0.03347969055175781
 epoch 24: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.09537696838378906
+time elapsed :: 0.033290863037109375
 epoch 25: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08912324905395508
+time elapsed :: 0.03339862823486328
 epoch 26: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.0841054916381836
+time elapsed :: 0.02486109733581543
 epoch 27: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08081650733947754
+time elapsed :: 0.032144784927368164
 epoch 28: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.09187912940979004
+time elapsed :: 0.03439521789550781
 epoch 29: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08316659927368164
+time elapsed :: 0.033329010009765625
 epoch 30: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08348321914672852
+time elapsed :: 0.03334689140319824
 epoch 31: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08315181732177734
+time elapsed :: 0.02511739730834961
 epoch 32: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.09169459342956543
+time elapsed :: 0.03313088417053223
 epoch 33: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08463644981384277
+time elapsed :: 0.03342318534851074
 epoch 34: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08198976516723633
+time elapsed :: 0.024922847747802734
 epoch 35: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08338451385498047
+time elapsed :: 0.03389120101928711
 epoch 36: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08330035209655762
+time elapsed :: 0.032808542251586914
 epoch 37: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08315062522888184
+time elapsed :: 0.033457040786743164
 epoch 38: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08486747741699219
+time elapsed :: 0.025030851364135742
 epoch 39: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08197498321533203
+time elapsed :: 0.03311014175415039
 epoch 40: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.0832209587097168
+time elapsed :: 0.033119916915893555
 epoch 41: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08339834213256836
+time elapsed :: 0.025308847427368164
 epoch 42: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08326244354248047
+time elapsed :: 0.03327512741088867
 epoch 43: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.09209370613098145
+time elapsed :: 0.03354907035827637
 epoch 44: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08303046226501465
+time elapsed :: 0.03336310386657715
 epoch 45: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08428454399108887
+time elapsed :: 0.024900436401367188
 epoch 46: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.09082841873168945
+time elapsed :: 0.03624558448791504
 epoch 47: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.0831761360168457
+time elapsed :: 0.030251502990722656
 epoch 48: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.09166121482849121
+time elapsed :: 0.03364300727844238
 epoch 49: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08327507972717285
+time elapsed :: 0.024739980697631836
 epoch 50: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.09176015853881836
+time elapsed :: 0.025593996047973633
 epoch 51: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.0834052562713623
+time elapsed :: 0.03396034240722656
 epoch 52: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08325386047363281
+time elapsed :: 0.03266787528991699
 epoch 53: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.0918731689453125
+time elapsed :: 0.024780750274658203
 epoch 54: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08314037322998047
+time elapsed :: 0.033780813217163086
 epoch 55: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08433651924133301
+time elapsed :: 0.033113718032836914
 epoch 56: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.09234333038330078
+time elapsed :: 0.041314125061035156
 epoch 57: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08157753944396973
+time elapsed :: 0.03382682800292969
 epoch 58: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.09169316291809082
+time elapsed :: 0.03328537940979004
 epoch 59: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08341526985168457
+time elapsed :: 0.0239870548248291
 epoch 60: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.0749049186706543
+time elapsed :: 0.04143524169921875
 epoch 61: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08362078666687012
+time elapsed :: 0.034108638763427734
 epoch 62: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08313632011413574
+time elapsed :: 0.016078710556030273
 epoch 63: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08323287963867188
+time elapsed :: 0.0345461368560791
 epoch 64: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08338713645935059
+time elapsed :: 0.03455162048339844
 epoch 65: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.0833137035369873
+time elapsed :: 0.03191232681274414
 epoch 66: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08343124389648438
+time elapsed :: 0.0332944393157959
 epoch 67: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08330416679382324
+time elapsed :: 0.033307552337646484
 epoch 68: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.09162068367004395
+time elapsed :: 0.02487635612487793
 epoch 69: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08336210250854492
+time elapsed :: 0.033267974853515625
 epoch 70: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08340048789978027
+time elapsed :: 0.03321528434753418
 epoch 71: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08329176902770996
+time elapsed :: 0.033464670181274414
 epoch 72: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.09163713455200195
+time elapsed :: 0.02262258529663086
 epoch 73: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.09166574478149414
+time elapsed :: 0.038002729415893555
 epoch 74: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08329987525939941
+time elapsed :: 0.047611236572265625
 epoch 75: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08411240577697754
+time elapsed :: 0.03127288818359375
 epoch 76: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.09104561805725098
+time elapsed :: 0.027034521102905273
 epoch 77: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08316159248352051
+time elapsed :: 0.03466343879699707
 epoch 78: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.0845038890838623
+time elapsed :: 0.03064703941345215
 epoch 79: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08815765380859375
+time elapsed :: 0.01787424087524414
 epoch 80: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08562946319580078
+time elapsed :: 0.03239846229553223
 epoch 81: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08358192443847656
+time elapsed :: 0.03331303596496582
 epoch 82: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08295869827270508
+time elapsed :: 0.03472542762756348
 epoch 83: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.09816670417785645
+time elapsed :: 0.031141042709350586
 epoch 84: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.0853123664855957
+time elapsed :: 0.03174781799316406
 epoch 85: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08197259902954102
+time elapsed :: 0.03145790100097656
 epoch 86: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.0899202823638916
+time elapsed :: 0.031220674514770508
 epoch 87: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08527851104736328
+time elapsed :: 0.031966447830200195
 epoch 88: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08347272872924805
+time elapsed :: 0.03128695487976074
 epoch 89: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08819007873535156
+time elapsed :: 0.031279563903808594
 epoch 90: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.0854496955871582
+time elapsed :: 0.03070545196533203
 epoch 91: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08695316314697266
+time elapsed :: 0.03681206703186035
 epoch 92: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08712267875671387
+time elapsed :: 0.031282663345336914
 epoch 93: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08471870422363281
+time elapsed :: 0.0319056510925293
 epoch 94: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.0882568359375
+time elapsed :: 0.033342599868774414
 epoch 95: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.07871508598327637
+time elapsed :: 0.0156404972076416
 epoch 96: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.09382247924804688
+time elapsed :: 0.03125572204589844
 epoch 97: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.09104466438293457
+time elapsed :: 0.03175997734069824
 epoch 98: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.0863487720489502
+time elapsed :: 0.03129863739013672
 epoch 99: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.0784151554107666
+time elapsed :: 0.029914140701293945
 epoch 100: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.09143996238708496
+time elapsed :: 0.031726837158203125
 epoch 101: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08934283256530762
+time elapsed :: 0.03447723388671875
 epoch 102: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08584213256835938
+time elapsed :: 0.03124856948852539
 epoch 103: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08320307731628418
+time elapsed :: 0.03171277046203613
 epoch 104: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.09124016761779785
+time elapsed :: 0.03125929832458496
 epoch 105: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08253049850463867
+time elapsed :: 0.022553443908691406
 epoch 106: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.09726786613464355
+time elapsed :: 0.04379749298095703
 epoch 107: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.07704520225524902
+time elapsed :: 0.019234418869018555
 epoch 108: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.09138751029968262
+time elapsed :: 0.031255483627319336
 epoch 109: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08839297294616699
+time elapsed :: 0.03126382827758789
 epoch 110: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.07853579521179199
+time elapsed :: 0.031786203384399414
 epoch 111: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08487606048583984
+time elapsed :: 0.029943227767944336
 epoch 112: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.0909433364868164
+time elapsed :: 0.03144097328186035
 epoch 113: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08544492721557617
+time elapsed :: 0.01611924171447754
 epoch 114: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08862137794494629
+time elapsed :: 0.03125166893005371
 epoch 115: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08752202987670898
+time elapsed :: 0.019736051559448242
 epoch 116: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.0853114128112793
+time elapsed :: 0.03175497055053711
 epoch 117: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.07729506492614746
+time elapsed :: 0.03134012222290039
 epoch 118: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08332109451293945
+time elapsed :: 0.031200885772705078
 epoch 119: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.09153938293457031
+time elapsed :: 0.0337529182434082
 epoch 120: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08756732940673828
+time elapsed :: 0.0296938419342041
 epoch 121: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.07924199104309082
+time elapsed :: 0.0316462516784668
 epoch 122: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08296489715576172
+time elapsed :: 0.03624582290649414
 epoch 123: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08952164649963379
+time elapsed :: 0.02416539192199707
 epoch 124: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.07739949226379395
+time elapsed :: 0.034085750579833984
 epoch 125: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08931970596313477
+time elapsed :: 0.033199310302734375
 epoch 126: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08479428291320801
+time elapsed :: 0.03180336952209473
 epoch 127: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08456134796142578
+time elapsed :: 0.018581151962280273
 epoch 128: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08236932754516602
+time elapsed :: 0.03139328956604004
 epoch 129: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08430218696594238
+time elapsed :: 0.03556251525878906
 epoch 130: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08237886428833008
+time elapsed :: 0.03129434585571289
 epoch 131: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08335518836975098
+time elapsed :: 0.03438973426818848
 epoch 132: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.0829777717590332
+time elapsed :: 0.031777143478393555
 epoch 133: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.09157371520996094
+time elapsed :: 0.0187990665435791
 epoch 134: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.0837712287902832
+time elapsed :: 0.03130936622619629
 epoch 135: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08297085762023926
+time elapsed :: 0.03127241134643555
 epoch 136: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08842253684997559
+time elapsed :: 0.0373539924621582
 epoch 137: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08596301078796387
+time elapsed :: 0.03135371208190918
 epoch 138: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08346915245056152
+time elapsed :: 0.031213760375976562
 epoch 139: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08291459083557129
+time elapsed :: 0.03126692771911621
 epoch 140: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08560991287231445
+time elapsed :: 0.021678686141967773
 epoch 141: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08238363265991211
+time elapsed :: 0.0334620475769043
 epoch 142: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.0842585563659668
+time elapsed :: 0.03177595138549805
 epoch 143: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.080352783203125
+time elapsed :: 0.031301259994506836
 epoch 144: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08337068557739258
+time elapsed :: 0.03031301498413086
 epoch 145: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08304691314697266
+time elapsed :: 0.0362701416015625
 epoch 146: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08744311332702637
+time elapsed :: 0.03126811981201172
 epoch 147: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08393120765686035
+time elapsed :: 0.02413034439086914
 epoch 148: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08608555793762207
+time elapsed :: 0.030680418014526367
 epoch 149: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08831334114074707
+time elapsed :: 0.03177213668823242
 epoch 150: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08676600456237793
+time elapsed :: 0.03124856948852539
 epoch 151: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.09172821044921875
+time elapsed :: 0.031248807907104492
 epoch 152: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08532977104187012
+time elapsed :: 0.031682491302490234
 epoch 153: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08441972732543945
+time elapsed :: 0.03423905372619629
 epoch 154: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.07925200462341309
+time elapsed :: 0.04228329658508301
 epoch 155: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08483386039733887
+time elapsed :: 0.03074359893798828
 epoch 156: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08668303489685059
+time elapsed :: 0.03122425079345703
 epoch 157: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08677887916564941
+time elapsed :: 0.03134918212890625
 epoch 158: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08335328102111816
+time elapsed :: 0.03165149688720703
 epoch 159: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08293938636779785
+time elapsed :: 0.023392677307128906
 epoch 160: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08962726593017578
+time elapsed :: 0.031242847442626953
 epoch 161: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08329176902770996
+time elapsed :: 0.0359649658203125
 epoch 162: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08465194702148438
+time elapsed :: 0.03130698204040527
 epoch 163: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08935713768005371
+time elapsed :: 0.03656339645385742
 epoch 164: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08570551872253418
+time elapsed :: 0.03157210350036621
 epoch 165: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08367538452148438
+time elapsed :: 0.03125786781311035
 epoch 166: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08333516120910645
+time elapsed :: 0.015677690505981445
 epoch 167: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.09326601028442383
+time elapsed :: 0.03123307228088379
 epoch 168: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.0815732479095459
+time elapsed :: 0.03176164627075195
 epoch 169: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.09142327308654785
+time elapsed :: 0.03130817413330078
 epoch 170: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08432960510253906
+time elapsed :: 0.03127622604370117
 epoch 171: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08140158653259277
+time elapsed :: 0.031668901443481445
 epoch 172: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08744072914123535
+time elapsed :: 0.03133678436279297
 epoch 173: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.1046755313873291
+time elapsed :: 0.031172990798950195
 epoch 174: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08599185943603516
+time elapsed :: 0.03191399574279785
 epoch 175: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08625578880310059
+time elapsed :: 0.03593277931213379
 epoch 176: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08554434776306152
+time elapsed :: 0.033254146575927734
 epoch 177: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.0844109058380127
+time elapsed :: 0.031807661056518555
 epoch 178: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08100104331970215
+time elapsed :: 0.015632152557373047
 epoch 179: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.07507133483886719
+time elapsed :: 0.037015438079833984
 epoch 180: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.0916738510131836
+time elapsed :: 0.02489471435546875
 epoch 181: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08321142196655273
+time elapsed :: 0.03216123580932617
 epoch 182: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08759737014770508
+time elapsed :: 0.03071737289428711
 epoch 183: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08669185638427734
+time elapsed :: 0.031244754791259766
 epoch 184: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.0846407413482666
+time elapsed :: 0.031828880310058594
 epoch 185: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.09138822555541992
+time elapsed :: 0.03130984306335449
 epoch 186: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08259725570678711
+time elapsed :: 0.03125286102294922
 epoch 187: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08308267593383789
+time elapsed :: 0.033782005310058594
 epoch 188: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08301305770874023
+time elapsed :: 0.029262304306030273
 epoch 189: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.0885305404663086
+time elapsed :: 0.0380549430847168
 epoch 190: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08529376983642578
+time elapsed :: 0.03121328353881836
 epoch 191: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08268475532531738
+time elapsed :: 0.019679546356201172
 epoch 192: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08503103256225586
+time elapsed :: 0.03135848045349121
 epoch 193: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.09012937545776367
+time elapsed :: 0.0353541374206543
 epoch 194: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08337187767028809
+time elapsed :: 0.031267642974853516
 epoch 195: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08306646347045898
+time elapsed :: 0.01886916160583496
 epoch 196: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.09276533126831055
+time elapsed :: 0.03260326385498047
 epoch 197: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08273458480834961
+time elapsed :: 0.043416500091552734
 epoch 198: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08591604232788086
+time elapsed :: 0.015680789947509766
 epoch 199: 
 train loss :: endogeq_1: 0.0000,
 total_loss: 0.0000,
-time elapsed :: 0.08612513542175293
-training finished, total time :: 20.487033128738403
+time elapsed :: 0.03120112419128418
+training finished, total time :: 7.959689378738403

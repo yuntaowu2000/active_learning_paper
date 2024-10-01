@@ -142,1803 +142,1803 @@ Loss weight: 2
 
 
 epoch 0: 
-train loss :: endogvar_q_cond_q_min: 0.0018,
-endogvar_q_cond_q_max: 0.0013,
-endogvar_psi_cond_psi_min: 0.0038,
-endogvar_psi_cond_psi_max: 0.0016,
-endogeq_1: 0.0695,
-endogeq_2: 1.6336,
-total_loss: 4.1860,
-time elapsed :: 1.399881362915039
+train loss :: endogvar_q_cond_q_min: 0.0045,
+endogvar_q_cond_q_max: 0.0004,
+endogvar_psi_cond_psi_min: 0.0016,
+endogvar_psi_cond_psi_max: 0.0021,
+endogeq_1: 0.5105,
+endogeq_2: 1.5354,
+total_loss: 4.4398,
+time elapsed :: 1.396916151046753
 epoch 1: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
-endogvar_q_cond_q_max: 0.0000,
-endogvar_psi_cond_psi_min: 0.0013,
-endogvar_psi_cond_psi_max: 0.0010,
-endogeq_1: 0.0823,
-endogeq_2: 1.6424,
-total_loss: 3.5979,
-time elapsed :: 1.2251489162445068
-epoch 2: 
-train loss :: endogvar_q_cond_q_min: 0.0003,
-endogvar_q_cond_q_max: 0.0003,
-endogvar_psi_cond_psi_min: 0.0013,
+endogvar_q_cond_q_max: 0.0010,
+endogvar_psi_cond_psi_min: 0.0012,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.3086,
-endogeq_2: 0.6149,
-total_loss: 1.7230,
-time elapsed :: 1.224898338317871
+endogeq_1: 0.0741,
+endogeq_2: 1.3182,
+total_loss: 2.9400,
+time elapsed :: 1.3614442348480225
+epoch 2: 
+train loss :: endogvar_q_cond_q_min: 0.0004,
+endogvar_q_cond_q_max: 0.0021,
+endogvar_psi_cond_psi_min: 0.0001,
+endogvar_psi_cond_psi_max: 0.0001,
+endogeq_1: 0.2497,
+endogeq_2: 0.1385,
+total_loss: 0.8062,
+time elapsed :: 1.5242915153503418
 epoch 3: 
-train loss :: endogvar_q_cond_q_min: 0.0005,
-endogvar_q_cond_q_max: 0.0012,
+train loss :: endogvar_q_cond_q_min: 0.0014,
+endogvar_q_cond_q_max: 0.0006,
 endogvar_psi_cond_psi_min: 0.0000,
-endogvar_psi_cond_psi_max: 0.0004,
-endogeq_1: 0.1880,
-endogeq_2: 0.2504,
-total_loss: 0.8961,
-time elapsed :: 1.3167929649353027
+endogvar_psi_cond_psi_max: 0.0000,
+endogeq_1: 0.2068,
+endogeq_2: 0.0198,
+total_loss: 0.4469,
+time elapsed :: 1.4218499660491943
 epoch 4: 
-train loss :: endogvar_q_cond_q_min: 0.0011,
-endogvar_q_cond_q_max: 0.0001,
-endogvar_psi_cond_psi_min: 0.0000,
-endogvar_psi_cond_psi_max: 0.0005,
-endogeq_1: 0.0971,
-endogeq_2: 0.2329,
-total_loss: 0.7317,
-time elapsed :: 1.291499137878418
-epoch 5: 
-train loss :: endogvar_q_cond_q_min: 0.0001,
+train loss :: endogvar_q_cond_q_min: 0.0004,
 endogvar_q_cond_q_max: 0.0000,
-endogvar_psi_cond_psi_min: 0.0000,
-endogvar_psi_cond_psi_max: 0.0002,
-endogeq_1: 0.0184,
-endogeq_2: 0.1831,
-total_loss: 0.4201,
-time elapsed :: 1.3249905109405518
-epoch 6: 
-train loss :: endogvar_q_cond_q_min: 0.0000,
-endogvar_q_cond_q_max: 0.0001,
-endogvar_psi_cond_psi_min: 0.0000,
-endogvar_psi_cond_psi_max: 0.0002,
-endogeq_1: 0.0084,
-endogeq_2: 0.1670,
-total_loss: 0.3738,
-time elapsed :: 1.2248616218566895
-epoch 7: 
-train loss :: endogvar_q_cond_q_min: 0.0002,
-endogvar_q_cond_q_max: 0.0003,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0001,
-endogeq_1: 0.0158,
-endogeq_2: 0.1085,
-total_loss: 0.2928,
-time elapsed :: 1.293504238128662
-epoch 8: 
+endogeq_1: 0.0546,
+endogeq_2: 0.0436,
+total_loss: 0.1853,
+time elapsed :: 1.4165151119232178
+epoch 5: 
+train loss :: endogvar_q_cond_q_min: 0.0001,
+endogvar_q_cond_q_max: 0.0001,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+endogeq_1: 0.0269,
+endogeq_2: 0.0376,
+total_loss: 0.1251,
+time elapsed :: 1.4111599922180176
+epoch 6: 
 train loss :: endogvar_q_cond_q_min: 0.0001,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0001,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0503,
-endogeq_2: 0.0137,
-total_loss: 0.0956,
-time elapsed :: 1.181483268737793
+endogeq_1: 0.0176,
+endogeq_2: 0.0288,
+total_loss: 0.0911,
+time elapsed :: 1.405604362487793
+epoch 7: 
+train loss :: endogvar_q_cond_q_min: 0.0001,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+endogeq_1: 0.0167,
+endogeq_2: 0.0266,
+total_loss: 0.0824,
+time elapsed :: 1.480851411819458
+epoch 8: 
+train loss :: endogvar_q_cond_q_min: 0.0001,
+endogvar_q_cond_q_max: 0.0000,
+endogvar_psi_cond_psi_min: 0.0000,
+endogvar_psi_cond_psi_max: 0.0000,
+endogeq_1: 0.0093,
+endogeq_2: 0.0179,
+total_loss: 0.0558,
+time elapsed :: 1.3835487365722656
 epoch 9: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0218,
-endogeq_2: 0.0105,
-total_loss: 0.0494,
-time elapsed :: 1.1914477348327637
+endogeq_1: 0.0059,
+endogeq_2: 0.0117,
+total_loss: 0.0360,
+time elapsed :: 1.230231761932373
 epoch 10: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0116,
-endogeq_2: 0.0121,
-total_loss: 0.0392,
-time elapsed :: 1.1957581043243408
+endogeq_1: 0.0056,
+endogeq_2: 0.0119,
+total_loss: 0.0333,
+time elapsed :: 1.339285135269165
 epoch 11: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0074,
-endogeq_2: 0.0135,
-total_loss: 0.0373,
-time elapsed :: 1.1778473854064941
+endogeq_1: 0.0050,
+endogeq_2: 0.0122,
+total_loss: 0.0331,
+time elapsed :: 1.5560824871063232
 epoch 12: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0030,
-endogeq_2: 0.0148,
-total_loss: 0.0355,
-time elapsed :: 1.266456127166748
+endogeq_1: 0.0037,
+endogeq_2: 0.0127,
+total_loss: 0.0328,
+time elapsed :: 1.2545080184936523
 epoch 13: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0025,
-endogeq_2: 0.0142,
-total_loss: 0.0343,
-time elapsed :: 1.3282291889190674
+endogeq_1: 0.0028,
+endogeq_2: 0.0131,
+total_loss: 0.0325,
+time elapsed :: 1.3825640678405762
 epoch 14: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0030,
-endogeq_2: 0.0135,
-total_loss: 0.0337,
-time elapsed :: 1.3999476432800293
+endogeq_1: 0.0027,
+endogeq_2: 0.0132,
+total_loss: 0.0324,
+time elapsed :: 1.3668479919433594
 epoch 15: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0038,
-endogeq_2: 0.0122,
-total_loss: 0.0323,
-time elapsed :: 1.2832415103912354
+endogeq_1: 0.0019,
+endogeq_2: 0.0136,
+total_loss: 0.0319,
+time elapsed :: 1.3605663776397705
 epoch 16: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0038,
-endogeq_2: 0.0089,
-total_loss: 0.0262,
-time elapsed :: 1.1886250972747803
+endogeq_1: 0.0013,
+endogeq_2: 0.0132,
+total_loss: 0.0303,
+time elapsed :: 1.427067518234253
 epoch 17: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0006,
-endogeq_2: 0.0084,
-total_loss: 0.0196,
-time elapsed :: 1.199838638305664
+endogeq_1: 0.0002,
+endogeq_2: 0.0121,
+total_loss: 0.0279,
+time elapsed :: 1.458735466003418
 epoch 18: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
 endogeq_1: 0.0003,
-endogeq_2: 0.0059,
-total_loss: 0.0142,
-time elapsed :: 1.3000226020812988
+endogeq_2: 0.0113,
+total_loss: 0.0267,
+time elapsed :: 1.3744406700134277
 epoch 19: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0050,
-total_loss: 0.0121,
-time elapsed :: 1.3668396472930908
+endogeq_1: 0.0011,
+endogeq_2: 0.0096,
+total_loss: 0.0239,
+time elapsed :: 1.2580618858337402
 epoch 20: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0006,
-endogeq_2: 0.0045,
-total_loss: 0.0114,
-time elapsed :: 1.2342793941497803
+endogeq_1: 0.0021,
+endogeq_2: 0.0087,
+total_loss: 0.0220,
+time elapsed :: 1.279104471206665
 epoch 21: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0012,
-endogeq_2: 0.0031,
-total_loss: 0.0090,
-time elapsed :: 1.315699815750122
+endogeq_1: 0.0025,
+endogeq_2: 0.0083,
+total_loss: 0.0217,
+time elapsed :: 1.3128089904785156
 epoch 22: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0008,
-endogeq_2: 0.0027,
-total_loss: 0.0065,
-time elapsed :: 1.2976820468902588
+endogeq_1: 0.0010,
+endogeq_2: 0.0048,
+total_loss: 0.0155,
+time elapsed :: 1.3073399066925049
 epoch 23: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0021,
-total_loss: 0.0053,
-time elapsed :: 1.329256534576416
+endogeq_1: 0.0017,
+endogeq_2: 0.0041,
+total_loss: 0.0118,
+time elapsed :: 1.4285469055175781
 epoch 24: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0019,
-total_loss: 0.0051,
-time elapsed :: 1.2519810199737549
+endogeq_1: 0.0007,
+endogeq_2: 0.0036,
+total_loss: 0.0097,
+time elapsed :: 1.3902792930603027
 epoch 25: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0018,
-total_loss: 0.0048,
-time elapsed :: 1.1779921054840088
+endogeq_1: 0.0010,
+endogeq_2: 0.0027,
+total_loss: 0.0077,
+time elapsed :: 1.4141299724578857
 epoch 26: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0006,
-endogeq_2: 0.0018,
-total_loss: 0.0045,
-time elapsed :: 1.4115397930145264
+endogeq_1: 0.0013,
+endogeq_2: 0.0023,
+total_loss: 0.0064,
+time elapsed :: 1.3632194995880127
 epoch 27: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0007,
-endogeq_2: 0.0017,
-total_loss: 0.0044,
-time elapsed :: 1.2134912014007568
+endogeq_1: 0.0013,
+endogeq_2: 0.0023,
+total_loss: 0.0064,
+time elapsed :: 1.2160789966583252
 epoch 28: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0008,
-endogeq_2: 0.0017,
-total_loss: 0.0044,
-time elapsed :: 1.401930570602417
+endogeq_1: 0.0012,
+endogeq_2: 0.0022,
+total_loss: 0.0061,
+time elapsed :: 1.4086823463439941
 epoch 29: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0009,
-endogeq_2: 0.0014,
-total_loss: 0.0039,
-time elapsed :: 1.3431103229522705
+endogeq_1: 0.0010,
+endogeq_2: 0.0018,
+total_loss: 0.0054,
+time elapsed :: 1.4424467086791992
 epoch 30: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0006,
-endogeq_2: 0.0013,
-total_loss: 0.0035,
-time elapsed :: 1.2015962600708008
+endogeq_1: 0.0011,
+endogeq_2: 0.0016,
+total_loss: 0.0053,
+time elapsed :: 1.2331151962280273
 epoch 31: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0006,
-endogeq_2: 0.0009,
-total_loss: 0.0024,
-time elapsed :: 1.3217079639434814
+endogeq_1: 0.0012,
+endogeq_2: 0.0016,
+total_loss: 0.0051,
+time elapsed :: 1.4498834609985352
 epoch 32: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0006,
-total_loss: 0.0019,
-time elapsed :: 1.341284990310669
+endogeq_1: 0.0013,
+endogeq_2: 0.0015,
+total_loss: 0.0049,
+time elapsed :: 1.2937498092651367
 epoch 33: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0018,
-time elapsed :: 1.2319848537445068
+endogeq_1: 0.0013,
+endogeq_2: 0.0014,
+total_loss: 0.0047,
+time elapsed :: 1.237957239151001
 epoch 34: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 1.1731109619140625
+endogeq_1: 0.0013,
+endogeq_2: 0.0014,
+total_loss: 0.0046,
+time elapsed :: 1.290445327758789
 epoch 35: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 1.1413826942443848
+endogeq_1: 0.0013,
+endogeq_2: 0.0013,
+total_loss: 0.0044,
+time elapsed :: 1.3443999290466309
 epoch 36: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.24168825149536133
+endogeq_1: 0.0013,
+endogeq_2: 0.0012,
+total_loss: 0.0041,
+time elapsed :: 1.2818398475646973
 epoch 37: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.24499773979187012
+endogeq_1: 0.0012,
+endogeq_2: 0.0011,
+total_loss: 0.0039,
+time elapsed :: 1.4092416763305664
 epoch 38: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.22924590110778809
+endogeq_1: 0.0012,
+endogeq_2: 0.0010,
+total_loss: 0.0037,
+time elapsed :: 1.2404098510742188
 epoch 39: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.2383289337158203
+endogeq_1: 0.0012,
+endogeq_2: 0.0010,
+total_loss: 0.0035,
+time elapsed :: 1.551313877105713
 epoch 40: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.25254130363464355
+endogeq_1: 0.0012,
+endogeq_2: 0.0009,
+total_loss: 0.0031,
+time elapsed :: 1.3750147819519043
 epoch 41: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.24344134330749512
+endogeq_1: 0.0010,
+endogeq_2: 0.0004,
+total_loss: 0.0022,
+time elapsed :: 1.3260552883148193
 epoch 42: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.24271321296691895
+endogeq_1: 0.0009,
+endogeq_2: 0.0004,
+total_loss: 0.0021,
+time elapsed :: 1.5247981548309326
 epoch 43: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.2341935634613037
+endogeq_1: 0.0008,
+endogeq_2: 0.0004,
+total_loss: 0.0020,
+time elapsed :: 1.299072265625
 epoch 44: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.22859549522399902
+endogeq_1: 0.0008,
+endogeq_2: 0.0004,
+total_loss: 0.0020,
+time elapsed :: 1.499199390411377
 epoch 45: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.23796486854553223
+endogeq_1: 0.0008,
+endogeq_2: 0.0004,
+total_loss: 0.0019,
+time elapsed :: 1.451267957687378
 epoch 46: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.23152661323547363
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 1.300069808959961
 epoch 47: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.2459888458251953
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 1.4581327438354492
 epoch 48: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.2416248321533203
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 1.0514233112335205
 epoch 49: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.24041128158569336
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.2581331729888916
 epoch 50: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.24201512336730957
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.2746889591217041
 epoch 51: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.2414231300354004
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.24739742279052734
 epoch 52: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.24187731742858887
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.2559325695037842
 epoch 53: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.23246383666992188
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.255634069442749
 epoch 54: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.24169373512268066
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.24638795852661133
 epoch 55: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.24982810020446777
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.25496983528137207
 epoch 56: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.2329864501953125
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.254486083984375
 epoch 57: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.24692201614379883
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.2650032043457031
 epoch 58: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.23363852500915527
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.2520143985748291
 epoch 59: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.23629975318908691
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.2668421268463135
 epoch 60: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.2301921844482422
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.26453661918640137
 epoch 61: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.25168871879577637
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.2801201343536377
 epoch 62: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.2335062026977539
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.2553870677947998
 epoch 63: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.24173474311828613
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.2498636245727539
 epoch 64: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.23631572723388672
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.26682591438293457
 epoch 65: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.24267864227294922
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.25820255279541016
 epoch 66: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.23749971389770508
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.24331378936767578
 epoch 67: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.23750090599060059
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.2483382225036621
 epoch 68: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.2432117462158203
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.26778626441955566
 epoch 69: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.24113821983337402
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.2516026496887207
 epoch 70: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.23811984062194824
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.2408137321472168
 epoch 71: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.23546695709228516
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.26459574699401855
 epoch 72: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.24110984802246094
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.2500724792480469
 epoch 73: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.23353958129882812
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.2529139518737793
 epoch 74: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.24796032905578613
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.26946377754211426
 epoch 75: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.23395180702209473
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.2525761127471924
 epoch 76: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.23378419876098633
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.24995183944702148
 epoch 77: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.23068737983703613
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.2532062530517578
 epoch 78: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.23627686500549316
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.27852368354797363
 epoch 79: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.23311090469360352
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.25368475914001465
 epoch 80: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.24072861671447754
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.25544190406799316
 epoch 81: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.23021936416625977
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.26956772804260254
 epoch 82: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.2448573112487793
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.26125597953796387
 epoch 83: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.24329352378845215
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.26261401176452637
 epoch 84: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.2426924705505371
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.2651364803314209
 epoch 85: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.2605586051940918
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.2531290054321289
 epoch 86: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.24162840843200684
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.27182960510253906
 epoch 87: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.2513134479522705
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.2545034885406494
 epoch 88: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.23932790756225586
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.2537360191345215
 epoch 89: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.23482632637023926
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.25705552101135254
 epoch 90: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.2306356430053711
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.2676882743835449
 epoch 91: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.24150609970092773
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.24999403953552246
 epoch 92: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.2340564727783203
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.25806307792663574
 epoch 93: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.23304963111877441
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.2500331401824951
 epoch 94: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.24123644828796387
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.2583601474761963
 epoch 95: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.23793673515319824
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.2438044548034668
 epoch 96: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.24057817459106445
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.2501215934753418
 epoch 97: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.23029279708862305
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.2546563148498535
 epoch 98: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.2417287826538086
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.2575404644012451
 epoch 99: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.23504018783569336
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.25610947608947754
 epoch 100: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.2369234561920166
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.25951409339904785
 epoch 101: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.23526287078857422
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.26073718070983887
 epoch 102: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.23367667198181152
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.24159550666809082
 epoch 103: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.2329421043395996
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.25994253158569336
 epoch 104: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.23331189155578613
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.24861741065979004
 epoch 105: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.2330460548400879
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.2497398853302002
 epoch 106: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.23361945152282715
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.24188709259033203
 epoch 107: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.23329710960388184
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.2402036190032959
 epoch 108: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.2333991527557373
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.24384403228759766
 epoch 109: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.23261570930480957
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.25839996337890625
 epoch 110: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.23331594467163086
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.2664816379547119
 epoch 111: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.23651409149169922
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.2743802070617676
 epoch 112: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.23942828178405762
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.2751274108886719
 epoch 113: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.24334311485290527
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.29327392578125
 epoch 114: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.2371048927307129
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.2885446548461914
 epoch 115: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.23457908630371094
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.2758204936981201
 epoch 116: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.23341870307922363
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.275829553604126
 epoch 117: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.23445439338684082
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.2832036018371582
 epoch 118: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.2421281337738037
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.2811732292175293
 epoch 119: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.22948932647705078
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.27748537063598633
 epoch 120: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.24171972274780273
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.2734992504119873
 epoch 121: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.24164080619812012
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.2823331356048584
 epoch 122: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.2405836582183838
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.2827279567718506
 epoch 123: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.24431276321411133
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.26697778701782227
 epoch 124: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.23207426071166992
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.2916419506072998
 epoch 125: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.2394876480102539
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.2665679454803467
 epoch 126: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.23763370513916016
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.27489376068115234
 epoch 127: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.2372288703918457
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.2675330638885498
 epoch 128: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.23569917678833008
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.2905113697052002
 epoch 129: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.2330174446105957
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.29921507835388184
 epoch 130: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.24847674369812012
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.27153706550598145
 epoch 131: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.23923206329345703
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.2973456382751465
 epoch 132: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.23772549629211426
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.3636651039123535
 epoch 133: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.23186659812927246
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.2992098331451416
 epoch 134: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.23792624473571777
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.26671862602233887
 epoch 135: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.23211097717285156
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.3000180721282959
 epoch 136: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.23692846298217773
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.2839939594268799
 epoch 137: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.2328944206237793
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.30047178268432617
 epoch 138: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.23361968994140625
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.27463698387145996
 epoch 139: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.23322296142578125
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.3155839443206787
 epoch 140: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.23308777809143066
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.28661060333251953
 epoch 141: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.24181008338928223
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.2703127861022949
 epoch 142: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.22515201568603516
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.27502918243408203
 epoch 143: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.2417294979095459
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.28317880630493164
 epoch 144: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.23627829551696777
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.2832810878753662
 epoch 145: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.22929930686950684
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.30863165855407715
 epoch 146: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.24166178703308105
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.28290414810180664
 epoch 147: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.23435664176940918
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.2791903018951416
 epoch 148: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.23537969589233398
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.2756690979003906
 epoch 149: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.23963356018066406
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.28733181953430176
 epoch 150: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.23095440864562988
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.3253812789916992
 epoch 151: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.23331284523010254
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.2919187545776367
 epoch 152: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.23380804061889648
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.3160593509674072
 epoch 153: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.2330636978149414
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.3745856285095215
 epoch 154: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.24685359001159668
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.3094348907470703
 epoch 155: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.23894810676574707
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.2737610340118408
 epoch 156: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.23694372177124023
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.26134824752807617
 epoch 157: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.24142146110534668
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.2555849552154541
 epoch 158: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.23502802848815918
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.24504566192626953
 epoch 159: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.23288273811340332
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.2454824447631836
 epoch 160: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.24485421180725098
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.2582681179046631
 epoch 161: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.23071956634521484
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.2580134868621826
 epoch 162: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.2335953712463379
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.25081777572631836
 epoch 163: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.23821496963500977
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.24942302703857422
 epoch 164: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.23229336738586426
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.24992871284484863
 epoch 165: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.2387239933013916
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.24989032745361328
 epoch 166: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.23035621643066406
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.24170374870300293
 epoch 167: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.23613357543945312
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.2519693374633789
 epoch 168: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.24717020988464355
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.24824142456054688
 epoch 169: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.23352766036987305
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.24955177307128906
 epoch 170: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.2400803565979004
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.2425217628479004
 epoch 171: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.24169349670410156
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.23981142044067383
 epoch 172: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.24161958694458008
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.24758243560791016
 epoch 173: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.23406553268432617
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.25145387649536133
 epoch 174: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.23290181159973145
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.25005149841308594
 epoch 175: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.23630547523498535
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.24440741539001465
 epoch 176: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.24948692321777344
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.24881625175476074
 epoch 177: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.23875045776367188
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.24802017211914062
 epoch 178: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.2316741943359375
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.24160385131835938
 epoch 179: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.22478389739990234
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.23552298545837402
 epoch 180: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.24155473709106445
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.25267672538757324
 epoch 181: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.24397611618041992
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.23995590209960938
 epoch 182: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.2387406826019287
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.23656654357910156
 epoch 183: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.25969481468200684
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.24255132675170898
 epoch 184: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.2566373348236084
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.23954391479492188
 epoch 185: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.24893546104431152
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.24179434776306152
 epoch 186: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.2403545379638672
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.2419729232788086
 epoch 187: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.2394237518310547
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.2450876235961914
 epoch 188: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.22886943817138672
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.241377592086792
 epoch 189: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.23315978050231934
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.24447226524353027
 epoch 190: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.23377561569213867
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.24190974235534668
 epoch 191: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.2330946922302246
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.24142742156982422
 epoch 192: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.23300576210021973
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.24059009552001953
 epoch 193: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.2355060577392578
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.24167394638061523
 epoch 194: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.23978376388549805
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.24212336540222168
 epoch 195: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.2414083480834961
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.24984288215637207
 epoch 196: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.24197649955749512
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.24574732780456543
 epoch 197: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.24171710014343262
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.23854565620422363
 epoch 198: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.23292803764343262
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.2427215576171875
 epoch 199: 
 train loss :: endogvar_q_cond_q_min: 0.0000,
 endogvar_q_cond_q_max: 0.0000,
 endogvar_psi_cond_psi_min: 0.0000,
 endogvar_psi_cond_psi_max: 0.0000,
-endogeq_1: 0.0005,
-endogeq_2: 0.0005,
-total_loss: 0.0017,
-time elapsed :: 0.23374104499816895
-training finished, total time :: 84.89848065376282
+endogeq_1: 0.0007,
+endogeq_2: 0.0004,
+total_loss: 0.0018,
+time elapsed :: 0.3161325454711914
+training finished, total time :: 106.90777683258057
