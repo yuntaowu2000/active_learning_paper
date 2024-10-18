@@ -291,6 +291,7 @@ if __name__ == '__main__':
         total_loss += loss_time_boundary
         if total_loss < outer_loop_min_loss:
             print(f"Updating min loss from {outer_loop_min_loss:.4f} to {total_loss:.4f}")
+            outer_loop_min_loss = total_loss
 
         new_vals: Dict[str, torch.Tensor] = {}
         for name, model in kappa_nns.items():
