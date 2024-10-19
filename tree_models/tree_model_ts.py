@@ -177,7 +177,7 @@ class Training_pde(Environments):
         sig_q1      = (q1_z * sig_z_ari)/q1
         sig_q2      = (q2_z * sig_z_ari)/q2
 
-        r           = self.params['rho'] + self.params['gamma'] * (z*self.params['sig_y1']  + (1-z)*self.params['sig_y2']) -\
+        r           = self.params['rho'] + self.params['gamma'] * (z*self.params['mu_y1']  + (1-z)*self.params['mu_y2']) -\
                         self.params['gamma'] * (1+self.params['gamma'])/2*(z**2 *self.params['sig_y1']**2  + (1-z)**2 *self.params['sig_y2']**2)
         zeta_1      = self.params['gamma'] * z * self.params['sig_y1']
         zeta_2      = self.params['gamma'] * (1-z) * self.params['sig_y2']

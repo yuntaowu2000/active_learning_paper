@@ -19,7 +19,7 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 np.random.seed(42)
 torch.manual_seed(42)
 
-plot_directory = "./output_ts_hd_single_output/plots/"
+plot_directory = "./output_ts_hd_single_output_tree3/plots/"
 if not os.path.exists(plot_directory):
     os.makedirs(plot_directory)
     
@@ -104,6 +104,22 @@ class Training_Sampler():
             sv = sv.unsqueeze(-1)
         time_dim = torch.ones((sv.shape[0], 1)) * time_val
         return torch.cat([sv, time_dim], dim=-1)
+    
+    def sample_fixed_grid_boundary_cond_single_dim(self, non_zero_dim: int, time_val: float):
+        '''
+        This is only used for boundary conditions
+        '''
+        sv_ls = [0] * (self.sv_count)
+        for i in range(self.sv_count):
+            if i == non_zero_dim:
+                sv_ls[i] = torch.linspace(0, 1, steps=self.batch_size)
+            else:
+                sv_ls[i] = torch.zeros(1)
+        sv = torch.cartesian_prod(*sv_ls)
+        if len(sv.shape) == 1:
+            sv = sv.unsqueeze(-1)
+        time_dim = torch.ones((sv.shape[0], 1)) * time_val
+        return torch.cat([sv, time_dim], dim=-1)
 
 class Training_pde(Environments):
 
@@ -148,16 +164,16 @@ class Training_pde(Environments):
         dkappa_dt: List[torch.Tensor] = [0] * N # (batch, t)
 
         # Compute kappa and q by exploiting symmetry
-        kappa_vec[0] = kappa_nn(SV) # [:, 0:1]
+        kappa_vec[0] = kappa_nn(SV)
         q_vec[0] = z[:, 0:1] / kappa_vec[0]
         for i in range(1, N-1):
             ind         = (0,i)
             indx        = (i,0)
             SV_swaped = SV.clone()
             SV_swaped[:,ind] = SV[:,indx].clone()
-            kappa_vec[i]= kappa_nn(SV_swaped) # [:, 0:1]
+            kappa_vec[i]= kappa_nn(SV_swaped)
             q_vec[i] = SV_swaped[:, 0:1] / kappa_vec[i]
-        kappa_vec[-1] = kappa_nn(SV) # [:, 1:]
+        kappa_vec[-1] = kappa_nn(SV)
         q_vec[-1] = z_last / kappa_vec[-1]
 
         # compute derivatives
@@ -222,7 +238,7 @@ class Training_pde(Environments):
 
         r = (self.params["rho"] 
         + self.params["gamma"] * (torch.sum(mu_ys[:, :-1] * z, dim=1, keepdim=True) + mu_ys[:, -1:] * z_last)
-        + 0.5 * self.params["gamma"] * (self.params["gamma"] + 1) * (torch.sum(sig_ys[:, :-1]**2 * z**2, dim=1, keepdim=True) + sig_ys[:, -1:]**2 * z_last**2)
+        - 0.5 * self.params["gamma"] * (self.params["gamma"] + 1) * (torch.sum(sig_ys[:, :-1]**2 * z**2, dim=1, keepdim=True) + sig_ys[:, -1:]**2 * z_last**2)
         )
 
         zetas = [0] * N
@@ -231,7 +247,7 @@ class Training_pde(Environments):
         hjb_kappas = [0] * N
         consistency_kappas = [0] * N
         for i in range(N-1):
-            zetas[i] = self.params["gamma"] * z * sig_ys[:, i:i+1]
+            zetas[i] = self.params["gamma"] * z[:, i:i+1] * sig_ys[:, i:i+1]
             mu_kappas[i] = mu_z_geos[i] - mu_qs[i] + sig_qs[i] * (sig_qs[i] - sig_z_geos[i])
             sig_kappas[i] = sig_z_geos[i] - sig_qs[i]
         zetas[-1]  = self.params["gamma"] * z_last * sig_ys[:, -1:]
@@ -378,7 +394,7 @@ if __name__ == '__main__':
     kappa_nn.load_state_dict(best_model_kappa.state_dict())
     
     # Save data
-    SV_T0 = TS.sample_fixed_grid_boundary_cond(0.0).to(device)
+    SV_T0 = TS.sample_fixed_grid_boundary_cond_single_dim(0, 0.0).to(device)
     SV_T0.requires_grad_(True)
     
     TP  = Training_pde(params)
