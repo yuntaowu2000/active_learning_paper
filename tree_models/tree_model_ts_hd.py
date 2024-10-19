@@ -2,6 +2,7 @@
 Author: Goutham G. 
 """
 import os
+import gc
 from typing import Dict, List, Tuple
 
 import matplotlib.pyplot as plt
@@ -19,7 +20,7 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 np.random.seed(42)
 torch.manual_seed(42)
 
-plot_directory = "./output_ts_hd_single_output_tree3/plots/"
+plot_directory = "./output_ts_hd_single_output_tree10/plots/"
 if not os.path.exists(plot_directory):
     os.makedirs(plot_directory)
     
@@ -328,6 +329,7 @@ if __name__ == '__main__':
         SV.requires_grad_(True)
         pbar = tqdm(range(int(epochs / (np.sqrt(outer_loop + 1)))))
         for epoch in pbar:
+            torch.cuda.empty_cache()
             total_loss, hjb_kappas_, consistency_kappas_ = TP.loss_fun_Net1(kappa_nn, SV)
 
             # match the time boundary condition
@@ -389,7 +391,8 @@ if __name__ == '__main__':
 
         if all_changes["total"] < outer_loop_convergence_thres:
             break
-        
+        torch.cuda.empty_cache()
+    torch.cuda.empty_cache()
     # Load last best model as the final neural network model
     kappa_nn.load_state_dict(best_model_kappa.state_dict())
     
@@ -407,29 +410,29 @@ if __name__ == '__main__':
     Z = SV_T0.detach().cpu().numpy()[:, :1].reshape(-1)
     fig, ax = plt.subplots(3,2,figsize=(16,9), num=1)
     ax[0,0].plot(Z,kappas[:, 0].detach().cpu().numpy(),label=r'$\kappa_1$')
-    ax[0,0].plot(Z,kappas[:, 1].detach().cpu().numpy(),label=r'$\kappa_2$')
+    ax[0,0].plot(Z,kappas[:, -1].detach().cpu().numpy(),label=r'$\kappa_{10}$')
     ax[0,0].legend()
 
     ax[0,1].plot(Z,qs[:,0].detach().cpu().numpy(),label=r'$q_1$')
-    ax[0,1].plot(Z,qs[:,1].detach().cpu().numpy(),label=r'$q_2$')
+    ax[0,1].plot(Z,qs[:,-1].detach().cpu().numpy(),label=r'$q_{10}$')
     ax[0,1].legend()
     
 
     ax[1,0].plot(Z,zetas[:,0].detach().cpu().numpy(),label=r'$\zeta_1$')
-    ax[1,0].plot(Z,zetas[:,1].detach().cpu().numpy(),label=r'$\zeta_2$')
+    ax[1,0].plot(Z,zetas[:,-1].detach().cpu().numpy(),label=r'$\zeta_{10}$')
     ax[1,0].legend()
     
 
     ax[1,1].plot(Z,r.detach().cpu().numpy(),label=r'$r$')
     ax[1,1].set_title('r')
 
-    ax[2,0].plot(Z,mu_z_geos[:, 0].detach().cpu().numpy(),label=r'$\mu^z$')
-    ax[2,0].plot(Z,sig_z_geos[:, 0].detach().cpu().numpy(),label=r'$\sigma^z$')
+    ax[2,0].plot(Z,mu_z_geos[:, 0].detach().cpu().numpy(),label=r'$\mu^{z_1}$')
+    ax[2,0].plot(Z,sig_z_geos[:, 0].detach().cpu().numpy(),label=r'$\sigma^{z_1}$')
     ax[2,0].legend()
     ax[2,0].set_xlabel('z')
 
-    ax[2,1].plot(Z,mu_z_aris[:, 0].detach().cpu().numpy(),label=r'$\mu_z$')
-    ax[2,1].plot(Z,sig_z_aris[:, 0].detach().cpu().numpy(),label=r'$\sigma_z$')
+    ax[2,1].plot(Z,mu_z_aris[:, 0].detach().cpu().numpy(),label=r'$\mu_{z_1}$')
+    ax[2,1].plot(Z,sig_z_aris[:, 0].detach().cpu().numpy(),label=r'$\sigma_{z_1}$')
     ax[2,1].legend()
     ax[2,1].set_xlabel('z')
 
