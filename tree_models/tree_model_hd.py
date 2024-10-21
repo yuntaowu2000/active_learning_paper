@@ -21,7 +21,7 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 np.random.seed(42)
 torch.manual_seed(42)
 
-output_dir = "./output_ts_hd_tree2"
+output_dir = "./output_hd_tree2"
 plot_directory = os.path.join(output_dir, "plots")
 if not os.path.exists(plot_directory):
     os.makedirs(plot_directory)
@@ -30,7 +30,7 @@ class Net1(torch.nn.Module):
     def __init__(self, nn_width, nn_num_layers,positive=False,sigmoid=False):
         super(Net1, self).__init__()
         # Initialize the first layer
-        layers = [torch.nn.Linear(params['n_trees'], params['nn_width']), torch.nn.Tanh()]
+        layers = [torch.nn.Linear(params['n_trees']-1, params['nn_width']), torch.nn.Tanh()]
         # Add the rest of the layers
             
         for i in range(1, nn_num_layers):
@@ -62,20 +62,17 @@ class Training_Sampler():
         self.sv_count = params['n_trees'] - 1
         self.batch_size = params['batch_size']
 
-        SV = np.random.uniform(low=[0] * self.sv_count, 
-                         high=[1] * self.sv_count, 
-                         size=(self.batch_size, self.sv_count))
-        self.boundary_uniform_points = torch.Tensor(SV)
-
     # def sample(self,N):
-        
+    #     ''' Construct share by renormalization
+    #         - No active sampling at the moment.
+    #     '''
     #     # Construct a by latin hypercube sampling. If there are
     #     # N trees, then construct N-1 shares 
     #     #Z       = 0.05+ (0.95-0.05)*np.random.rand(N)
     #     Z      = np.random.rand(N)
         
-    #     return Z.reshape((N, self.sv_count))
-    
+    #     return Z.reshape((N, 1))
+
     def sample(self):
         '''
             - No active sampling at the moment.
@@ -83,35 +80,9 @@ class Training_Sampler():
         SV = np.random.uniform(low=[0] * self.sv_count, 
                          high=[1] * self.sv_count, 
                          size=(self.batch_size, self.sv_count))
-        SV = torch.Tensor(SV)
-        # 10 equally spaced timesteps in [0,1]
-        T = torch.linspace(0, 1, 10)
-
-        SV_repeated = SV.repeat(1, T.shape[0]).view(-1, SV.shape[1])
-        T_repeated = T.repeat(1, SV.shape[0]).view(-1, 1)
-        return torch.cat((SV_repeated, T_repeated), dim=1)
+        return torch.Tensor(SV)
     
-    def sample_boundary_cond(self, time_val: float):
-        time_dim = torch.ones((self.boundary_uniform_points.shape[0], 1)) * time_val
-        return torch.cat([self.boundary_uniform_points, time_dim], dim=-1)
-    
-    def sample_fixed_grid_boundary_cond(self, time_val: float):
-        '''
-        This is only used for boundary conditions
-        '''
-        sv_ls = [0] * (self.sv_count)
-        for i in range(self.sv_count):
-            sv_ls[i] = torch.linspace(0, 1, steps=self.batch_size)
-        sv = torch.cartesian_prod(*sv_ls)
-        if len(sv.shape) == 1:
-            sv = sv.unsqueeze(-1)
-        time_dim = torch.ones((sv.shape[0], 1)) * time_val
-        return torch.cat([sv, time_dim], dim=-1)
-    
-    def sample_fixed_grid_boundary_cond_single_dim(self, non_zero_dim: int, time_val: float):
-        '''
-        This is only used for boundary conditions
-        '''
+    def sample_fixed_grid_single_dim(self, non_zero_dim: int):
         sv_ls = [0] * (self.sv_count)
         for i in range(self.sv_count):
             if i == non_zero_dim:
@@ -121,8 +92,8 @@ class Training_Sampler():
         sv = torch.cartesian_prod(*sv_ls)
         if len(sv.shape) == 1:
             sv = sv.unsqueeze(-1)
-        time_dim = torch.ones((sv.shape[0], 1)) * time_val
-        return torch.cat([sv, time_dim], dim=-1)
+        return sv
+    
 
 class Training_pde(Environments):
 
@@ -145,16 +116,15 @@ class Training_pde(Environments):
             return func(x).sum(dim=0)
         return torch.autograd.functional.jacobian(_func_sum, x, create_graph=create_graph).permute(1,0,2)
     
-    def loss_fun_Net1(self, kappa_nn, SV: torch.Tensor):
+    def loss_fun_Net1(self, kappa_nn, Z: torch.Tensor):
         ''' Loss function for the neural network
+        Remark: two trees is a one state variable problem. 
             - kappa_nn: neural network for all kappas
-            - SV: (share, t)
+            - Z: share
         '''
-        SV   = SV.clone()
-        SV.requires_grad_(True)
-        
-        z = SV[:, :-1]
-        B = z.shape[0] # batch size
+        z   = Z.clone()
+        z.requires_grad_(True)
+
         N = z.shape[1] + 1 # population size
         z_last    = 1 - torch.sum(z, dim=1).unsqueeze(1)
 
@@ -164,37 +134,35 @@ class Training_pde(Environments):
         dq_dzz: List[torch.Tensor] = [0] * N # (batch, N-1, N-1)
         dkappa_dz: List[torch.Tensor] = [0] * N # (batch, N-1)
         dkappa_dzz: List[torch.Tensor] = [0] * N # (batch, N-1, N-1)
-        dkappa_dt: List[torch.Tensor] = [0] * N # (batch, t)
 
         # Compute kappa and q by exploiting symmetry
-        kappa_vec[0] = kappa_nn(SV)
+        kappa_vec[0] = kappa_nn(z)
         q_vec[0] = z[:, 0:1] / kappa_vec[0]
         for i in range(1, N-1):
             ind         = (0,i)
             indx        = (i,0)
-            SV_swaped = SV.clone()
-            SV_swaped[:,ind] = SV[:,indx].clone()
-            kappa_vec[i]= kappa_nn(SV_swaped)
-            q_vec[i] = SV_swaped[:, 0:1] / kappa_vec[i]
-        kappa_vec[-1] = kappa_nn(SV)
+            z_swaped = z.clone()
+            z_swaped[:,ind] = z[:,indx].clone()
+            kappa_vec[i]= kappa_nn(z_swaped)
+            q_vec[i] = z_swaped[:, 0:1] / kappa_vec[i]
+        kappa_vec[-1] = kappa_nn(z)
         q_vec[-1] = z_last / kappa_vec[-1]
 
         # compute derivatives
         for i in range(N):
-            dkappa_dz[i] = self.get_derivs_1order(kappa_vec[i], SV)[:, :-1] # dki/dzj 
-            dkappa_dt[i] = self.get_derivs_1order(kappa_vec[i], SV)[:, -1:] # last column is time
+            dkappa_dz[i] = self.get_derivs_1order(kappa_vec[i], z) # dki/dzj
             
-            dq_dz[i] = self.get_derivs_1order(q_vec[i], SV)[:, :-1]
+            dq_dz[i] = self.get_derivs_1order(q_vec[i], z)
             curr_dkappa_dzz = [0] * (N-1) 
             curr_dq_dzz = [0] * (N-1) 
             for j in range(N - 1):
-                curr_dkappa_dzz[j] = self.get_derivs_1order(dkappa_dz[i][:, j:j+1], SV)[:, :-1] # d^ki/dzjdzk
-                curr_dq_dzz[j] = self.get_derivs_1order(dq_dz[i][:, j:j+1], SV)[:, :-1] 
+                curr_dkappa_dzz[j] = self.get_derivs_1order(dkappa_dz[i][:, j:j+1], z)# d^ki/dzjdzk
+                curr_dq_dzz[j] = self.get_derivs_1order(dq_dz[i][:, j:j+1], z)
             # Hessians should be symmetric, so the order of j and k should not matter
             dkappa_dzz[i] = torch.einsum("kbj -> bjk", torch.stack(curr_dkappa_dzz))
             dq_dzz[i] = torch.einsum("kbj -> bjk", torch.stack(curr_dq_dzz))
         
-        # Compute dynamics of z
+         # Compute dynamics of z
         mu_z_geos: List[torch.Tensor] = [0] * (N-1)
         sig_z_geos: List[torch.Tensor] = [0] * (N-1)
         mu_z_aris: List[torch.Tensor] = [0] * (N-1)
@@ -256,15 +224,16 @@ class Training_pde(Environments):
         zetas[-1]  = self.params["gamma"] * z_last * sig_ys[:, -1:]
         mu_kappas[-1] = mu_1minusz_geo - mu_qs[-1] + sig_qs[-1] * (sig_qs[-1] - sig_1minusz_geo)
         sig_kappas[-1] = sig_1minusz_geo - sig_qs[-1]
-
+        
+        
         for i in range(N):
-            hjb_kappas[i] = (dkappa_dt[i] 
-                + torch.sum(dkappa_dz[i] * mu_z_aris_tensor, dim=1, keepdim=True) 
+            hjb_kappas[i] = (
+                torch.sum(dkappa_dz[i] * mu_z_aris_tensor, dim=1, keepdim=True) 
                 + 0.5 * torch.einsum("bi, bij, bj -> b", sig_z_aris_tensor, dkappa_dzz[i], sig_z_aris_tensor).unsqueeze(-1) 
                 - mu_kappas[i] * kappa_vec[i]
             )
-            consistency_kappas[i] = (dkappa_dt[i] 
-                + torch.sum(dkappa_dz[i] * sig_z_aris_tensor, dim=1, keepdim=True) 
+            consistency_kappas[i] = (
+                torch.sum(dkappa_dz[i] * sig_z_aris_tensor, dim=1, keepdim=True) 
                 - sig_kappas[i] * kappa_vec[i]
             )
 
@@ -299,8 +268,6 @@ if __name__ == '__main__':
 
     # Initialize neural networks
     kappa_nn = Net1(params['nn_width'], params['nn_num_layers'],positive=True,sigmoid=False).to(device)
-    # create a dictionary for easier tracking
-    nn_dict = {"kappa": kappa_nn}
 
     # Initialize neural nets to store last best model
     best_model_kappa = Net1(params['nn_width'], params['nn_num_layers'],positive=True,sigmoid=False).to(device)
@@ -308,123 +275,50 @@ if __name__ == '__main__':
 
     para_nn = list(kappa_nn.parameters())
 
+
     # Set hyperparameters
     optimizer       = optim.Adam(para_nn, lr=params['lr'])
-    outer_loop_size = 10
-    outer_loop_convergence_thres = 1e-4
     epochs          = 1000
-    outer_loop_min_loss = torch.inf
+    min_loss        = torch.inf
 
-    change_dict = defaultdict(list)
     min_loss_dict = defaultdict(list)
 
-    SV_T0 = TS.sample_boundary_cond(0.0).to(device)
-    SV_T0.requires_grad_(True)
-    SV_T1 = TS.sample_boundary_cond(1.0).to(device)
-    SV_T1.requires_grad_(True)
+    pbar = tqdm(range(epochs))
+    for epoch in pbar:
+        Z = TS.sample().to(device)
+        Z.requires_grad_(True)
+        total_loss, hjb_kappas_, consistency_kappas_ = TP.loss_fun_Net1(kappa_nn, Z)
 
-    prev_vals: Dict[str, torch.Tensor] = {}
-    for k in nn_dict:
-        prev_vals[k] = torch.ones_like(SV_T0[:, 0:1], device=device)
+        optimizer.zero_grad()
+        total_loss.backward()
+        # torch.nn.utils.clip_grad_norm_(para_nn, 1)
+  
+        optimizer.step()
+        loss_val = total_loss.item()
+        if (loss_val < min_loss):
+            min_loss = loss_val
+            best_model_kappa.load_state_dict(kappa_nn.state_dict())
+            pbar.set_description(f"Total loss: {total_loss:.4f}")
+            min_loss_dict["epoch"].append(len(min_loss_dict["epoch"]))
+            min_loss_dict["total_loss"].append(loss_val)
 
-    for outer_loop in range(outer_loop_size):
-        # For now, make sure the sampling is stable for each outer iteration
-        min_loss = torch.inf
-        SV = TS.sample().to(device)
-        SV.requires_grad_(True)
-        pbar = tqdm(range(int(epochs / (np.sqrt(outer_loop + 1)))))
-        for epoch in pbar:
-            torch.cuda.empty_cache()
-            total_loss, hjb_kappas_, consistency_kappas_ = TP.loss_fun_Net1(kappa_nn, SV)
-
-            # match the time boundary condition
-            loss_time_boundary = 0.
-            for name, model in nn_dict.items():
-                loss_time_boundary += torch.sum(torch.square(model(SV_T1) - prev_vals[name]))
-
-            total_loss += loss_time_boundary
-            optimizer.zero_grad()
-            total_loss.backward()
-            # torch.nn.utils.clip_grad_norm_(para_nn, 1)
-    
-            optimizer.step()
-            loss_val = total_loss.item()
-            if (loss_val < min_loss):
-                min_loss = loss_val
-                best_model_kappa.load_state_dict(kappa_nn.state_dict())
-                pbar.set_description(f"Total loss: {total_loss:.4f}")
-                min_loss_dict["outer_loop_iter"].append(outer_loop)
-                min_loss_dict["epoch"].append(len(min_loss_dict["epoch"]))
-                min_loss_dict["total_loss"].append(loss_val)
-
-                # print( (epoch, lhjb_kappa1.item(), lhjb_kappa2.item(), lconsistency_kappa1.item(), lconsistency_kappa2.item()))
-
-        # check convergence and update the time boundary condition
-        kappa_nn.load_state_dict(best_model_kappa.state_dict())
-        torch.save(best_model_kappa.state_dict(), os.path.join(output_dir, "model.pt"))
-
-        total_loss, *_ = TP.loss_fun_Net1(kappa_nn, SV)
-
-        # match the time boundary condition
-        loss_time_boundary = 0.
-        for name, model in nn_dict.items():
-            loss_time_boundary += torch.sum(torch.square(model(SV_T1) - prev_vals[name]))
-
-        total_loss += loss_time_boundary
-        if total_loss < outer_loop_min_loss:
-            print(f"Updating min loss from {outer_loop_min_loss:.4f} to {total_loss:.4f}")
-            outer_loop_min_loss = total_loss
-
-        new_vals: Dict[str, torch.Tensor] = {}
-        for name, model in nn_dict.items():
-            new_vals[name] = model(SV_T0).detach()
-
-        max_abs_change = 0.
-        max_rel_change = 0.
-        all_changes = {}
-        for k in prev_vals:
-            mean_new_val = torch.mean(new_vals[k]).item()
-            abs_change = torch.mean(torch.abs(new_vals[k] - prev_vals[k])).item()
-            rel_change = torch.mean(torch.abs((new_vals[k] - prev_vals[k]) / prev_vals[k])).item()
-            print(f"{k}: Mean Value: {mean_new_val:.5f}, Absolute Change: {abs_change:.5f}, Relative Change: {rel_change: .5f}")
-            all_changes[f"{k}_mean_val"] = mean_new_val
-            all_changes[f"{k}_abs"] = abs_change
-            all_changes[f"{k}_rel"] = rel_change
-            max_abs_change = max(max_abs_change, abs_change)
-            max_rel_change = max(max_rel_change, rel_change)
-        
-        for k in prev_vals:
-            prev_vals[k] = new_vals[k]
-
-        total_rel_change = min(max_abs_change, max_rel_change)
-        all_changes["total"] = total_rel_change
-        change_dict["outer_loop_iter"].append(outer_loop)
-        for k, v in all_changes.items():
-            change_dict[k].append(v)
-
-        if all_changes["total"] < outer_loop_convergence_thres:
-            break
-        torch.cuda.empty_cache()
-    torch.cuda.empty_cache()
 
     pd.DataFrame(min_loss_dict).to_csv(f"{output_dir}/min_loss.csv", index=False)
-    pd.DataFrame(change_dict).to_csv(f"{output_dir}/change_dict.csv", index=False)
-
+    torch.save(best_model_kappa.state_dict(), os.path.join(output_dir, "model.pt"))
+    
     # Load last best model as the final neural network model
     kappa_nn.load_state_dict(best_model_kappa.state_dict())
-    
     # Save data
-    SV_T0 = TS.sample_fixed_grid_boundary_cond_single_dim(0, 0.0).to(device)
-    SV_T0.requires_grad_(True)
+    Z = TS.sample_fixed_grid_single_dim(0).to(device)
+    Z.requires_grad_(True)
     
     TP  = Training_pde(params)
-    TP.loss_fun_Net1(kappa_nn, SV_T0)
-
+    TP.loss_fun_Net1(kappa_nn, Z)
     kappas, qs, zetas, r = TP.kappas, TP.qs, TP.zetas, TP.r
     mu_z_geos, sig_z_geos, mu_z_aris, sig_z_aris = TP.mu_z_geos, TP.sig_z_geos, TP.mu_z_aris, TP.sig_z_aris
     mu_qs, sig_qs, mu_kappas, sig_kappas = TP.mu_qs, TP.sig_qs, TP.mu_kappas, TP.sig_kappas
     
-    Z = SV_T0.detach().cpu().numpy()[:, :1].reshape(-1)
+    Z = Z.detach().cpu().numpy()[:, :1].reshape(-1)
     fig, ax = plt.subplots(3,2,figsize=(16,9), num=1)
     ax[0,0].plot(Z,kappas[:, 0].detach().cpu().numpy(),label=r'$\kappa_1$')
     ax[0,0].plot(Z,kappas[:, -1].detach().cpu().numpy(),label=r'$\kappa_{' + str(params["n_trees"]) + "}$")
@@ -460,6 +354,5 @@ if __name__ == '__main__':
     plt.close('all')
 
     print('Training complete')
-
 
 
