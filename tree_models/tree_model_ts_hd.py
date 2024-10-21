@@ -21,7 +21,7 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 np.random.seed(42)
 torch.manual_seed(42)
 
-output_dir = "./output_ts_hd_tree5"
+output_dir = "./models/tree5_ts"
 plot_directory = os.path.join(output_dir, "plots")
 if not os.path.exists(plot_directory):
     os.makedirs(plot_directory)
