@@ -21,7 +21,7 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 np.random.seed(42)
 torch.manual_seed(42)
 
-output_dir = "./output_ts_hd_tree2"
+output_dir = "./output_ts_hd_tree5"
 plot_directory = os.path.join(output_dir, "plots")
 if not os.path.exists(plot_directory):
     os.makedirs(plot_directory)
@@ -90,6 +90,12 @@ class Training_Sampler():
         SV_repeated = SV.repeat(1, T.shape[0]).view(-1, SV.shape[1])
         T_repeated = T.repeat(1, SV.shape[0]).view(-1, 1)
         return torch.cat((SV_repeated, T_repeated), dim=1)
+    
+    def sample_random_ts(self):
+        SV = np.random.uniform(low=[0] * (self.sv_count + 1), 
+                         high=[1] * (self.sv_count + 1), 
+                         size=(self.batch_size, self.sv_count + 1))
+        return torch.Tensor(SV)
     
     def sample_boundary_cond(self, time_val: float):
         time_dim = torch.ones((self.boundary_uniform_points.shape[0], 1)) * time_val
@@ -330,7 +336,7 @@ if __name__ == '__main__':
     for outer_loop in range(outer_loop_size):
         # For now, make sure the sampling is stable for each outer iteration
         min_loss = torch.inf
-        SV = TS.sample().to(device)
+        SV = TS.sample_random_ts().to(device)
         SV.requires_grad_(True)
         pbar = tqdm(range(int(epochs / (np.sqrt(outer_loop + 1)))))
         for epoch in pbar:
