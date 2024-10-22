@@ -22,6 +22,7 @@ from tqdm import tqdm
 from para import *
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+# device = "cpu"
 
 
 class Net1(torch.nn.Module):
@@ -146,6 +147,7 @@ class Training_pde(Environments):
 
         N = z.shape[1] + 1 # population size
         z_last    = 1 - torch.sum(z, dim=1).unsqueeze(1)
+        z_all = torch.cat([z, z_last], dim=1) # (B, N)
 
         kappa_vec: List[torch.Tensor] = [0] * N
         q_vec: List[torch.Tensor] = [0] * N
@@ -170,7 +172,7 @@ class Training_pde(Environments):
         # compute derivatives
         for i in range(N):
             dkappa_dz[i] = self.get_derivs_1order(kappa_vec[i], z) # dki/dzj
-            
+
             dq_dz[i] = self.get_derivs_1order(q_vec[i], z)
             curr_dkappa_dzz = [0] * (N-1) 
             curr_dq_dzz = [0] * (N-1) 
@@ -180,103 +182,77 @@ class Training_pde(Environments):
             # Hessians should be symmetric, so the order of j and k should not matter
             dkappa_dzz[i] = torch.einsum("kbj -> bjk", torch.stack(curr_dkappa_dzz))
             dq_dzz[i] = torch.einsum("kbj -> bjk", torch.stack(curr_dq_dzz))
+
+        q_vec = torch.einsum("nbj -> bn", torch.stack(q_vec)) # (batch, N)
+        kappa_vec = torch.einsum("nbj -> bn", torch.stack(kappa_vec)) # (batch, N)
+        dq_dz = torch.einsum("nbj -> bnj", torch.stack(dq_dz)) # (batch, N, N-1)
+        dq_dzz = torch.einsum("nbjk -> bnjk", torch.stack(dq_dzz)) # (batch, N, N-1, N-1)
+        dkappa_dz = torch.einsum("nbj -> bnj", torch.stack(dkappa_dz)) # (batch, N, N-1)
+        dkappa_dzz = torch.einsum("nbjk -> bnjk", torch.stack(dkappa_dzz)) # (batch, N, N-1, N-1)
         
          # Compute dynamics of z
-        mu_z_geos: List[torch.Tensor] = [0] * (N-1)
-        sig_z_geos: List[torch.Tensor] = [0] * (N-1)
-        mu_z_aris: List[torch.Tensor] = [0] * (N-1)
-        sig_z_aris: List[torch.Tensor] = [0] * (N-1)
         mu_ys = torch.tensor(self.params["mu_ys"], device=device).unsqueeze(0)
         sig_ys = torch.tensor(self.params["sig_ys"], device=device).unsqueeze(0)
-        for i in range(N-1):
-            # z has shape (batch, N-1)
-            # mu_ys has shape (1, N)
-            mu_z_geos[i] = (
-                mu_ys[:, i:i+1] 
-                - (torch.sum(mu_ys[:, :-1] * z, dim=1, keepdim=True) + mu_ys[:, -1:] * z_last)
-                + (torch.sum(sig_ys[:, :-1] * z, dim=1, keepdim=True) + sig_ys[:, -1:] * z_last)
-                    * (torch.sum(sig_ys[:, :-1] * z, dim=1, keepdim=True) + sig_ys[:, -1:] * z_last - sig_ys[:, i:i+1])
-            )
-            sig_z_geos[i] = (
-                sig_ys[:, i:i+1] 
-                - (torch.sum(sig_ys[:, :-1] * z, dim=1, keepdim=True)  + sig_ys[:, -1:] * z_last)
-            )
-            mu_z_aris[i] = mu_z_geos[i] * z[:, i:i+1]
-            sig_z_aris[i] = sig_z_geos[i] * z[:, i:i+1]
-        
-        # Compute dynamics of 1-z (required for computation of kappa_n dynamics)
-        mu_1minusz_ari  = -torch.sum(torch.stack(mu_z_aris), axis=0)
-        sig_1minusz_ari = -torch.sum(torch.stack(sig_z_aris), axis=0)
+
+        mu_z_geos = (
+            mu_ys[:, :-1] 
+            - torch.sum(mu_ys * z_all, dim=1, keepdim=True) 
+            + torch.sum(sig_ys * z_all, dim=1, keepdim=True) 
+                * (torch.sum(sig_ys * z_all, dim=1, keepdim=True) - sig_ys[:, :-1])
+        ) # (batch, N-1)
+        sig_z_geos = (
+            sig_ys[:, :-1]
+            - torch.sum(sig_ys * z_all, dim=1, keepdim=True)
+        ) # (batch, N-1)
+        mu_z_aris = mu_z_geos * z # (batch, N-1)
+        sig_z_aris = sig_z_geos * z # (batch, N-1)
+
+        mu_1minusz_ari  = -torch.sum(mu_z_aris, axis=1, keepdim=True)
+        sig_1minusz_ari = -torch.sum(sig_z_aris, axis=1, keepdim=True)
         mu_1minusz_geo  = mu_1minusz_ari/z_last
         sig_1minusz_geo = sig_1minusz_ari/z_last
 
-        mu_z_aris_tensor = torch.einsum("nbj -> bn", torch.stack(mu_z_aris)) # j=1, so we can simply stack them together
-        sig_z_aris_tensor = torch.einsum("nbj -> bn", torch.stack(sig_z_aris))
-        mu_z_geos_tensor = torch.einsum("nbj -> bn", torch.stack(mu_z_geos))
-        sig_z_geos_tensor = torch.einsum("nbj -> bn", torch.stack(sig_z_geos))
-
-        mu_qs: List[torch.Tensor] = [0] * N
-        sig_qs: List[torch.Tensor] = [0] * N
-        for i in range(N):
-            # dq_dz has shape (batch, N-1)
-            # dq_dzz has shape (batch, N-1, N-1)
-            # mu_z_ari has shape (batch, N-1)
-            # sig_z_ari has shape (batch, N-1)
-            mu_qs[i] = (torch.sum(dq_dz[i] * mu_z_aris_tensor, dim=1, keepdim=True) 
-                        + 0.5 * torch.einsum("bi, bij, bj -> b", sig_z_aris_tensor, dq_dzz[i], sig_z_aris_tensor).unsqueeze(-1)) / q_vec[i]
-            sig_qs[i] = torch.sum(dq_dz[i] * sig_z_aris_tensor, dim=1, keepdim=True) / q_vec[i]
+        # mu_z_aris, sig_z_aris (batch, N-1)
+        mu_qs = (torch.einsum("bnj, bj -> bn", dq_dz, mu_z_aris)
+            + 0.5 * torch.einsum("bj, bnjk, bk -> bn", sig_z_aris, dq_dzz, sig_z_aris)
+        ) / q_vec
+        sig_qs = torch.einsum("bnj, bj -> bn", dq_dz, sig_z_aris) / q_vec
 
         r = (self.params["rho"] 
         + self.params["gamma"] * (torch.sum(mu_ys[:, :-1] * z, dim=1, keepdim=True) + mu_ys[:, -1:] * z_last)
         - 0.5 * self.params["gamma"] * (self.params["gamma"] + 1) * (torch.sum(sig_ys[:, :-1]**2 * z**2, dim=1, keepdim=True) + sig_ys[:, -1:]**2 * z_last**2)
         )
 
-        zetas = [0] * N
-        mu_kappas = [0] * N
-        sig_kappas = [0] * N
-        hjb_kappas = [0] * N
-        consistency_kappas = [0] * N
-        for i in range(N-1):
-            zetas[i] = self.params["gamma"] * z[:, i:i+1] * sig_ys[:, i:i+1]
-            mu_kappas[i] = mu_z_geos[i] - mu_qs[i] + sig_qs[i] * (sig_qs[i] - sig_z_geos[i])
-            sig_kappas[i] = sig_z_geos[i] - sig_qs[i]
-        zetas[-1]  = self.params["gamma"] * z_last * sig_ys[:, -1:]
-        mu_kappas[-1] = mu_1minusz_geo - mu_qs[-1] + sig_qs[-1] * (sig_qs[-1] - sig_1minusz_geo)
-        sig_kappas[-1] = sig_1minusz_geo - sig_qs[-1]
-        
-        
-        for i in range(N):
-            hjb_kappas[i] = (
-                torch.sum(dkappa_dz[i] * mu_z_aris_tensor, dim=1, keepdim=True) 
-                + 0.5 * torch.einsum("bi, bij, bj -> b", sig_z_aris_tensor, dkappa_dzz[i], sig_z_aris_tensor).unsqueeze(-1) 
-                - mu_kappas[i] * kappa_vec[i]
-            )
-            consistency_kappas[i] = (
-                torch.sum(dkappa_dz[i] * sig_z_aris_tensor, dim=1, keepdim=True) 
-                - sig_kappas[i] * kappa_vec[i]
-            )
+        mu_z_geos_all = torch.cat([mu_z_geos, mu_1minusz_geo], axis=1)
+        sig_z_geos_all = torch.cat([sig_z_geos, sig_1minusz_geo], axis=1)
+        zetas = self.params["gamma"] * z_all * sig_ys
+        mu_kappas = mu_z_geos_all - mu_qs + sig_qs * (sig_qs - sig_z_geos_all)
+        sig_kappas = sig_z_geos_all - sig_qs
+
+        hjb_kappas = (torch.einsum("bnj, bj -> bn", dkappa_dz, mu_z_aris)
+            + 0.5 * torch.einsum("bj, bnjk, bk -> bn", sig_z_aris, dkappa_dzz, sig_z_aris)
+            - torch.einsum("bn, bn -> bn", mu_kappas, kappa_vec)
+        )
+        consistency_kappas = (torch.einsum("bnj, bj -> bn", dkappa_dz, sig_z_aris)
+            - torch.einsum("bn, bn -> bn", sig_kappas, kappa_vec)
+        )
+
+        lhjbs = torch.sum(torch.mean(torch.square(hjb_kappas), dim=0))
+        lconsistency = torch.sum(torch.mean(torch.square(consistency_kappas), dim=0))
 
         # Store variables
-        self.kappas = torch.einsum("nbj -> bn", torch.stack(kappa_vec))
-        self.qs = torch.einsum("nbj -> bn", torch.stack(q_vec))
-        self.zetas = torch.einsum("nbj -> bn", torch.stack(zetas))
+        self.kappas = kappa_vec
+        self.qs = q_vec
+        self.zetas = zetas
         self.r = r
-        self.mu_z_geos = mu_z_geos_tensor
-        self.sig_z_geos = sig_z_geos_tensor
-        self.mu_z_aris = mu_z_aris_tensor
-        self.sig_z_aris = sig_z_aris_tensor
-        self.mu_qs = torch.einsum("nbj -> bn", torch.stack(mu_qs))
-        self.sig_qs = torch.einsum("nbj -> bn", torch.stack(sig_qs))
-        self.mu_kappas = torch.einsum("nbj -> bn", torch.stack(mu_kappas))
-        self.sig_kappas = torch.einsum("nbj -> bn", torch.stack(sig_kappas))
-        
-        # Compute loss function
-        lhjbs = 0.
-        for i in range(N):
-            lhjbs += torch.sum(torch.square(hjb_kappas[i]))
-        lconsistency = 0.
-        for i in range(N):
-            lconsistency += torch.sum(torch.square(consistency_kappas[i]))
+        self.mu_z_geos = mu_z_geos
+        self.sig_z_geos = sig_z_geos
+        self.mu_z_aris = mu_z_aris
+        self.sig_z_aris = sig_z_aris
+        self.mu_qs = mu_qs
+        self.sig_qs = sig_qs
+        self.mu_kappas = mu_kappas
+        self.sig_kappas = sig_kappas
 
         total_loss = lhjbs + lconsistency
         return total_loss, hjb_kappas, consistency_kappas
@@ -314,7 +290,7 @@ def train_loop(params):
 
     # Set hyperparameters
     optimizer       = optim.Adam(para_nn, lr=params['lr'])
-    epochs          = 1000
+    epochs          = params["epoch"]
     min_loss        = torch.inf
 
     min_loss_dict = defaultdict(list)
@@ -399,12 +375,12 @@ def train_loop(params):
 
     print('Training complete')
 
-def distribution_plot(params):
+def distribution_plot(params, batch_size=5000):
     np.random.seed(42)
     torch.manual_seed(42)
 
     params_ = params.copy()
-    params_["batch_size"] = 5000
+    params_["batch_size"] = batch_size
     TP = Training_pde(params_)
     TS = Training_Sampler(params_)
 
@@ -462,12 +438,17 @@ if __name__ == '__main__':
             curr_params["batch_size"] = 100
         else:
             curr_params["batch_size"] = 100
+        if n_trees > 20:
+            curr_params["epoch"] = 20
+            device = "cpu"
+        else:
+            curr_params["epoch"] = 200
         print(curr_params)
         gc.collect()
         torch.cuda.empty_cache()
         train_loop(curr_params)
         if n_trees >= 2:
-            distribution_plot(curr_params)
+            distribution_plot(curr_params, 1000 if n_trees > 20 else 5000)
 
     gc.collect()
     torch.cuda.empty_cache()
