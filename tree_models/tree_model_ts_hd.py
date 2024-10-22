@@ -1,7 +1,10 @@
 """
 Author: Goutham G. 
 """
+import gc
+import json
 import os
+import time
 from collections import defaultdict
 from typing import Dict, List, Tuple
 
@@ -12,22 +15,19 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from pyDOE import lhs
+from sklearn.model_selection import ParameterGrid
 from tqdm import tqdm
 
 # Import required user-defined libraries
 from para import *
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-np.random.seed(42)
-torch.manual_seed(42)
 
-output_dir = "./models/tree5_ts"
-plot_directory = os.path.join(output_dir, "plots")
-if not os.path.exists(plot_directory):
-    os.makedirs(plot_directory)
     
 class Net1(torch.nn.Module):
-    def __init__(self, nn_width, nn_num_layers,positive=False,sigmoid=False):
+    def __init__(self, params, positive=False, sigmoid=False):
+        nn_num_layers = params['nn_num_layers']
+        nn_width = params['nn_width']
         super(Net1, self).__init__()
         # Initialize the first layer
         layers = [torch.nn.Linear(params['n_trees'], params['nn_width']), torch.nn.Tanh()]
@@ -55,6 +55,9 @@ class Net1(torch.nn.Module):
         '''
         output = self.net(Z)
         return output
+    
+    def get_num_params(self):
+        return sum(p.numel() for p in self.parameters())
 
 class Training_Sampler():
     def __init__(self, params):
@@ -62,10 +65,19 @@ class Training_Sampler():
         self.sv_count = params['n_trees'] - 1
         self.batch_size = params['batch_size']
 
-        SV = np.random.uniform(low=[0] * self.sv_count, 
-                         high=[1] * self.sv_count, 
-                         size=(self.batch_size, self.sv_count))
-        self.boundary_uniform_points = torch.Tensor(SV)
+        if params["sample_method"] == "uniform":
+            SV = np.random.uniform(low=[0] * self.sv_count, 
+                            high=[1] * self.sv_count, 
+                            size=(self.batch_size, self.sv_count))
+            self.boundary_points = torch.Tensor(SV)
+            self.sample = self.sample_random_ts
+        elif params["sample_method"] == "log_normal":
+            ys = [0] * len(params["mu_ys"])
+            for i in range(len(params["mu_ys"])):
+                ys[i] = torch.distributions.log_normal.LogNormal(params["mu_ys"][i], params["sig_ys"][i]).sample((params["batch_size"], 1))
+            ys = torch.einsum("jbi -> bj", torch.stack(ys))
+            self.boundary_points = ys[:, :-1] / torch.sum(ys, dim=1, keepdim=True) # the last dimension should be dropped
+            self.sample = self.sample_log_normal
 
     # def sample(self,N):
         
@@ -76,7 +88,7 @@ class Training_Sampler():
         
     #     return Z.reshape((N, self.sv_count))
     
-    def sample(self):
+    def sample_(self):
         '''
             - No active sampling at the moment.
         '''
@@ -91,6 +103,18 @@ class Training_Sampler():
         T_repeated = T.repeat(1, SV.shape[0]).view(-1, 1)
         return torch.cat((SV_repeated, T_repeated), dim=1)
     
+    def sample_log_normal(self):
+        '''
+            - No active sampling at the moment.
+        '''
+        ys = [0] * len(self.params["mu_ys"])
+        for i in range(len(self.params["mu_ys"])):
+            ys[i] = torch.distributions.log_normal.LogNormal(self.params["mu_ys"][i], self.params["sig_ys"][i]).sample((self.batch_size, 1))
+        ys = torch.einsum("jbi -> bj", torch.stack(ys))
+        zs_ts = ys[:, :-1] / torch.sum(ys, dim=1, keepdim=True) # the last dimension should be dropped
+        ts = torch.Tensor(np.random.uniform([0], [1], (self.batch_size, 1)))
+        return torch.cat([zs_ts, ts], dim=1)
+    
     def sample_random_ts(self):
         SV = np.random.uniform(low=[0] * (self.sv_count + 1), 
                          high=[1] * (self.sv_count + 1), 
@@ -98,8 +122,8 @@ class Training_Sampler():
         return torch.Tensor(SV)
     
     def sample_boundary_cond(self, time_val: float):
-        time_dim = torch.ones((self.boundary_uniform_points.shape[0], 1)) * time_val
-        return torch.cat([self.boundary_uniform_points, time_dim], dim=-1)
+        time_dim = torch.ones((self.boundary_points.shape[0], 1)) * time_val
+        return torch.cat([self.boundary_points, time_dim], dim=-1)
     
     def sample_fixed_grid_boundary_cond(self, time_val: float):
         '''
@@ -298,18 +322,35 @@ class Training_pde(Environments):
 
         total_loss = lhjbs + lconsistency
         return total_loss, hjb_kappas, consistency_kappas
-    
-if __name__ == '__main__':
+
+def param_dump(params):
+    params_ = params.copy()
+    for k, v in params_.items():
+        if isinstance(v, list):
+            params_[k] = json.dumps(v)
+    return json.dumps(params_, indent=4)
+
+def train_loop(params):
+    np.random.seed(42)
+    torch.manual_seed(42)
+
+    output_dir = params["output_dir"]
+    plot_directory = os.path.join(output_dir, "plots")
+    if not os.path.exists(plot_directory):
+        os.makedirs(plot_directory)
+
+    with open(os.path.join(output_dir, "params.txt"), "w") as f:
+        f.write(param_dump(params))
     TP = Training_pde(params)
     TS = Training_Sampler(params)
 
     # Initialize neural networks
-    kappa_nn = Net1(params['nn_width'], params['nn_num_layers'],positive=True,sigmoid=False).to(device)
+    kappa_nn = Net1(params, positive=True, sigmoid=False).to(device)
     # create a dictionary for easier tracking
     nn_dict = {"kappa": kappa_nn}
 
     # Initialize neural nets to store last best model
-    best_model_kappa = Net1(params['nn_width'], params['nn_num_layers'],positive=True,sigmoid=False).to(device)
+    best_model_kappa = Net1(params, positive=True, sigmoid=False).to(device)
     best_model_kappa.load_state_dict(kappa_nn.state_dict())
 
     para_nn = list(kappa_nn.parameters())
@@ -333,10 +374,12 @@ if __name__ == '__main__':
     for k in nn_dict:
         prev_vals[k] = torch.ones_like(SV_T0[:, 0:1], device=device)
 
+    start_time = time.time()
     for outer_loop in range(outer_loop_size):
         # For now, make sure the sampling is stable for each outer iteration
         min_loss = torch.inf
-        SV = TS.sample_random_ts().to(device)
+        # SV = TS.sample_random_ts().to(device)
+        SV = TS.sample().to(device)
         SV.requires_grad_(True)
         pbar = tqdm(range(int(epochs / (np.sqrt(outer_loop + 1)))))
         for epoch in pbar:
@@ -367,7 +410,7 @@ if __name__ == '__main__':
 
         # check convergence and update the time boundary condition
         kappa_nn.load_state_dict(best_model_kappa.state_dict())
-        torch.save(best_model_kappa.state_dict(), os.path.join(output_dir, "model.pt"))
+        torch.save({"model": best_model_kappa.state_dict(), "params": params}, os.path.join(output_dir, "model.pt"))
 
         total_loss, *_ = TP.loss_fun_Net1(kappa_nn, SV)
 
@@ -412,6 +455,13 @@ if __name__ == '__main__':
             break
         torch.cuda.empty_cache()
     torch.cuda.empty_cache()
+    end_time = time.time()
+    summary_to_write = "Model Architecture:\n"
+    summary_to_write += str(kappa_nn) + "\n"
+    summary_to_write += f"Num Params: {kappa_nn.get_num_params()}\n"
+    summary_to_write += f"Time taken: {end_time - start_time:.2f} seconds\n"
+    with open(os.path.join(output_dir, "summary.txt"), "w") as f:
+        f.write(summary_to_write)
 
     pd.DataFrame(min_loss_dict).to_csv(f"{output_dir}/min_loss.csv", index=False)
     pd.DataFrame(change_dict).to_csv(f"{output_dir}/change_dict.csv", index=False)
@@ -462,10 +512,81 @@ if __name__ == '__main__':
     
     name = 'equilibrium.jpg'
     plt.savefig(os.path.join(plot_directory, name),bbox_inches='tight',dpi=300)
-    plt.show()
-    plt.close('all')
+    # plt.show()
+    plt.close()
 
     print('Training complete')
 
 
+def distribution_plot(params):
+    np.random.seed(42)
+    torch.manual_seed(42)
+
+    params_ = params.copy()
+    params_["batch_size"] = 5000
+    TP = Training_pde(params_)
+    TS = Training_Sampler(params_)
+
+    kappa_nn = Net1(params, positive=True, sigmoid=False).to(device)
+    kappa_nn.load_state_dict(torch.load(os.path.join(params["output_dir"], "model.pt"))["model"])
+
+    Z = TS.sample().to(device)
+    Z.requires_grad_(True)
+    TP.loss_fun_Net1(kappa_nn, Z)
+
+    kappas, qs, zetas, r = TP.kappas, TP.qs, TP.zetas, TP.r
+    mu_z_geos, sig_z_geos, mu_z_aris, sig_z_aris = TP.mu_z_geos, TP.sig_z_geos, TP.mu_z_aris, TP.sig_z_aris
+    mu_qs, sig_qs, mu_kappas, sig_kappas = TP.mu_qs, TP.sig_qs, TP.mu_kappas, TP.sig_kappas
+
+    # mu_qs have shape (batch_size, N)
+    mu_qs_mean = torch.mean(mu_qs, dim=0) # shape (N,)
+    mu_qs_max_idx = torch.argmax(mu_qs_mean[:-1], dim=0)
+    # mu_kappas_mean = torch.mean(mu_kappas, dim=0) # shape (N,)
+    # mu_kappas_max_idx = torch.argmax(mu_kappas[:-1], dim=0)
+
+    # plot the kappa and q histograms with max mu_q
+    kappa_to_plot = kappas[:, mu_qs_max_idx].detach().cpu().numpy()
+    q_to_plot = qs[:, mu_qs_max_idx].detach().cpu().numpy()
+    
+    fig, ax = plt.subplots(1, 2, figsize=(10, 5))
+    ax[0].hist(kappa_to_plot, bins=20)
+    ax[0].set_xlabel(r'$\kappa$')
+    ax[0].set_title(r"$\kappa$ distribution at max $\mu^q$")
+
+    ax[1].hist(q_to_plot, bins=20, label=r'$q$')
+    ax[1].set_xlabel(r'$q$')
+    ax[1].set_title(r"$q$ distribution at max $\mu^q$")
+
+    name = 'distribution.jpg'
+    plt.savefig(os.path.join(params["output_dir"], "plots", name),bbox_inches='tight',dpi=300)
+    # plt.show()
+    plt.close()
+
+if __name__ == '__main__':
+    param_grid = ParameterGrid({
+        "sample_method": sample_methods, 
+        "num_tree_mu_sig": num_tree_mu_sig,
+    })
+    for param_set in param_grid:
+        sample_method = param_set["sample_method"]
+        n_trees, mu_sig = param_set["num_tree_mu_sig"]
+        curr_params = params_base.copy()
+        curr_params["sample_method"] =sample_method
+        curr_params["n_trees"] = n_trees
+        curr_params["mu_ys"] = mu_sig
+        curr_params["sig_ys"] = mu_sig 
+        curr_params["output_dir"] = f"./models/tree{n_trees}_ts_{sample_method}"
+        if n_trees > 2:
+            curr_params["batch_size"] = 100
+        else:
+            curr_params["batch_size"] = 100
+        print(curr_params)
+        gc.collect()
+        torch.cuda.empty_cache()
+        train_loop(curr_params)
+        if n_trees >= 2:
+            distribution_plot(curr_params)
+
+    gc.collect()
+    torch.cuda.empty_cache()
 
