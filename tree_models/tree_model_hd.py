@@ -294,6 +294,7 @@ def train_loop(params):
     min_loss        = torch.inf
 
     min_loss_dict = defaultdict(list)
+    kappa_val_dict = defaultdict(list)
 
     start_time = time.time()
     pbar = tqdm(range(epochs))
@@ -314,6 +315,10 @@ def train_loop(params):
             pbar.set_description(f"Total loss: {total_loss:.4f}")
             min_loss_dict["epoch"].append(len(min_loss_dict["epoch"]))
             min_loss_dict["total_loss"].append(loss_val)
+        kappa_val_dict["epoch"].append(len(kappa_val_dict["epoch"]))
+        for i in range(params["n_trees"]):
+            kappa_val_dict[f"kappa_{i+1}"].append(torch.mean(TP.kappas[:,i]).item())
+            kappa_val_dict[f"q_{i+1}"].append(torch.mean(TP.qs[:,i]).item())
     end_time = time.time()
     summary_to_write = "Model Architecture:\n"
     summary_to_write += str(kappa_nn) + "\n"
@@ -324,6 +329,7 @@ def train_loop(params):
 
 
     pd.DataFrame(min_loss_dict).to_csv(f"{output_dir}/min_loss.csv", index=False)
+    pd.DataFrame(kappa_val_dict).to_csv(f"{output_dir}/kappa_val.csv", index=False)
     torch.save({"model": best_model_kappa.state_dict(), "params": params}, os.path.join(output_dir, "model.pt"))
     
     # Load last best model as the final neural network model
@@ -433,7 +439,7 @@ if __name__ == '__main__':
         curr_params["n_trees"] = n_trees
         curr_params["mu_ys"] = mu_sig
         curr_params["sig_ys"] = mu_sig 
-        curr_params["output_dir"] = f"./models/tree{n_trees}_{sample_method}"
+        curr_params["output_dir"] = f"./models_single_output/tree{n_trees}_{sample_method}"
         if n_trees > 2:
             curr_params["batch_size"] = 100
         else:

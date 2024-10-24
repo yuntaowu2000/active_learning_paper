@@ -38,7 +38,7 @@ class Net1(torch.nn.Module):
             layers.append(torch.nn.Linear(nn_width, nn_width))
             layers.append(torch.nn.Tanh())
         # Final output layer        
-        layers.append(torch.nn.Linear(nn_width, 1))
+        layers.append(torch.nn.Linear(nn_width, params['n_trees']))
         
         # Define functions
         if positive:
@@ -154,6 +154,26 @@ class Training_Sampler():
             sv = sv.unsqueeze(-1)
         time_dim = torch.ones((sv.shape[0], 1)) * time_val
         return torch.cat([sv, time_dim], dim=-1)
+    
+    def sample_rar_distribution(self, kappa_nn, TP):
+        # random sample 1000 points for validation, choose the highest ones
+        if self.params["sample_method"] == "uniform":
+            SV = np.random.uniform(low=[0] * (self.sv_count + 1), 
+                         high=[1] * (self.sv_count + 1), 
+                         size=(1000, self.sv_count + 1))
+            SV = torch.Tensor(SV)
+        elif self.params["sample_method"] == "log_normal":
+            ys = [0] * len(self.params["mu_ys"])
+            for i in range(len(self.params["mu_ys"])):
+                ys[i] = torch.distributions.log_normal.LogNormal(self.params["mu_ys"][i], self.params["sig_ys"][i]).sample((1000, 1))
+            ys = torch.einsum("jbi -> bj", torch.stack(ys))
+            zs_ts = ys[:, :-1] / torch.sum(ys, dim=1, keepdim=True) # the last dimension should be dropped
+            ts = torch.Tensor(np.random.uniform([0], [1], (1000, 1)))
+            SV = torch.cat([zs_ts, ts], dim=1)
+        total_loss, hjb_kappas_, consistency_kappas_ = TP.loss_fun_Net1(kappa_nn, SV)
+        all_losses = torch.sum(torch.square(hjb_kappas_) + torch.square(consistency_kappas_), axis=1)
+        X_ids = torch.topk(all_losses, self.batch_size//self.params["resample_times"], dim=0)[1].squeeze(-1)
+        return SV[X_ids]
 
 class Training_pde(Environments):
 
@@ -190,8 +210,8 @@ class Training_pde(Environments):
         z_last    = 1 - torch.sum(z, dim=1).unsqueeze(1)
         z_all = torch.cat([z, z_last], dim=1) # (B, N)
 
-        kappa_vec: List[torch.Tensor] = [0] * N
-        q_vec: List[torch.Tensor] = [0] * N
+        # kappa_vec: List[torch.Tensor] = [0] * N
+        # q_vec: List[torch.Tensor] = [0] * N
         dq_dz: List[torch.Tensor] = [0] * N # each element is (batch, N-1)
         dq_dzz: List[torch.Tensor] = [0] * N # (batch, N-1, N-1)
         dkappa_dz: List[torch.Tensor] = [0] * N # (batch, N-1)
@@ -199,24 +219,26 @@ class Training_pde(Environments):
         dkappa_dt: List[torch.Tensor] = [0] * N # (batch, t)
 
         # Compute kappa and q by exploiting symmetry
-        kappa_vec[0] = kappa_nn(SV)
-        q_vec[0] = z[:, 0:1] / kappa_vec[0]
-        for i in range(1, N-1):
-            ind         = (0,i)
-            indx        = (i,0)
-            SV_swaped = SV.clone()
-            SV_swaped[:,ind] = SV[:,indx].clone()
-            kappa_vec[i]= kappa_nn(SV_swaped)
-            q_vec[i] = SV_swaped[:, 0:1] / kappa_vec[i]
-        kappa_vec[-1] = kappa_nn(SV)
-        q_vec[-1] = z_last / kappa_vec[-1]
+        # kappa_vec[0] = kappa_nn(SV)
+        # q_vec[0] = z[:, 0:1] / kappa_vec[0]
+        # for i in range(1, N-1):
+        #     ind         = (0,i)
+        #     indx        = (i,0)
+        #     SV_swaped = SV.clone()
+        #     SV_swaped[:,ind] = SV[:,indx].clone()
+        #     kappa_vec[i]= kappa_nn(SV_swaped)
+        #     q_vec[i] = SV_swaped[:, 0:1] / kappa_vec[i]
+        # kappa_vec[-1] = kappa_nn(SV)
+        # q_vec[-1] = z_last / kappa_vec[-1]
+        kappa_vec = kappa_nn(SV) # (B, N)
+        q_vec = z_all / kappa_vec  # (B, N)
 
         # compute derivatives
         for i in range(N):
-            dkappa_dz[i] = self.get_derivs_1order(kappa_vec[i], SV)[:, :-1] # dki/dzj 
-            dkappa_dt[i] = self.get_derivs_1order(kappa_vec[i], SV)[:, -1:] # last column is time
+            dkappa_dz[i] = self.get_derivs_1order(kappa_vec[:, i:i+1], SV)[:, :-1] # dki/dzj 
+            dkappa_dt[i] = self.get_derivs_1order(kappa_vec[:, i:i+1], SV)[:, -1:] # last column is time
             
-            dq_dz[i] = self.get_derivs_1order(q_vec[i], SV)[:, :-1]
+            dq_dz[i] = self.get_derivs_1order(q_vec[:, i:i+1], SV)[:, :-1]
             curr_dkappa_dzz = [0] * (N-1) 
             curr_dq_dzz = [0] * (N-1) 
             for j in range(N - 1):
@@ -227,8 +249,8 @@ class Training_pde(Environments):
             dq_dzz[i] = torch.einsum("kbj -> bjk", torch.stack(curr_dq_dzz))
         
         # Compute dynamics of z
-        q_vec = torch.einsum("nbj -> bn", torch.stack(q_vec)) # (batch, N)
-        kappa_vec = torch.einsum("nbj -> bn", torch.stack(kappa_vec)) # (batch, N)
+        # q_vec = torch.einsum("nbj -> bn", torch.stack(q_vec)) # (batch, N)
+        # kappa_vec = torch.einsum("nbj -> bn", torch.stack(kappa_vec)) # (batch, N)
         dq_dz = torch.einsum("nbj -> bnj", torch.stack(dq_dz)) # (batch, N, N-1)
         dq_dzz = torch.einsum("nbjk -> bnjk", torch.stack(dq_dzz)) # (batch, N, N-1, N-1)
         dkappa_dt = torch.einsum("nbj -> bn", torch.stack(dkappa_dt)) # (batch, N)
@@ -391,6 +413,13 @@ def train_loop(params):
             for i in range(params["n_trees"]):
                 kappa_val_dict[f"kappa_{i+1}"].append(torch.mean(TP.kappas[:,i]).item())
                 kappa_val_dict[f"q_{i+1}"].append(torch.mean(TP.qs[:,i]).item())
+            if (epoch + 1) % params["resample_times"] == 0:
+                anchor_points = TS.sample_rar_distribution(kappa_nn, TP).to(device)
+                SV = torch.vstack([SV, anchor_points])
+                SV.requires_grad_(True)
+        added_anchor_points = SV[params["batch_size"]:,].detach().cpu().numpy()
+        np.save(os.path.join(output_dir, f"anchor_points_{outer_loop+1}.npy"), added_anchor_points)
+
         # check convergence and update the time boundary condition
         kappa_nn.load_state_dict(best_model_kappa.state_dict())
         torch.save({"model": best_model_kappa.state_dict(), "params": params}, os.path.join(output_dir, "model.pt"))
@@ -559,7 +588,7 @@ if __name__ == '__main__':
         curr_params["n_trees"] = n_trees
         curr_params["mu_ys"] = mu_sig
         curr_params["sig_ys"] = mu_sig 
-        curr_params["output_dir"] = f"./models_single_output/tree{n_trees}_ts_{sample_method}"
+        curr_params["output_dir"] = f"./models_multioutput_rar/tree{n_trees}_ts_{sample_method}"
         if n_trees > 2:
             curr_params["batch_size"] = 100
         else:
@@ -568,6 +597,7 @@ if __name__ == '__main__':
             device = "cpu"
         curr_params["epoch"] = 200
         curr_params["outer_loop_size"] = 10
+        curr_params["resample_times"] = 5
         print(curr_params)
         gc.collect()
         torch.cuda.empty_cache()

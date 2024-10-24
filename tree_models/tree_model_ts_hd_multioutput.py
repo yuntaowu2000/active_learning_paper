@@ -38,7 +38,7 @@ class Net1(torch.nn.Module):
             layers.append(torch.nn.Linear(nn_width, nn_width))
             layers.append(torch.nn.Tanh())
         # Final output layer        
-        layers.append(torch.nn.Linear(nn_width, 1))
+        layers.append(torch.nn.Linear(nn_width, params['n_trees']))
         
         # Define functions
         if positive:
@@ -190,8 +190,8 @@ class Training_pde(Environments):
         z_last    = 1 - torch.sum(z, dim=1).unsqueeze(1)
         z_all = torch.cat([z, z_last], dim=1) # (B, N)
 
-        kappa_vec: List[torch.Tensor] = [0] * N
-        q_vec: List[torch.Tensor] = [0] * N
+        # kappa_vec: List[torch.Tensor] = [0] * N
+        # q_vec: List[torch.Tensor] = [0] * N
         dq_dz: List[torch.Tensor] = [0] * N # each element is (batch, N-1)
         dq_dzz: List[torch.Tensor] = [0] * N # (batch, N-1, N-1)
         dkappa_dz: List[torch.Tensor] = [0] * N # (batch, N-1)
@@ -199,24 +199,26 @@ class Training_pde(Environments):
         dkappa_dt: List[torch.Tensor] = [0] * N # (batch, t)
 
         # Compute kappa and q by exploiting symmetry
-        kappa_vec[0] = kappa_nn(SV)
-        q_vec[0] = z[:, 0:1] / kappa_vec[0]
-        for i in range(1, N-1):
-            ind         = (0,i)
-            indx        = (i,0)
-            SV_swaped = SV.clone()
-            SV_swaped[:,ind] = SV[:,indx].clone()
-            kappa_vec[i]= kappa_nn(SV_swaped)
-            q_vec[i] = SV_swaped[:, 0:1] / kappa_vec[i]
-        kappa_vec[-1] = kappa_nn(SV)
-        q_vec[-1] = z_last / kappa_vec[-1]
+        # kappa_vec[0] = kappa_nn(SV)
+        # q_vec[0] = z[:, 0:1] / kappa_vec[0]
+        # for i in range(1, N-1):
+        #     ind         = (0,i)
+        #     indx        = (i,0)
+        #     SV_swaped = SV.clone()
+        #     SV_swaped[:,ind] = SV[:,indx].clone()
+        #     kappa_vec[i]= kappa_nn(SV_swaped)
+        #     q_vec[i] = SV_swaped[:, 0:1] / kappa_vec[i]
+        # kappa_vec[-1] = kappa_nn(SV)
+        # q_vec[-1] = z_last / kappa_vec[-1]
+        kappa_vec = kappa_nn(SV) # (B, N)
+        q_vec = z_all / kappa_vec  # (B, N)
 
         # compute derivatives
         for i in range(N):
-            dkappa_dz[i] = self.get_derivs_1order(kappa_vec[i], SV)[:, :-1] # dki/dzj 
-            dkappa_dt[i] = self.get_derivs_1order(kappa_vec[i], SV)[:, -1:] # last column is time
+            dkappa_dz[i] = self.get_derivs_1order(kappa_vec[:, i:i+1], SV)[:, :-1] # dki/dzj 
+            dkappa_dt[i] = self.get_derivs_1order(kappa_vec[:, i:i+1], SV)[:, -1:] # last column is time
             
-            dq_dz[i] = self.get_derivs_1order(q_vec[i], SV)[:, :-1]
+            dq_dz[i] = self.get_derivs_1order(q_vec[:, i:i+1], SV)[:, :-1]
             curr_dkappa_dzz = [0] * (N-1) 
             curr_dq_dzz = [0] * (N-1) 
             for j in range(N - 1):
@@ -227,8 +229,8 @@ class Training_pde(Environments):
             dq_dzz[i] = torch.einsum("kbj -> bjk", torch.stack(curr_dq_dzz))
         
         # Compute dynamics of z
-        q_vec = torch.einsum("nbj -> bn", torch.stack(q_vec)) # (batch, N)
-        kappa_vec = torch.einsum("nbj -> bn", torch.stack(kappa_vec)) # (batch, N)
+        # q_vec = torch.einsum("nbj -> bn", torch.stack(q_vec)) # (batch, N)
+        # kappa_vec = torch.einsum("nbj -> bn", torch.stack(kappa_vec)) # (batch, N)
         dq_dz = torch.einsum("nbj -> bnj", torch.stack(dq_dz)) # (batch, N, N-1)
         dq_dzz = torch.einsum("nbjk -> bnjk", torch.stack(dq_dzz)) # (batch, N, N-1, N-1)
         dkappa_dt = torch.einsum("nbj -> bn", torch.stack(dkappa_dt)) # (batch, N)
@@ -559,7 +561,7 @@ if __name__ == '__main__':
         curr_params["n_trees"] = n_trees
         curr_params["mu_ys"] = mu_sig
         curr_params["sig_ys"] = mu_sig 
-        curr_params["output_dir"] = f"./models_single_output/tree{n_trees}_ts_{sample_method}"
+        curr_params["output_dir"] = f"./models_multioutput/tree{n_trees}_ts_{sample_method}"
         if n_trees > 2:
             curr_params["batch_size"] = 100
         else:

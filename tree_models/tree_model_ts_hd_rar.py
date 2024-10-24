@@ -154,6 +154,26 @@ class Training_Sampler():
             sv = sv.unsqueeze(-1)
         time_dim = torch.ones((sv.shape[0], 1)) * time_val
         return torch.cat([sv, time_dim], dim=-1)
+    
+    def sample_rar_distribution(self, kappa_nn, TP):
+        # random sample 1000 points for validation, choose the highest ones
+        if self.params["sample_method"] == "uniform":
+            SV = np.random.uniform(low=[0] * (self.sv_count + 1), 
+                         high=[1] * (self.sv_count + 1), 
+                         size=(1000, self.sv_count + 1))
+            SV = torch.Tensor(SV)
+        elif self.params["sample_method"] == "log_normal":
+            ys = [0] * len(self.params["mu_ys"])
+            for i in range(len(self.params["mu_ys"])):
+                ys[i] = torch.distributions.log_normal.LogNormal(self.params["mu_ys"][i], self.params["sig_ys"][i]).sample((1000, 1))
+            ys = torch.einsum("jbi -> bj", torch.stack(ys))
+            zs_ts = ys[:, :-1] / torch.sum(ys, dim=1, keepdim=True) # the last dimension should be dropped
+            ts = torch.Tensor(np.random.uniform([0], [1], (1000, 1)))
+            SV = torch.cat([zs_ts, ts], dim=1)
+        total_loss, hjb_kappas_, consistency_kappas_ = TP.loss_fun_Net1(kappa_nn, SV)
+        all_losses = torch.sum(torch.square(hjb_kappas_) + torch.square(consistency_kappas_), axis=1)
+        X_ids = torch.topk(all_losses, self.batch_size//self.params["resample_times"], dim=0)[1].squeeze(-1)
+        return SV[X_ids]
 
 class Training_pde(Environments):
 
@@ -391,6 +411,13 @@ def train_loop(params):
             for i in range(params["n_trees"]):
                 kappa_val_dict[f"kappa_{i+1}"].append(torch.mean(TP.kappas[:,i]).item())
                 kappa_val_dict[f"q_{i+1}"].append(torch.mean(TP.qs[:,i]).item())
+            if (epoch + 1) % params["resample_times"] == 0:
+                anchor_points = TS.sample_rar_distribution(kappa_nn, TP).to(device)
+                SV = torch.vstack([SV, anchor_points])
+                SV.requires_grad_(True)
+        added_anchor_points = SV[params["batch_size"]:,].detach().cpu().numpy()
+        np.save(os.path.join(output_dir, f"anchor_points_{outer_loop+1}.npy"), added_anchor_points)
+        
         # check convergence and update the time boundary condition
         kappa_nn.load_state_dict(best_model_kappa.state_dict())
         torch.save({"model": best_model_kappa.state_dict(), "params": params}, os.path.join(output_dir, "model.pt"))
@@ -559,7 +586,7 @@ if __name__ == '__main__':
         curr_params["n_trees"] = n_trees
         curr_params["mu_ys"] = mu_sig
         curr_params["sig_ys"] = mu_sig 
-        curr_params["output_dir"] = f"./models_single_output/tree{n_trees}_ts_{sample_method}"
+        curr_params["output_dir"] = f"./models_single_output_rar/tree{n_trees}_ts_{sample_method}"
         if n_trees > 2:
             curr_params["batch_size"] = 100
         else:
