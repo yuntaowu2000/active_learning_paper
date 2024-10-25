@@ -130,6 +130,7 @@ class Training_Sampler():
             ys = torch.einsum("jbi -> bj", torch.stack(ys))
             zs = ys[:, :-1] / torch.sum(ys, dim=1, keepdim=True) # the last dimension should be dropped
             Z = zs.clone()
+        Z = Z.to(device)
         total_loss, hjb_kappas_, consistency_kappas_ = TP.loss_fun_Net1(kappa_nn, Z)
         all_losses = torch.sum(torch.square(hjb_kappas_) + torch.square(consistency_kappas_), axis=1)
         X_ids = torch.topk(all_losses, self.batch_size//self.params["resample_times"], dim=0)[1].squeeze(-1)
@@ -475,6 +476,7 @@ if __name__ == '__main__':
             device = "cpu"
         else:
             curr_params["epoch"] = 200
+        curr_params["resample_times"] = 5
         print(curr_params)
         gc.collect()
         torch.cuda.empty_cache()

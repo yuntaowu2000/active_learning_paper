@@ -91,7 +91,7 @@ class Training_Sampler():
         SV = np.random.uniform(low=[0] * self.sv_count, 
                          high=[1] * self.sv_count, 
                          size=(self.batch_size, self.sv_count))
-        return torch.vstack([torch.Tensor(SV), self.anchor_points])
+        return torch.vstack([torch.Tensor(SV).to(device), self.anchor_points])
     
     def sample_log_normal(self):
         '''
@@ -102,7 +102,7 @@ class Training_Sampler():
             ys[i] = torch.distributions.log_normal.LogNormal(self.params["mu_ys"][i], self.params["sig_ys"][i]).sample((self.batch_size, 1))
         ys = torch.einsum("jbi -> bj", torch.stack(ys))
         zs = ys[:, :-1] / torch.sum(ys, dim=1, keepdim=True) # the last dimension should be dropped
-        return torch.vstack([zs.clone(), self.anchor_points])
+        return torch.vstack([zs.clone().to(device), self.anchor_points])
     
     def sample_fixed_grid_single_dim(self, non_zero_dim: int):
         sv_ls = [0] * (self.sv_count)
@@ -130,6 +130,7 @@ class Training_Sampler():
             ys = torch.einsum("jbi -> bj", torch.stack(ys))
             zs = ys[:, :-1] / torch.sum(ys, dim=1, keepdim=True) # the last dimension should be dropped
             Z = zs.clone()
+        Z = Z.to(device)
         total_loss, hjb_kappas_, consistency_kappas_ = TP.loss_fun_Net1(kappa_nn, Z)
         all_losses = torch.sum(torch.square(hjb_kappas_) + torch.square(consistency_kappas_), axis=1)
         X_ids = torch.topk(all_losses, self.batch_size//self.params["resample_times"], dim=0)[1].squeeze(-1)
