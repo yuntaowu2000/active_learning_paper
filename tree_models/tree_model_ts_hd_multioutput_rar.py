@@ -414,7 +414,7 @@ def train_loop(params):
             for i in range(params["n_trees"]):
                 kappa_val_dict[f"kappa_{i+1}"].append(torch.mean(TP.kappas[:,i]).item())
                 kappa_val_dict[f"q_{i+1}"].append(torch.mean(TP.qs[:,i]).item())
-            if (epoch + 1) % params["resample_times"] == 0:
+            if (epoch + 1) % (int(epochs / (np.sqrt(outer_loop + 1))) // params["resample_times"]) == 0:
                 anchor_points = TS.sample_rar_distribution(kappa_nn, TP).to(device)
                 SV = torch.vstack([SV, anchor_points])
                 SV.requires_grad_(True)

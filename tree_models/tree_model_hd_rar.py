@@ -341,7 +341,7 @@ def train_loop(params):
         for i in range(params["n_trees"]):
             kappa_val_dict[f"kappa_{i+1}"].append(torch.mean(TP.kappas[:,i]).item())
             kappa_val_dict[f"q_{i+1}"].append(torch.mean(TP.qs[:,i]).item())
-        if (epoch + 1) % params["resample_times"] == 0:
+        if (epoch + 1) % (epochs // params["resample_times"]) == 0:
             TS.sample_rar_distribution(kappa_nn, TP)
     end_time = time.time()
     summary_to_write = "Model Architecture:\n"
