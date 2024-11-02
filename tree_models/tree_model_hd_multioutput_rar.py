@@ -16,6 +16,7 @@ import torch.nn as nn
 import torch.optim as optim
 from pyDOE import lhs
 from sklearn.model_selection import ParameterGrid
+from torch.func import jacrev, hessian, vmap
 from tqdm import tqdm
 
 # Import required user-defined libraries
@@ -171,43 +172,18 @@ class Training_pde(Environments):
         z_last    = 1 - torch.sum(z, dim=1).unsqueeze(1)
         z_all = torch.cat([z, z_last], dim=1) # (B, N)
 
-        dq_dz: List[torch.Tensor] = [0] * N # each element is (batch, N-1)
-        dq_dzz: List[torch.Tensor] = [0] * N # (batch, N-1, N-1)
-        dkappa_dz: List[torch.Tensor] = [0] * N # (batch, N-1)
-        dkappa_dzz: List[torch.Tensor] = [0] * N # (batch, N-1, N-1)
-
-        # Compute kappa and q by exploiting symmetry
-        # kappa_vec[0] = kappa_nn(z)
-        # q_vec[0] = z[:, 0:1] / kappa_vec[0]
-        # for i in range(1, N-1):
-        #     ind         = (0,i)
-        #     indx        = (i,0)
-        #     z_swaped = z.clone()
-        #     z_swaped[:,ind] = z[:,indx].clone()
-        #     kappa_vec[i]= kappa_nn(z_swaped)
-        #     q_vec[i] = z_swaped[:, 0:1] / kappa_vec[i]
-        # kappa_vec[-1] = kappa_nn(z)
-        # q_vec[-1] = z_last / kappa_vec[-1]
-        kappa_vec = kappa_nn(z) # (B, N)
-        q_vec = z_all / kappa_vec  # (B, N)
-
-        # compute derivatives
-        for i in range(N):
-            dkappa_dz[i] = self.get_derivs_1order(kappa_vec[:, i:i+1], z) # dki/dzj
-            dq_dz[i] = self.get_derivs_1order(q_vec[:, i:i+1], z)
-            curr_dkappa_dzz = [0] * (N-1) 
-            curr_dq_dzz = [0] * (N-1) 
-            for j in range(N - 1):
-                curr_dkappa_dzz[j] = self.get_derivs_1order(dkappa_dz[i][:, j:j+1], z)# d^ki/dzjdzk
-                curr_dq_dzz[j] = self.get_derivs_1order(dq_dz[i][:, j:j+1], z)
-            # Hessians should be symmetric, so the order of j and k should not matter
-            dkappa_dzz[i] = torch.einsum("kbj -> bjk", torch.stack(curr_dkappa_dzz))
-            dq_dzz[i] = torch.einsum("kbj -> bjk", torch.stack(curr_dq_dzz))
-
-        dq_dz = torch.einsum("nbj -> bnj", torch.stack(dq_dz)) # (batch, N, N-1)
-        dq_dzz = torch.einsum("nbjk -> bnjk", torch.stack(dq_dzz)) # (batch, N, N-1, N-1)
-        dkappa_dz = torch.einsum("nbj -> bnj", torch.stack(dkappa_dz)) # (batch, N, N-1)
-        dkappa_dzz = torch.einsum("nbjk -> bnjk", torch.stack(dkappa_dzz)) # (batch, N, N-1, N-1)
+        def compute_kappa(z):
+            return kappa_nn(z)
+        def compute_q(z):
+            z_last = 1 - torch.sum(z, dim=-1).unsqueeze(-1)
+            z_all = torch.cat([z, z_last], dim=-1) # (B, N)
+            return z_all / compute_kappa(z)
+        kappa_vec = compute_kappa(z)  # (B, N)
+        q_vec = compute_q(z)  # (B, N)
+        dkappa_dz = vmap(jacrev(compute_kappa), chunk_size=self.params["batch_size"])(z)
+        dq_dz = vmap(jacrev(compute_q), chunk_size=self.params["batch_size"])(z)
+        dkappa_dzz = vmap(hessian(compute_kappa), chunk_size=self.params["batch_size"])(z)
+        dq_dzz = vmap(hessian(compute_q), chunk_size=self.params["batch_size"])(z)
         
          # Compute dynamics of z
         mu_ys = torch.tensor(self.params["mu_ys"], device=device).unsqueeze(0)
