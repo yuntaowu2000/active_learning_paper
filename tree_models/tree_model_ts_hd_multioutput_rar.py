@@ -548,24 +548,24 @@ def distribution_plot(params, batch_size=5000):
 
 if __name__ == '__main__':
     param_grid = ParameterGrid({
-        "sample_method": sample_methods, 
+        # "sample_method": sample_methods, 
         "num_tree_mu_sig": num_tree_mu_sig,
     })
     for param_set in param_grid:
-        sample_method = param_set["sample_method"]
-        n_trees, mu_sig = param_set["num_tree_mu_sig"]
+        # sample_method = param_set["sample_method"]
+        n_trees, mu_sig, sample_method = param_set["num_tree_mu_sig"]
         curr_params = params_base.copy()
         curr_params["sample_method"] =sample_method
         curr_params["n_trees"] = n_trees
         curr_params["mu_ys"] = mu_sig
         curr_params["sig_ys"] = mu_sig 
-        curr_params["output_dir"] = f"./models_multioutput_rar2/tree{n_trees}_ts_{sample_method}"
+        curr_params["output_dir"] = f"./models_multioutput_rar/tree{n_trees}_ts_{sample_method}"
         if n_trees > 2:
             curr_params["batch_size"] = 100
         else:
             curr_params["batch_size"] = 100
-        if n_trees > 20:
-            device = "cpu"
+        # if n_trees > 20:
+        #     device = "cpu"
         curr_params["epoch"] = 200
         curr_params["outer_loop_size"] = 10
         curr_params["resample_times"] = 5

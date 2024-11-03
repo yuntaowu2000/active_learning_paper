@@ -294,6 +294,7 @@ def train_loop(params):
     start_time = time.time()
     pbar = tqdm(range(epochs))
     for epoch in pbar:
+        torch.cuda.empty_cache()
         Z = TS.sample().to(device)
         Z.requires_grad_(True)
         total_loss, hjb_kappas_, consistency_kappas_ = TP.loss_fun_Net1(kappa_nn, Z)
@@ -316,6 +317,7 @@ def train_loop(params):
             kappa_val_dict[f"q_{i+1}"].append(torch.mean(TP.qs[:,i]).item())
         if (epoch + 1) % (epochs // params["resample_times"]) == 0:
             TS.sample_rar_distribution(kappa_nn, TP)
+    torch.cuda.empty_cache()
     end_time = time.time()
     summary_to_write = "Model Architecture:\n"
     summary_to_write += str(kappa_nn) + "\n"
@@ -428,12 +430,12 @@ def distribution_plot(params, batch_size=5000):
 
 if __name__ == '__main__':
     param_grid = ParameterGrid({
-        "sample_method": sample_methods, 
+        # "sample_method": sample_methods, 
         "num_tree_mu_sig": num_tree_mu_sig,
     })
     for param_set in param_grid:
-        sample_method = param_set["sample_method"]
-        n_trees, mu_sig = param_set["num_tree_mu_sig"]
+        # sample_method = param_set["sample_method"]
+        n_trees, mu_sig, sample_method = param_set["num_tree_mu_sig"]
         curr_params = params_base.copy()
         curr_params["sample_method"] =sample_method
         curr_params["n_trees"] = n_trees
@@ -444,11 +446,7 @@ if __name__ == '__main__':
             curr_params["batch_size"] = 100
         else:
             curr_params["batch_size"] = 100
-        if n_trees > 20:
-            curr_params["epoch"] = 20
-            device = "cpu"
-        else:
-            curr_params["epoch"] = 200
+        curr_params["epoch"] = 200
         curr_params["resample_times"] = 5
         print(curr_params)
         gc.collect()
