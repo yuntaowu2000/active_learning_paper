@@ -33,20 +33,24 @@ params_base = {
     "nn_width"          : 80,       # Neural network width
     "nn_num_layers"     : 4,        # Neural network layers
     "lr"                : 0.0005,    # Learning rate
+    "batch_size": 200
 }
 # sample_methods = ["uniform", "log_normal"]
 sample_methods = ["log_normal"]
 
 num_tree_mu_sig = [ # for now, we just assume mu=sig
-    (2, [0.02, 0.05]),
-    (3, [0.02, 0.05, 0.08]),
-    # (5, [0.02, 0.05, 0.08, 0.11, 0.14]), 
-    # (10, [0.02, 0.05, 0.08, 0.11, 0.14, 0.17, 0.2, 0.23, 0.26, 0.3]),
-    # (20, [0.01 * i for i in range(1, 21)]),
-    # (50, [0.01 * i for i in range(1, 51)]),
-    # (100, [0.01 * i for i in range(1, 101)]),
+    (2, [0.02, 0.05], "uniform"),
+    (3, [0.02, 0.05, 0.08], "uniform"),
+    (5, [0.02, 0.05, 0.08, 0.11, 0.14], "uniform"), 
+    (10, [0.02, 0.05, 0.08, 0.11, 0.14, 0.17, 0.2, 0.23, 0.26, 0.3], "log_normal"),
+    (20, [0.01 * i for i in range(1, 21)], "log_normal"),
+    (50, [0.01 * i for i in range(1, 51)], "log_normal"),
+    (100, [0.01 * i for i in range(1, 101)], "log_normal"),
 ]
 
+EPOCHS = 200
+OUTER_LOOPS = 10
+RESAMPLE_TIMES = 5
 
 
 class Params():

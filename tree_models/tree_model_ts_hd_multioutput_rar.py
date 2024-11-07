@@ -560,15 +560,9 @@ if __name__ == '__main__':
         curr_params["mu_ys"] = mu_sig
         curr_params["sig_ys"] = mu_sig 
         curr_params["output_dir"] = f"./models_multioutput_rar/tree{n_trees}_ts_{sample_method}"
-        if n_trees > 2:
-            curr_params["batch_size"] = 100
-        else:
-            curr_params["batch_size"] = 100
-        # if n_trees > 20:
-        #     device = "cpu"
-        curr_params["epoch"] = 200
-        curr_params["outer_loop_size"] = 10
-        curr_params["resample_times"] = 5
+        curr_params["epoch"] = EPOCHS
+        curr_params["outer_loop_size"] = OUTER_LOOPS
+        curr_params["resample_times"] = RESAMPLE_TIMES
         print(curr_params)
         gc.collect()
         torch.cuda.empty_cache()

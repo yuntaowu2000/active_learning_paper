@@ -413,11 +413,7 @@ if __name__ == '__main__':
         curr_params["mu_ys"] = mu_sig
         curr_params["sig_ys"] = mu_sig 
         curr_params["output_dir"] = f"./models_multioutput/tree{n_trees}_{sample_method}"
-        if n_trees > 2:
-            curr_params["batch_size"] = 100
-        else:
-            curr_params["batch_size"] = 100
-        curr_params["epoch"] = 200
+        curr_params["epoch"] = EPOCHS
         print(curr_params)
         gc.collect()
         torch.cuda.empty_cache()
