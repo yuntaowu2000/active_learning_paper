@@ -156,7 +156,7 @@ class Training_Sampler():
         time_dim = torch.ones((sv.shape[0], 1)) * time_val
         return torch.cat([sv, time_dim], dim=-1)
     
-    def sample_rar_distribution(self, kappa_nn, TP):
+    def sample_rar(self, kappa_nn, TP):
         # random sample 1000 points for validation, choose the highest ones
         if self.params["sample_method"] == "uniform":
             SV = np.random.uniform(low=[0] * (self.sv_count + 1), 
@@ -308,8 +308,7 @@ def train_loop(params):
 
     output_dir = params["output_dir"]
     plot_directory = os.path.join(output_dir, "plots")
-    if not os.path.exists(plot_directory):
-        os.makedirs(plot_directory)
+    os.makedirs(plot_directory, exist_ok=True)
 
     with open(os.path.join(output_dir, "params.txt"), "w") as f:
         f.write(param_dump(params))
@@ -346,7 +345,8 @@ def train_loop(params):
     prev_vals: Dict[str, torch.Tensor] = {}
     for k in nn_dict:
         prev_vals[k] = torch.ones_like(SV_T0[:, 0:1], device=device)
-
+    
+    epoch_times = []
     start_time = time.time()
     for outer_loop in range(outer_loop_size):
         # For now, make sure the sampling is stable for each outer iteration
@@ -356,6 +356,7 @@ def train_loop(params):
         SV.requires_grad_(True)
         pbar = tqdm(range(int(epochs / (np.sqrt(outer_loop + 1)))))
         for epoch in pbar:
+            epoch_start_time = time.time()
             torch.cuda.empty_cache()
             total_loss, hjb_kappas_, consistency_kappas_ = TP.loss_fun_Net1(kappa_nn, SV)
 
@@ -384,12 +385,16 @@ def train_loop(params):
             for i in range(params["n_trees"]):
                 kappa_val_dict[f"kappa_{i+1}"].append(torch.mean(TP.kappas[:,i]).item())
                 kappa_val_dict[f"q_{i+1}"].append(torch.mean(TP.qs[:,i]).item())
-            if (epoch + 1) % (int(epochs / (np.sqrt(outer_loop + 1))) // params["resample_times"]) == 0:
-                anchor_points = TS.sample_rar_distribution(kappa_nn, TP).to(device)
+            if params["resample_times"] > 0 and (epoch + 1) % (int(epochs / (np.sqrt(outer_loop + 1))) // params["resample_times"]) == 0:
+                anchor_points = TS.sample_rar(kappa_nn, TP).to(device)
                 SV = torch.vstack([SV, anchor_points])
                 SV.requires_grad_(True)
-        added_anchor_points = SV[params["batch_size"]:,].detach().cpu().numpy()
-        np.save(os.path.join(output_dir, f"anchor_points_{outer_loop+1}.npy"), added_anchor_points)
+            epoch_end_time = time.time()
+            epoch_times.append(epoch_end_time - epoch_start_time)
+        if params["resample_times"] > 0:
+            added_anchor_points = SV[params["batch_size"]:,].detach().cpu().numpy()
+            os.makedirs(os.path.join(output_dir, "anchor_points"), exist_ok=True)
+            np.save(os.path.join(output_dir, "anchor_points", f"anchor_points_{outer_loop+1}.npy"), added_anchor_points)
 
         # check convergence and update the time boundary condition
         kappa_nn.load_state_dict(best_model_kappa.state_dict())
@@ -451,55 +456,56 @@ def train_loop(params):
     pd.DataFrame(kappa_val_dict).to_csv(f"{output_dir}/kappa_val.csv", index=False)
 
     # Load last best model as the final neural network model
-    kappa_nn.load_state_dict(best_model_kappa.state_dict())
+    # kappa_nn.load_state_dict(best_model_kappa.state_dict())
     
-    # Save data
-    SV_T0 = TS.sample_fixed_grid_boundary_cond_single_dim(0, 0.0).to(device)
-    SV_T0.requires_grad_(True)
+    # # Save data
+    # SV_T0 = TS.sample_fixed_grid_boundary_cond_single_dim(0, 0.0).to(device)
+    # SV_T0.requires_grad_(True)
     
-    TP  = Training_pde(params)
-    TP.loss_fun_Net1(kappa_nn, SV_T0)
+    # TP  = Training_pde(params)
+    # TP.loss_fun_Net1(kappa_nn, SV_T0)
 
-    kappas, qs, zetas, r = TP.kappas, TP.qs, TP.zetas, TP.r
-    mu_z_geos, sig_z_geos, mu_z_aris, sig_z_aris = TP.mu_z_geos, TP.sig_z_geos, TP.mu_z_aris, TP.sig_z_aris
-    mu_qs, sig_qs, mu_kappas, sig_kappas = TP.mu_qs, TP.sig_qs, TP.mu_kappas, TP.sig_kappas
+    # kappas, qs, zetas, r = TP.kappas, TP.qs, TP.zetas, TP.r
+    # mu_z_geos, sig_z_geos, mu_z_aris, sig_z_aris = TP.mu_z_geos, TP.sig_z_geos, TP.mu_z_aris, TP.sig_z_aris
+    # mu_qs, sig_qs, mu_kappas, sig_kappas = TP.mu_qs, TP.sig_qs, TP.mu_kappas, TP.sig_kappas
     
-    Z = SV_T0.detach().cpu().numpy()[:, :1].reshape(-1)
-    fig, ax = plt.subplots(3,2,figsize=(16,9), num=1)
-    ax[0,0].plot(Z,kappas[:, 0].detach().cpu().numpy(),label=r'$\kappa_1$')
-    ax[0,0].plot(Z,kappas[:, -1].detach().cpu().numpy(),label=r'$\kappa_{' + str(params["n_trees"]) + "}$")
-    ax[0,0].legend()
+    # Z = SV_T0.detach().cpu().numpy()[:, :1].reshape(-1)
+    # fig, ax = plt.subplots(3,2,figsize=(16,9), num=1)
+    # ax[0,0].plot(Z,kappas[:, 0].detach().cpu().numpy(),label=r'$\kappa_1$')
+    # ax[0,0].plot(Z,kappas[:, -1].detach().cpu().numpy(),label=r'$\kappa_{' + str(params["n_trees"]) + "}$")
+    # ax[0,0].legend()
 
-    ax[0,1].plot(Z,qs[:,0].detach().cpu().numpy(),label=r'$q_1$')
-    ax[0,1].plot(Z,qs[:,-1].detach().cpu().numpy(),label=r'$q_{' + str(params["n_trees"]) + "}$")
-    ax[0,1].legend()
-    
-
-    ax[1,0].plot(Z,zetas[:,0].detach().cpu().numpy(),label=r'$\zeta_1$')
-    ax[1,0].plot(Z,zetas[:,-1].detach().cpu().numpy(),label=r'$\zeta_{' + str(params["n_trees"]) + "}$")
-    ax[1,0].legend()
+    # ax[0,1].plot(Z,qs[:,0].detach().cpu().numpy(),label=r'$q_1$')
+    # ax[0,1].plot(Z,qs[:,-1].detach().cpu().numpy(),label=r'$q_{' + str(params["n_trees"]) + "}$")
+    # ax[0,1].legend()
     
 
-    ax[1,1].plot(Z,r.detach().cpu().numpy(),label=r'$r$')
-    ax[1,1].set_title('r')
+    # ax[1,0].plot(Z,zetas[:,0].detach().cpu().numpy(),label=r'$\zeta_1$')
+    # ax[1,0].plot(Z,zetas[:,-1].detach().cpu().numpy(),label=r'$\zeta_{' + str(params["n_trees"]) + "}$")
+    # ax[1,0].legend()
+    
 
-    ax[2,0].plot(Z,mu_z_geos[:, 0].detach().cpu().numpy(),label=r'$\mu^{z_1}$')
-    ax[2,0].plot(Z,sig_z_geos[:, 0].detach().cpu().numpy(),label=r'$\sigma^{z_1}$')
-    ax[2,0].legend()
-    ax[2,0].set_xlabel('z')
+    # ax[1,1].plot(Z,r.detach().cpu().numpy(),label=r'$r$')
+    # ax[1,1].set_title('r')
 
-    ax[2,1].plot(Z,mu_z_aris[:, 0].detach().cpu().numpy(),label=r'$\mu_{z_1}$')
-    ax[2,1].plot(Z,sig_z_aris[:, 0].detach().cpu().numpy(),label=r'$\sigma_{z_1}$')
-    ax[2,1].legend()
-    ax[2,1].set_xlabel('z')
+    # ax[2,0].plot(Z,mu_z_geos[:, 0].detach().cpu().numpy(),label=r'$\mu^{z_1}$')
+    # ax[2,0].plot(Z,sig_z_geos[:, 0].detach().cpu().numpy(),label=r'$\sigma^{z_1}$')
+    # ax[2,0].legend()
+    # ax[2,0].set_xlabel('z')
+
+    # ax[2,1].plot(Z,mu_z_aris[:, 0].detach().cpu().numpy(),label=r'$\mu_{z_1}$')
+    # ax[2,1].plot(Z,sig_z_aris[:, 0].detach().cpu().numpy(),label=r'$\sigma_{z_1}$')
+    # ax[2,1].legend()
+    # ax[2,1].set_xlabel('z')
 
     
-    name = 'equilibrium.jpg'
-    plt.savefig(os.path.join(plot_directory, name),bbox_inches='tight',dpi=300)
-    # plt.show()
-    plt.close()
+    # name = 'equilibrium.jpg'
+    # plt.savefig(os.path.join(plot_directory, name),bbox_inches='tight',dpi=300)
+    # # plt.show()
+    # plt.close()
 
     print('Training complete')
+    return end_time - start_time, np.mean(epoch_times)
 
 
 def distribution_plot(params, batch_size=5000):
@@ -531,15 +537,25 @@ def distribution_plot(params, batch_size=5000):
     # plot the kappa and q histograms with max mu_q
     kappa_to_plot = kappas[:, mu_qs_max_idx].detach().cpu().numpy()
     q_to_plot = qs[:, mu_qs_max_idx].detach().cpu().numpy()
+    zeta_to_plot = zetas[:, mu_qs_max_idx].detach().cpu().numpy()
+    r_to_plot = r.detach().cpu().numpy().reshape(-1)
     
-    fig, ax = plt.subplots(1, 2, figsize=(10, 5))
+    fig, ax = plt.subplots(1, 4, figsize=(20, 5))
     ax[0].hist(kappa_to_plot, bins=20)
     ax[0].set_xlabel(r'$\kappa$')
     ax[0].set_title(r"$\kappa$ distribution at max $\mu^q$")
 
-    ax[1].hist(q_to_plot, bins=20, label=r'$q$')
+    ax[1].hist(q_to_plot, bins=20)
     ax[1].set_xlabel(r'$q$')
     ax[1].set_title(r"$q$ distribution at max $\mu^q$")
+
+    ax[2].hist(zeta_to_plot, bins=20)
+    ax[2].set_xlabel(r'$\zeta$')
+    ax[2].set_title(r"$\zeta$ distribution at max $\mu^q$")
+
+    ax[3].hist(r_to_plot, bins=20)
+    ax[3].set_xlabel(r'$r$')
+    ax[3].set_title(r"$r$ distribution")
 
     name = 'distribution.jpg'
     plt.savefig(os.path.join(params["output_dir"], "plots", name),bbox_inches='tight',dpi=300)

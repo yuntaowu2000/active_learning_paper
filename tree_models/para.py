@@ -42,7 +42,7 @@ num_tree_mu_sig = [ # for now, we just assume mu=sig
     (2, [0.02, 0.05], "uniform"),
     (3, [0.02, 0.05, 0.08], "uniform"),
     (5, [0.02, 0.05, 0.08, 0.11, 0.14], "uniform"), 
-    (10, [0.02, 0.05, 0.08, 0.11, 0.14, 0.17, 0.2, 0.23, 0.26, 0.3], "log_normal"),
+    (10, [0.01 * i for i in range(1, 11)], "log_normal"),
     (20, [0.01 * i for i in range(1, 21)], "log_normal"),
     (50, [0.01 * i for i in range(1, 51)], "log_normal"),
     (100, [0.01 * i for i in range(1, 101)], "log_normal"),
