@@ -15,7 +15,7 @@ import tree_model_ts_hd_multioutput_rar as ts_model
 
 plt.rcParams["font.size"] = 15
 
-BASE_DIR = "./models/TreeTiming"
+BASE_DIR = "./models/TreeMemory"
 PLOT_DIR = os.path.join(BASE_DIR, "plots")
 os.makedirs(PLOT_DIR, exist_ok=True)
 
@@ -35,8 +35,8 @@ for n_tree, mu_sig, sampling_method in para.num_tree_mu_sig:
     curr_para["n_trees"] = n_tree
     curr_para["mu_ys"] = mu_sig
     curr_para["sig_ys"] = mu_sig
-    curr_para["epoch"] = para.EPOCHS
-    curr_para["outer_loop_size"] = para.OUTER_LOOPS
+    curr_para["epoch"] = 10
+    curr_para["outer_loop_size"] = 2
     curr_para["resample_times"] = -1
     # the models don't have to be saved anyways
     curr_para["output_dir"] = os.path.join(BASE_DIR, "temp")
@@ -93,10 +93,6 @@ def plot_timing():
 
 if __name__ == "__main__":
     for k in ALL_PARAMS:
-        result_df_path = os.path.join(BASE_DIR, f"{k}_timing.csv")
-        if os.path.exists(result_df_path):
-            continue
-        time_df = pd.DataFrame(columns=[f"n_{n_tree}_total_time" for n_tree in N_TREES] + [f"n_{n_tree}_epoch_time" for n_tree in N_TREES])
         for curr_params in ALL_PARAMS[k]:
             n_tree = curr_params["n_trees"]
             print("{0:=^80}".format(f"{k} {n_tree}"))
@@ -106,11 +102,9 @@ if __name__ == "__main__":
                 model_lib = base_model
             elif "timestep" in k:
                 model_lib = ts_model
-            for i in range(TRIALS):
-                total_time, epoch_time =model_lib.train_loop(curr_params)
-                time_df.loc[i, f"n_{n_tree}_total_time"] = total_time
-                time_df.loc[i, f"n_{n_tree}_epoch_time"] = epoch_time
-                shutil.rmtree(curr_params["output_dir"], ignore_errors=True)
-        time_df.to_csv(os.path.join(BASE_DIR, f"{k}_timing.csv"))
-    plot_timing()
+            torch.cuda.memory._record_memory_history(context=None, stacks="python")
+            model_lib.train_loop(curr_params)
+            torch.cuda.memory._dump_snapshot(os.path.join(BASE_DIR, f"{k}_{n_tree}_memory_snapshot.pickle"))
+            torch.cuda.memory._record_memory_history(None)
+            shutil.rmtree(curr_params["output_dir"], ignore_errors=True)
 

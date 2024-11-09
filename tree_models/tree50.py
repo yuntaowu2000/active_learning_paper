@@ -36,14 +36,14 @@ TIMESTEP_RAR_PARAMS["output_dir"] = os.path.join(BASE_DIR, "timestep_rar")
 TIMESTEP_RAR_PARAMS["resample_times"] = para.RESAMPLE_TIMES
 
 BASE_PARAMS = PARAMS.copy()
-BASE_PARAMS["output_dir"] = os.path.join(BASE_DIR, "base")
+BASE_PARAMS["output_dir"] = os.path.join(BASE_DIR, "basic")
 RAR_PARAMS = PARAMS.copy()
-RAR_PARAMS["output_dir"] = os.path.join(BASE_DIR, "rar")
+RAR_PARAMS["output_dir"] = os.path.join(BASE_DIR, "basic_rar")
 RAR_PARAMS["resample_times"] = para.RESAMPLE_TIMES
 
 ALL_PARAMS = {
-    "base": BASE_PARAMS,
-    "base_rar": RAR_PARAMS,
+    "basic": BASE_PARAMS,
+    "basic_rar": RAR_PARAMS,
     "timestep": TIMESTEP_PARAMS,
     "timestep_rar": TIMESTEP_RAR_PARAMS
 }
@@ -64,13 +64,30 @@ def plot_min_loss(fn):
     plt.savefig(fn)
     plt.close()
 
+def plot_kappas(fn: str):
+    fig, ax = plt.subplots(1, 1, figsize=(20, 10))
+
+    for k, l, ls in [("basic", "Basic", "--"), ("basic_rar", "Basic (RAR)", "-."), ("timestep", "Time-stepping", "-"), ("timestep_rar", "Time-stepping (RAR)", ":")]:
+        curr_params = ALL_PARAMS[k]
+        kappa_df = pd.read_csv(os.path.join(BASE_DIR, k, "kappa_val.csv"))
+        kappa_cols = [f"kappa_{i+1}" for i in range(curr_params["n_trees"])]
+        kappa_df["kappa"] = kappa_df[kappa_cols].mean(axis=1)
+        kappa_df = kappa_df[kappa_df["epoch"] < 200]
+        ax.plot(kappa_df["epoch"], kappa_df["kappa"], label=l, linestyle=ls)
+    ax.set_xlabel("Epoch")
+    ax.set_ylabel("Kappa")
+    ax.set_title(r"$\kappa$ across First 200 Epochs")
+    ax.legend(loc="upper right")
+    plt.tight_layout()
+    plt.savefig(fn)
+
 if __name__ == "__main__":
     for k in ALL_PARAMS:
         print(f"{k:=^80}")
         curr_params = ALL_PARAMS[k]
         gc.collect()
         torch.cuda.empty_cache()
-        if "base" in k:
+        if "basic" in k:
             model_lib = base_model
         elif "timestep" in k:
             model_lib = ts_model
@@ -78,4 +95,5 @@ if __name__ == "__main__":
             model_lib.train_loop(curr_params)
             model_lib.distribution_plot(curr_params, 1000)
     plot_min_loss(os.path.join(PLOT_DIR, "min_loss.png"))
+    plot_kappas(os.path.join(PLOT_DIR, "kappa.png"))
     
