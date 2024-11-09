@@ -1,3 +1,4 @@
+import gc
 import os
 from copy import deepcopy
 from typing import Any, Dict, List, Union
@@ -252,6 +253,46 @@ def plot_loss(fn):
     plt.savefig(fn)
     plt.close()
 
+def plot_loss_weight(fn):
+    loss_name_map = {
+        "endogeq_1": "Consumption FOC",
+        "endogeq_2": "Market Clearing",
+        "endogeq_3": "Portfolio FOC",
+        "hjbeq_1": "Experts HJB",
+        "hjbeq_2": "Households HJB",
+    }
+    fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(20, 10))
+    ax.set_xlabel("Epochs")
+    ax.set_ylabel("Weight")
+    ax.set_title(f"Loss Weight across Epochs (First Time Step)")
+    curr_dir = os.path.join(BASE_DIR, "timestep_lb")
+    loss_weight_file = os.path.join(curr_dir, "loss_weight_logs", f"model_loss_weight_0.csv")
+    loss_weight_df = pd.read_csv(loss_weight_file)
+    for k, label in loss_name_map.items():
+        ax.plot(loss_weight_df["epoch"], loss_weight_df[k], label=label)
+    ax.legend()
+    plt.tight_layout()
+    plt.savefig(fn)
+    plt.close()
+
+def plot_consumption_convergence(change_target_var={"e_hat": r"$\hat{e}$", "c_hat": r"$\hat{c}$"}):
+    change_dicts = {}
+    for k in ["timestep", "timestep_lb"]:
+        change_dicts[k] = pd.read_csv(os.path.join(BASE_DIR, k, "model_change_dict.csv"))
+    
+    for var in change_target_var:
+        fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(20, 10))
+        ax.set_xlabel("Time Step Iteration")
+        ax.set_ylabel(change_target_var[var])
+        ax.set_title(f"Convergence of {change_target_var[var]} across Time Steps")
+        for k, l, ls in [("timestep", "Time-stepping", "-"), ("timestep_lb", "Time-stepping (Loss Balancing)", ":")]:
+            change_df = change_dicts[k]
+            ax.plot(change_df["outer_loop_iter"], change_df[f"{var}_mean_val"], label=l, linestyle=ls)
+        ax.legend(loc="upper right")
+        plt.tight_layout()
+        plt.savefig(os.path.join(BASE_DIR, "plots", f"convergence_{var}.jpg"))
+        plt.close()
+
 if __name__ == "__main__":
     final_plot_dicts = {}
     os.makedirs(os.path.join(BASE_DIR, "plots"), exist_ok=True)
@@ -268,5 +309,9 @@ if __name__ == "__main__":
                 model.train_model(curr_dir, "model.pt", full_log=True)
         model.load_model(torch.load(os.path.join(curr_dir, "model_best.pt"), weights_only=False))
         final_plot_dicts[k] = compute_func(model, v_list, VARS_TO_PLOT)
+        gc.collect()
+        torch.cuda.empty_cache()
     plot_res(final_plot_dicts, PLOT_ARGS, v_list)
     plot_loss(os.path.join(BASE_DIR, "plots", "loss.jpg"))
+    plot_loss_weight(os.path.join(BASE_DIR, "plots", "loss_weight.jpg"))
+    plot_consumption_convergence()

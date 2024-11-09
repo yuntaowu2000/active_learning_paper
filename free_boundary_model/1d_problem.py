@@ -1,3 +1,4 @@
+import gc
 import os
 from typing import Dict, List, Union
 
@@ -235,6 +236,8 @@ def plot_models(model_system: PDEModel,
     for i, sv_name in enumerate(model_system.state_variables):
         model_system.variable_val_dict[sv_name] = SV[:, i:i+1]
     model_system.update_variables(SV)
+    for sys_name in model_system.systems:
+        model_system.systems[sys_name].eval({}, model_system.variable_val_dict)
     psi_system = model_system.variable_val_dict["psi"].detach().cpu().numpy().reshape(-1)
     q = model_system.variable_val_dict["q"].detach().cpu().numpy().reshape(-1)
     index_unconstrain = (psi_system < 1)
@@ -318,6 +321,8 @@ if __name__ == "__main__":
         plot_models(model_system, model_split, 
                     plot_dir, ["q", r"\psi", r"\sigma_t^q"], 
                     r"\eta")
+        gc.collect()
+        torch.cuda.empty_cache()
         if model_type == "KAN":
             x = model_system.sample(0)
             set_seeds(0)
@@ -350,6 +355,8 @@ if __name__ == "__main__":
                 f.write(f"psi={psi_formula}\n")
                 f.write("Region 2:\n")
                 f.write(f"q={q_formula_region2}\n")
+        gc.collect()
+        torch.cuda.empty_cache()
 
         
 

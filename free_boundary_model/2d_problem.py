@@ -1,3 +1,4 @@
+import gc
 import os
 from copy import deepcopy
 from typing import Any, Dict, List, Union
@@ -445,7 +446,7 @@ def plot_res(res_dicts: Dict[str, Dict[str, Any]], plot_args: Dict[str, Any], a_
 
 def plot_loss(fn):
     fig, ax = plt.subplots(nrows=3, ncols=1, figsize=(20, 30))
-    for i, region in enumerate(["Region 1 ($\psi < 1$)", "Region 2 ($\psi = 1$, $\epsilon_e > \epsilon_h$)", "Region 3 ($\psi = 1$, $\epsilon_e = \epsilon_h$)"]):
+    for i, region in enumerate([r"Region 1 ($\psi < 1$)", r"Region 2 ($\psi = 1$, $\epsilon_e > \epsilon_h$)", r"Region 3 ($\psi = 1$, $\epsilon_e = \epsilon_h$)"]):
         ax[i].set_xlabel("Epochs")
         ax[i].set_ylabel("Loss")
         ax[i].set_yscale("log")
@@ -480,6 +481,8 @@ if __name__ == "__main__":
             res_dicts[i] = res_dict
         final_plot_dict = compute_final_plot_dict(res_dicts[0], res_dicts[1], res_dicts[2], VARS_TO_PLOT, a_list)
         final_plot_dicts[k] = final_plot_dict
+        gc.collect()
+        torch.cuda.empty_cache()
     plot_res(final_plot_dicts, PLOT_ARGS, a_list)
     plot_loss(os.path.join(BASE_DIR, "plots", "loss.jpg"))
 
