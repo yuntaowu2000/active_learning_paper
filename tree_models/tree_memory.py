@@ -95,6 +95,9 @@ if __name__ == "__main__":
     for k in ALL_PARAMS:
         for curr_params in ALL_PARAMS[k]:
             n_tree = curr_params["n_trees"]
+            if n_tree == 100 and "rar" in k:
+                # A100 also gets OOM, so skip
+                continue
             print("{0:=^80}".format(f"{k} {n_tree}"))
             gc.collect()
             torch.cuda.empty_cache()
@@ -106,5 +109,5 @@ if __name__ == "__main__":
             model_lib.train_loop(curr_params)
             torch.cuda.memory._dump_snapshot(os.path.join(BASE_DIR, f"{k}_{n_tree}_memory_snapshot.pickle"))
             torch.cuda.memory._record_memory_history(None)
-            shutil.rmtree(curr_params["output_dir"], ignore_errors=True)
+    shutil.rmtree(curr_params["output_dir"], ignore_errors=True)
 

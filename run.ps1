@@ -1,0 +1,10 @@
+Set-Location .\free_boundary_model
+python 1d_problem.py
+python 2d_problem.py
+Set-Location ../stochastic_volatility_model
+python stochastic_volatility_model.py
+Set-Location ../tree_models
+python tree2_validation.py
+python tree3_rar.py
+python tree50.py
+Set-Location ../

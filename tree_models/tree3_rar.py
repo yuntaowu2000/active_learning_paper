@@ -163,7 +163,7 @@ def plot_variables_on_high_residuals(param_base, param_rar):
             ax[i].set_ylabel(PLOT_ARGS[var]["ylabel"])
             ax[i].legend(loc="lower right")
         plt.tight_layout()
-        plt.savefig(os.path.join(PLOT_DIR, f"{var}_high_residuals.png"))
+        plt.savefig(os.path.join(PLOT_DIR, f"{var}_high_residuals.jpg"))
         plt.close()
 
 def plot_kappas(fn: str):
@@ -195,7 +195,7 @@ if __name__ == "__main__":
             model_lib = ts_model
         if not os.path.exists(os.path.join(curr_params["output_dir"], "model.pt")):
             model_lib.train_loop(curr_params)
-    plot_min_loss(os.path.join(PLOT_DIR, "min_loss.png"))
-    plot_residual_points(os.path.join(PLOT_DIR, "residual_points.png"))
+    plot_min_loss(os.path.join(PLOT_DIR, "min_loss.jpg"))
+    plot_residual_points(os.path.join(PLOT_DIR, "residual_points.jpg"))
     plot_variables_on_high_residuals(TIMESTEP_PARAMS, TIMESTEP_RAR_PARAMS)
-    plot_kappas(os.path.join(PLOT_DIR, "kappa.png"))
+    plot_kappas(os.path.join(PLOT_DIR, "kappa.jpg"))

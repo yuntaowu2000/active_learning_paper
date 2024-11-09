@@ -54,7 +54,7 @@ RAR_PARAMS["resample_times"] = para.RESAMPLE_TIMES
 
 ALL_PARAMS = {
     "basic": BASE_PARAMS,
-    # "basic_rar": RAR_PARAMS,
+    "basic_rar": RAR_PARAMS,
     "timestep": TIMESTEP_PARAMS,
     "timestep_rar": TIMESTEP_RAR_PARAMS
 }
@@ -90,7 +90,7 @@ def plot_res(res_dicts: Dict[str, Dict[str, Any]], plot_args: Dict[str, Any]):
     
     for i, (func_name, plot_arg) in enumerate(plot_args.items()):
         fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(10, 10))
-        for k, l, ls in [("fd", "Finite Difference", "-."), ("basic", "Basic", "--"), ("timestep", "Time-stepping", "-"), ("timestep_rar", "Time-stepping (RAR)", ":")]:
+        for k, l, ls in [("fd", "Finite Difference", "-."), ("basic", "Basic", "--"), ("basic_rar", "Basic (RAR)", ":"), ("timestep", "Time-stepping", "-"), ("timestep_rar", "Time-stepping (RAR)", ":")]:
             res_dict = res_dicts[k].copy()
             x_plot = res_dict.pop("x_plot")
             y_vals = res_dict[f"{func_name}"]

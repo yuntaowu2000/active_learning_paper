@@ -99,6 +99,9 @@ if __name__ == "__main__":
         time_df = pd.DataFrame(columns=[f"n_{n_tree}_total_time" for n_tree in N_TREES] + [f"n_{n_tree}_epoch_time" for n_tree in N_TREES])
         for curr_params in ALL_PARAMS[k]:
             n_tree = curr_params["n_trees"]
+            if n_tree == 100 and "rar" in k:
+                # A100 also gets OOM, so skip
+                continue
             print("{0:=^80}".format(f"{k} {n_tree}"))
             gc.collect()
             torch.cuda.empty_cache()
@@ -110,7 +113,7 @@ if __name__ == "__main__":
                 total_time, epoch_time =model_lib.train_loop(curr_params)
                 time_df.loc[i, f"n_{n_tree}_total_time"] = total_time
                 time_df.loc[i, f"n_{n_tree}_epoch_time"] = epoch_time
-                shutil.rmtree(curr_params["output_dir"], ignore_errors=True)
         time_df.to_csv(os.path.join(BASE_DIR, f"{k}_timing.csv"))
     plot_timing()
+    shutil.rmtree(curr_params["output_dir"], ignore_errors=True)
 

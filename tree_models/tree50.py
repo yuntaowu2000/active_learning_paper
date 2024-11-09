@@ -94,6 +94,6 @@ if __name__ == "__main__":
         if not os.path.exists(os.path.join(curr_params["output_dir"], "model.pt")):
             model_lib.train_loop(curr_params)
             model_lib.distribution_plot(curr_params, 1000)
-    plot_min_loss(os.path.join(PLOT_DIR, "min_loss.png"))
-    plot_kappas(os.path.join(PLOT_DIR, "kappa.png"))
+    plot_min_loss(os.path.join(PLOT_DIR, "min_loss.jpg"))
+    plot_kappas(os.path.join(PLOT_DIR, "kappa.jpg"))
     
