@@ -71,7 +71,7 @@ def plot_timing():
     ax.legend(loc="upper left")
     ax.set_title("Training Time (Total)")
     plt.tight_layout()
-    plt.savefig(os.path.join(PLOT_DIR, "training_time_total.png"))
+    plt.savefig(os.path.join(PLOT_DIR, "training_time_total.jpg"))
 
 
     fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(10, 10))
@@ -87,7 +87,7 @@ def plot_timing():
     ax.legend(loc="upper left")
     ax.set_title("Training Time (Per Epoch)")
     plt.tight_layout()
-    plt.savefig(os.path.join(PLOT_DIR, "training_time_per_epoch.png"))
+    plt.savefig(os.path.join(PLOT_DIR, "training_time_per_epoch.jpg"))
 
 
 

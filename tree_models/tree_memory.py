@@ -10,8 +10,10 @@ import pandas as pd
 import para
 import seaborn as sns
 import torch
+import torch.optim as optim
 import tree_model_hd_multioutput_rar as base_model
 import tree_model_ts_hd_multioutput_rar as ts_model
+from torch.profiler import ProfilerActivity, profile, record_function
 
 plt.rcParams["font.size"] = 15
 
@@ -50,50 +52,39 @@ for n_tree, mu_sig, sampling_method in para.num_tree_mu_sig:
     ALL_PARAMS["timestep_rar"].append(rar_para)
     N_TREES.append(n_tree)
 
-def plot_timing():
-    dfs: Dict[str, pd.DataFrame] = {}
+def plot_mem_usage_flops():
+    dfs = {}
     for k in ALL_PARAMS:
-        dfs[k] = pd.read_csv(os.path.join(BASE_DIR, f"{k}_timing.csv"))
-    
-    TOTAL_LABELS = [f"n_{n_tree}_total_time" for n_tree in N_TREES]
-    EPOCH_LABELS = [f"n_{n_tree}_epoch_time" for n_tree in N_TREES]
+        dfs[k] = pd.read_csv(os.path.join(BASE_DIR, f"{k}_memory.csv"))
+    fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(10, 10))
+    for k, l, ls in [("basic", "Basic", "--"), ("basic_rar", "Basic (RAR)", "-."), ("timestep", "Time-stepping", "-"), ("timestep_rar", "Time-stepping (RAR)", ":")]:
+        df = dfs[k]
+        ax.plot(df["n_trees"], df["cuda_memory_total"], label=l, linestyle=ls)
+    ax.set_xlabel("Number of Trees")
+    ax.set_ylabel("CUDA Memory (MB)")
+    ax.legend(loc="upper left")
+    ax.set_title("CUDA Memory Usage (Total)")
+    plt.tight_layout()
+    plt.savefig(os.path.join(PLOT_DIR, "total_cuda_memory_usage.jpg"))
 
     fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(10, 10))
     for k, l, ls in [("basic", "Basic", "--"), ("basic_rar", "Basic (RAR)", "-."), ("timestep", "Time-stepping", "-"), ("timestep_rar", "Time-stepping (RAR)", ":")]:
         df = dfs[k]
-        df_mean = df.mean(axis=0)
-        df_5tile = df.quantile(q=0.05, axis=0)
-        df_95tile = df.quantile(q=0.95, axis=0)
-        ax.plot(N_TREES, df_mean[TOTAL_LABELS], label=l, linestyle=ls)
-        ax.fill_between(N_TREES, df_5tile[TOTAL_LABELS], df_95tile[TOTAL_LABELS], alpha=0.2, color="gray")
+        ax.plot(df["n_trees"], df["flops_total"], label=l, linestyle=ls)
     ax.set_xlabel("Number of Trees")
-    ax.set_ylabel("Time (s)")
+    ax.set_ylabel("GFLOPS")
     ax.legend(loc="upper left")
-    ax.set_title("Training Time (Total)")
+    ax.set_title("Number of FLOPS (Total)")
     plt.tight_layout()
-    plt.savefig(os.path.join(PLOT_DIR, "training_time_total.png"))
-
-
-    fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(10, 10))
-    for k, l, ls in [("basic", "Basic", "--"), ("basic_rar", "Basic (RAR)", "-."), ("timestep", "Time-stepping", "-"), ("timestep_rar", "Time-stepping (RAR)", ":")]:
-        df = dfs[k]
-        df_mean = df.mean(axis=0)
-        df_5tile = df.quantile(q=0.05, axis=0)
-        df_95tile = df.quantile(q=0.95, axis=0)
-        ax.plot(N_TREES, df_mean[EPOCH_LABELS], label=l, linestyle=ls)
-        ax.fill_between(N_TREES, df_5tile[EPOCH_LABELS], df_95tile[EPOCH_LABELS], alpha=0.2, color="gray")
-    ax.set_xlabel("Number of Trees")
-    ax.set_ylabel("Time (s)")
-    ax.legend(loc="upper left")
-    ax.set_title("Training Time (Per Epoch)")
-    plt.tight_layout()
-    plt.savefig(os.path.join(PLOT_DIR, "training_time_per_epoch.png"))
-
+    plt.savefig(os.path.join(PLOT_DIR, "total_flops.jpg"))
 
 
 if __name__ == "__main__":
     for k in ALL_PARAMS:
-        for curr_params in ALL_PARAMS[k]:
+        if os.path.exists(os.path.join(BASE_DIR, f"{k}_memory.csv")):
+            continue
+        res_df = pd.DataFrame(columns=["n_trees", "cuda_memory_total", "flops_total"])
+        for i_param, curr_params in enumerate(ALL_PARAMS[k]):
             n_tree = curr_params["n_trees"]
             if n_tree == 100 and "rar" in k:
                 # A100 also gets OOM, so skip
@@ -105,9 +96,81 @@ if __name__ == "__main__":
                 model_lib = base_model
             elif "timestep" in k:
                 model_lib = ts_model
-            torch.cuda.memory._record_memory_history(context=None, stacks="python")
-            model_lib.train_loop(curr_params)
-            torch.cuda.memory._dump_snapshot(os.path.join(BASE_DIR, f"{k}_{n_tree}_memory_snapshot.pickle"))
-            torch.cuda.memory._record_memory_history(None)
-    shutil.rmtree(curr_params["output_dir"], ignore_errors=True)
+            gc.collect()
+            torch.cuda.empty_cache()
+
+            # profile a single forward + backward pass to get the total FLOPS
+            # Note that profiler will significantly slow down the training process, so the timing is not accurate anymore.
+            np.random.seed(42)
+            torch.manual_seed(42)
+            TP = model_lib.Training_pde(curr_params)
+            TS = model_lib.Training_Sampler(curr_params)
+            kappa_nn = model_lib.Net1(curr_params, positive=True, sigmoid=False).to(model_lib.device)
+            para_nn = list(kappa_nn.parameters())
+            optimizer = optim.Adam(para_nn, lr=curr_params['lr'])
+            with profile(activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA], record_shapes=True, profile_memory=True, with_flops=True) as prof:
+                with record_function("single_step"):
+                    if "timestep" in k:
+                        nn_dict = {"kappa": kappa_nn}
+                        SV_T0 = TS.sample_boundary_cond(0.0).to(model_lib.device)
+                        SV_T0.requires_grad_(True)
+                        SV_T1 = TS.sample_boundary_cond(1.0).to(model_lib.device)
+                        SV_T1.requires_grad_(True)
+                        prev_vals: Dict[str, torch.Tensor] = {}
+                        for nn in nn_dict:
+                            prev_vals[nn] = torch.ones_like(SV_T0[:, 0:1], device=model_lib.device)
+                        Z = TS.sample().to(model_lib.device)
+                        if "rar" in k:
+                            anchor_points = TS.sample_rar(kappa_nn, TP).to(model_lib.device)
+                            Z = torch.vstack([Z, anchor_points])
+                        Z.requires_grad_(True)
+                    else:
+                        if "rar" in k:
+                            TS.sample_rar(kappa_nn, TP)
+                        Z = TS.sample().to(model_lib.device)
+                        Z.requires_grad_(True)
+                    total_loss, hjb_kappas_, consistency_kappas_ = TP.loss_fun_Net1(kappa_nn, Z)
+                    if "timestep" in k:
+                        loss_time_boundary = 0.
+                        for name, model in nn_dict.items():
+                            loss_time_boundary += torch.mean(torch.square(model(SV_T1) - prev_vals[name]))
+                        total_loss += loss_time_boundary
+                    optimizer.zero_grad()
+                    total_loss.backward()
+                    optimizer.step()
+            key_avgs = prof.key_averages()
+            main_loop_res = None
+            total_flops = 0
+            for i in range(len(key_avgs)):
+                total_flops += key_avgs[i].flops
+                if "single_step" in key_avgs[i].key:
+                    main_loop_res = key_avgs[i]
+            
+            res_df.loc[i_param, "n_trees"] = n_tree
+            res_df.loc[i_param, "cuda_memory_total"] = f"{main_loop_res.self_cuda_memory_usage / 1024**2:.2f}" 
+            res_df.loc[i_param, "flops_total"] = f"{total_flops / 10**9:.2f}"
+
+            gc.collect()
+            torch.cuda.empty_cache()
+        res_df.to_csv(os.path.join(BASE_DIR, f"{k}_memory.csv"), index=False)
+    try:
+        shutil.rmtree(curr_params["output_dir"], ignore_errors=True)
+    except:
+        pass
+    final_df = []
+    for k in ALL_PARAMS:
+        res_df = pd.read_csv(os.path.join(BASE_DIR, f"{k}_memory.csv"))
+        res_df["model"] = [k for _ in range(len(res_df))]
+        final_df.append(res_df)
+    final_df = pd.concat(final_df)
+    final_df = final_df.set_index(["model", "n_trees"])
+    ltx = final_df.style.format("{:.2f}", subset=["cuda_memory_total", "flops_total"]).to_latex(column_format="ll" + "c" * len(final_df.columns), multirow_align="t", hrules=True)
+    ltx = ltx.replace(" &  & cuda_memory_total & flops_total \\\\\nmodel & n_trees &  &  \\\\", 
+r"""Model & N-Trees & CUDA Memory (MB) & GFLOPS\\""")
+    ltx = ltx.replace(r"\midrule", r"\cmidrule(lr){3-4}")
+    for k, v in [("basic_rar", "Basic (RAR)"), ("timestep_rar", "Time-stepping (RAR)"), ("basic", "Basic"), ("timestep", "Time-stepping")]:
+        ltx = ltx.replace(k, v)
+    with open(os.path.join(BASE_DIR, "memory_usage.tex"), "w") as f:
+        f.write(ltx)
+    plot_mem_usage_flops()
 
