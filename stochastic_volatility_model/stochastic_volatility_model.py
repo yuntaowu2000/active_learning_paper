@@ -11,7 +11,9 @@ from deep_macrofin import (ActivationType, Comparator, OptimizerType, PDEModel,
                            PDEModelTimeStep, SamplingMethod, set_seeds)
 
 
-plt.rcParams["font.size"] = 15
+plt.rcParams["font.size"] = 20
+plt.rcParams["lines.linewidth"] = 3
+plt.rcParams["lines.markersize"] = 10
 
 BASE_DIR = "./models/StochasticVolatility"
 os.makedirs(BASE_DIR, exist_ok=True)
@@ -86,6 +88,7 @@ PLOT_ARGS = {
     "r": {"ylabel": r"$r$", "title": r"Risk-Free Rate"},
 }
 v_list = [0.1, 0.25, 0.6]
+COLORS = ["red", "orange", "blue"]
 
 MODEL_CONFIGS = {
     "Agents": {
@@ -219,21 +222,42 @@ def compute_func(pde_model: Union[PDEModel, PDEModelTimeStep], v_list, vars_to_p
 
 def plot_res(res_dicts: Dict[str, Dict[str, Any]], plot_args: Dict[str, Any], v_list: List[float]):
     x_label = "Wealth share of experts (x)"
-    
+
     for i, (func_name, plot_arg) in enumerate(plot_args.items()):
         fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(10, 10))
-        for k, l, ls in [("basic", "Basic", "--"), ("timestep", "Time-stepping", "-"), ("timestep_lb", "Time-stepping (Loss Balancing)", ":")]:
+        for k, l, ls, marker in [("timestep_lb", "Our Method", "-", "")]:
             res_dict = res_dicts[k].copy()
             x_plot = res_dict.pop("x_plot")
-            for v in v_list:
+            for i in range(len(v_list)):
+                v = v_list[i]
+                color = COLORS[i]
                 y_vals = res_dict[f"{func_name}_{v}"]
-                ax.plot(x_plot, y_vals, label=r"$v$={i} ({l})".format(i=round(v,2), l=l), linestyle=ls)
+                ax.plot(x_plot, y_vals, label=r"$v$={i} ({l})".format(i=round(v,2), l=l), linestyle=ls, color=color, marker=marker)
         ax.set_xlabel(x_label)
         ax.set_ylabel(plot_arg["ylabel"])
         ax.set_title(plot_arg["title"])
         ax.legend()
         plt.tight_layout()
         fn = os.path.join(BASE_DIR, "plots", f"{func_name}.jpg")
+        plt.savefig(fn)
+        plt.close()
+    
+    for i, (func_name, plot_arg) in enumerate(plot_args.items()):
+        fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(10, 10))
+        for k, l, ls, marker in [("basic", "Basic Neural Network", "--", "x"), ("timestep_lb", "Our Method", "-", "")]:
+            res_dict = res_dicts[k].copy()
+            x_plot = res_dict.pop("x_plot")
+            for i in range(len(v_list)):
+                v = v_list[i]
+                color = COLORS[i]
+                y_vals = res_dict[f"{func_name}_{v}"]
+                ax.plot(x_plot, y_vals, label=r"$v$={i} ({l})".format(i=round(v,2), l=l), linestyle=ls, color=color, marker=marker)
+        ax.set_xlabel(x_label)
+        ax.set_ylabel(plot_arg["ylabel"])
+        ax.set_title(plot_arg["title"])
+        ax.legend()
+        plt.tight_layout()
+        fn = os.path.join(BASE_DIR, "plots", f"{func_name}_compare.jpg")
         plt.savefig(fn)
         plt.close()
 
@@ -243,7 +267,7 @@ def plot_loss(fn):
     ax.set_ylabel("Loss")
     ax.set_yscale("log")
     ax.set_title(f"Total Loss across Epochs")
-    for k, l, ls in [("basic", "Basic", "--"), ("timestep", "Time-stepping", "-"), ("timestep_lb", "Time-stepping (Loss Balancing)", ":")]:
+    for k, l, ls in [("basic", "Basic Neural Network", "--"), ("timestep", "Time-stepping", "-."), ("timestep_lb", "Our Method", "-")]:
         curr_dir = os.path.join(BASE_DIR, k)
         loss_file = os.path.join(curr_dir, f"model_min_loss.csv")
         loss_df = pd.read_csv(loss_file)
@@ -285,7 +309,7 @@ def plot_consumption_convergence(change_target_var={"e_hat": r"$\hat{e}$", "c_ha
         ax.set_xlabel("Time Step Iteration")
         ax.set_ylabel(change_target_var[var])
         ax.set_title(f"Convergence of {change_target_var[var]} across Time Steps")
-        for k, l, ls in [("timestep", "Time-stepping", "-"), ("timestep_lb", "Time-stepping (Loss Balancing)", ":")]:
+        for k, l, ls in [("timestep", "Time-stepping", "-."), ("timestep_lb", "Our Method", "-")]:
             change_df = change_dicts[k]
             ax.plot(change_df["outer_loop_iter"], change_df[f"{var}_mean_val"], label=l, linestyle=ls)
         ax.legend(loc="upper right")

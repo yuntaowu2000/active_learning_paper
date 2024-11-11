@@ -10,7 +10,9 @@ from deep_macrofin import (ActivationType, Comparator, Constraint, LayerType,
                            LossReductionMethod, OptimizerType, PDEModel,
                            SamplingMethod, System, set_seeds)
 
-plt.rcParams["font.size"] = 15
+plt.rcParams["font.size"] = 20
+plt.rcParams["lines.linewidth"] = 3
+plt.rcParams["lines.markersize"] = 10
 
 BASE_DIR = "./models/FreeBoundary1D"
 os.makedirs(BASE_DIR, exist_ok=True)
@@ -38,6 +40,13 @@ LATEX_VAR_MAPPING = {
     r"\iota": "iota",
     r"\Phi": "phi",
 
+}
+
+VARS_TO_PLOT = ["q", "psi", "sigq"]
+PLOT_ARGS = {
+    "q": {"ylabel": r"$q$", "title": r"Price"},
+    "psi": {"ylabel": r"$\psi$", "title": r"Capital Share: Experts"},
+    "sigq": {"ylabel": r"$\sigma^q$", "title": r"Price return diffusion"},
 }
 
 PROBLEM_DOMAIN = {
@@ -213,18 +222,17 @@ def add_model_equations(model: Union[PDEModel, Dict[str, PDEModel]]):
 def plot_models(model_system: PDEModel, 
                 model_split: Dict[str, PDEModel],
                 output_folder: str,
-                vars_to_plot_ltx: List[str],
                 x_var_ltx = r"$\eta$",):
     
     ## Finite Difference Solution
     df = pd.read_csv("models/BruSan14_log_utility_solution-raw.csv")
     plot_args_base = []
     x_plot_base = df["e"]
-    for var in vars_to_plot_ltx:
+    for var in VARS_TO_PLOT:
         plot_args_base.append({
             "y": df[LATEX_VAR_MAPPING.get(var, var)],
-            "ylabel": rf"${var}$",
-            "title": rf"${var}$ vs. ${x_var_ltx}$"
+            "ylabel": PLOT_ARGS[var]["ylabel"],
+            "title": PLOT_ARGS[var]["title"]
         })
 
     ## Baseline no split solution
@@ -242,7 +250,7 @@ def plot_models(model_system: PDEModel,
     q = model_system.variable_val_dict["q"].detach().cpu().numpy().reshape(-1)
     index_unconstrain = (psi_system < 1)
     index_constrain = (psi_system >= 1)
-    for var in vars_to_plot_ltx:
+    for var in VARS_TO_PLOT:
         if LATEX_VAR_MAPPING.get(var, var) == "q":
             res = q
         elif LATEX_VAR_MAPPING.get(var, var) == "psi":
@@ -253,8 +261,8 @@ def plot_models(model_system: PDEModel,
             res = region1_sol * index_unconstrain + region2_sol * index_constrain
         plot_dict_model_system.append({
             "y": res,
-            "ylabel": rf"${var}$",
-            "title": rf"${var}$ vs. ${x_var_ltx}$"
+            "ylabel": PLOT_ARGS[var]["ylabel"],
+            "title": PLOT_ARGS[var]["title"]
         })
 
     ## Split Solution
@@ -267,7 +275,7 @@ def plot_models(model_system: PDEModel,
     index_unconstrain = (psi_region1 < 1)
     index_constrain = (psi_region1 >= 1)
 
-    for var in vars_to_plot_ltx:
+    for var in VARS_TO_PLOT:
         region1_sol = model_split["region1"].variable_val_dict[LATEX_VAR_MAPPING.get(var, var)].detach().cpu().numpy().reshape(-1)
         if LATEX_VAR_MAPPING.get(var, var) == "psi":
             region2_sol = 1
@@ -280,16 +288,16 @@ def plot_models(model_system: PDEModel,
             "title": rf"${var}$ vs. ${x_var_ltx}$"
         })
     
-    for i, var in enumerate(vars_to_plot_ltx):
+    for i, var in enumerate(VARS_TO_PLOT):
         fn = os.path.join(output_folder, f"{LATEX_VAR_MAPPING.get(var, var)}.jpg")
         fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(10, 10))
-        ax.plot(x_plot_base, plot_args_base[i]["y"], linestyle="-.", label="Finite Difference")
+        ax.plot(x_plot_base, plot_args_base[i]["y"], linestyle="-.", marker="x", label="Finite Difference")
 
-        ax.plot(x_plot, plot_dict_model_system[i]["y"], linestyle="--", label="Our Method (Single Neural Network)")
+        ax.plot(x_plot, plot_dict_model_system[i]["y"], linestyle="--", label="Basic Neural Network")
 
-        ax.plot(x_plot, plot_dict_model_split[i]["y"], linestyle="-", label="Our Method (Splitted)")
+        ax.plot(x_plot, plot_dict_model_split[i]["y"], linestyle="-", label="Our Method")
         ax.set_ylabel(plot_args_base[i]["ylabel"])
-        ax.set_xlabel(x_var_ltx)
+        ax.set_xlabel(f"${x_var_ltx}$")
         ax.legend()
         ax.set_title(plot_args_base[i]["title"])
         plt.tight_layout()
@@ -319,7 +327,7 @@ if __name__ == "__main__":
                 model_split[k].train_model(os.path.join(BASE_DIR, model_type, "split"), f"{k}.pt", full_log=True)
             model_split[k].load_model(torch.load(os.path.join(BASE_DIR, model_type, "split", f"{k}_best.pt"), weights_only=False))
         plot_models(model_system, model_split, 
-                    plot_dir, ["q", r"\psi", r"\sigma_t^q"], 
+                    plot_dir,
                     r"\eta")
         gc.collect()
         torch.cuda.empty_cache()

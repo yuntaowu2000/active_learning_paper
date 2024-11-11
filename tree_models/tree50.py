@@ -14,7 +14,9 @@ import torch
 import tree_model_hd_multioutput_rar as base_model
 import tree_model_ts_hd_multioutput_rar as ts_model
 
-plt.rcParams["font.size"] = 15
+plt.rcParams["font.size"] = 20
+plt.rcParams["lines.linewidth"] = 3
+plt.rcParams["lines.markersize"] = 10
 
 BASE_DIR = "./models/Tree50"
 PLOT_DIR = os.path.join(BASE_DIR, "plots")
@@ -54,7 +56,7 @@ def plot_min_loss(fn):
     ax.set_ylabel("Loss")
     ax.set_yscale("log")
     ax.set_title(f"Total Loss across Epochs")
-    for k, l, ls in [("timestep", "Time-stepping", "-"), ("timestep_rar", "Time-stepping (RAR)", ":")]:
+    for k, l, ls in [("timestep", "Time-stepping", "-."), ("timestep_rar", "Our Method", "-")]:
         curr_dir = os.path.join(BASE_DIR, k)
         loss_file = os.path.join(curr_dir, f"min_loss.csv")
         loss_df = pd.read_csv(loss_file)
@@ -67,7 +69,7 @@ def plot_min_loss(fn):
 def plot_kappas(fn: str):
     fig, ax = plt.subplots(1, 1, figsize=(20, 10))
 
-    for k, l, ls in [("basic", "Basic", "--"), ("basic_rar", "Basic (RAR)", "-."), ("timestep", "Time-stepping", "-"), ("timestep_rar", "Time-stepping (RAR)", ":")]:
+    for k, l, ls in [("basic", "Basic Neural Network", "--"), ("timestep", "Time-stepping", "-."), ("timestep_rar", "Our Method", "-")]:
         curr_params = ALL_PARAMS[k]
         kappa_df = pd.read_csv(os.path.join(BASE_DIR, k, "kappa_val.csv"))
         kappa_cols = [f"kappa_{i+1}" for i in range(curr_params["n_trees"])]

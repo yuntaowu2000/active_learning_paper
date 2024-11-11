@@ -108,7 +108,7 @@ if __name__ == "__main__":
             kappa_nn = model_lib.Net1(curr_params, positive=True, sigmoid=False).to(model_lib.device)
             para_nn = list(kappa_nn.parameters())
             optimizer = optim.Adam(para_nn, lr=curr_params['lr'])
-            with profile(activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA], record_shapes=True, profile_memory=True, with_flops=True) as prof:
+            with profile(activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA], record_shapes=False, profile_memory=True, with_flops=True) as prof:
                 with record_function("single_step"):
                     if "timestep" in k:
                         nn_dict = {"kappa": kappa_nn}
@@ -143,11 +143,15 @@ if __name__ == "__main__":
             total_flops = 0
             for i in range(len(key_avgs)):
                 total_flops += key_avgs[i].flops
-                if "single_step" in key_avgs[i].key:
+                if main_loop_res is None and "single_step" in key_avgs[i].key:
                     main_loop_res = key_avgs[i]
             
             res_df.loc[i_param, "n_trees"] = n_tree
-            res_df.loc[i_param, "cuda_memory_total"] = f"{main_loop_res.self_cuda_memory_usage / 1024**2:.2f}" 
+            if hasattr(main_loop_res, "self_cuda_memory_usage"):
+                mem_usage = main_loop_res.self_cuda_memory_usage / 1024**2
+            elif hasattr(main_loop_res, "self_device_memory_usage"):
+                mem_usage = main_loop_res.self_device_memory_usage / 1024**2
+            res_df.loc[i_param, "cuda_memory_total"] = f"{mem_usage:.2f}"
             res_df.loc[i_param, "flops_total"] = f"{total_flops / 10**9:.2f}"
 
             gc.collect()

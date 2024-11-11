@@ -10,7 +10,9 @@ import torch
 from deep_macrofin import (ActivationType, Comparator, OptimizerType, PDEModel,
                            PDEModelTimeStep, SamplingMethod, set_seeds)
 
-plt.rcParams["font.size"] = 15
+plt.rcParams["font.size"] = 20
+plt.rcParams["lines.linewidth"] = 3
+plt.rcParams["lines.markersize"] = 10
 
 BASE_DIR = "./models/FreeBoundary2D"
 os.makedirs(BASE_DIR, exist_ok=True)
@@ -78,6 +80,7 @@ a_min = 0.1
 a_max = 0.2
 ae_bar = (a_min + a_max) / 2
 a_list = [a_min, ae_bar, a_max]
+COLORS = ["red", "orange", "blue"]
 PARAMS = {
     "ah": 0.03,
     "sig": 0.1,
@@ -98,24 +101,32 @@ PARAMS = {
 STATES = ["z", "ae"] 
 PROBLEM_DOMAIN = {"z": [z_min, z_max], "ae": [a_min, a_max]}
 
-VARS_TO_PLOT = ["q", "thetae", "thetah", "psi", "sigsigqk", "sigqa", "epse", "epsh",
-                "zmuz", "zsigzk", "zsigza", "zetae_k", "zetae_a", "zetah_k", "zetah_a", "Je", "Jh"]
+# VARS_TO_PLOT = ["q", "thetae", "thetah", "psi", "sigsigqk", "sigqa", "epse", "epsh",
+#                 "zmuz", "zsigzk", "zsigza", "zetae_k", "zetae_a", "zetah_k", "zetah_a", "Je", "Jh"]
+# PLOT_ARGS = {
+#     "q": {"ylabel": r"$q$", "title": r"Price"},
+#     "thetae": {"ylabel": r"$\theta_e$", "title": r"Portfolio Choice: Experts"},
+#     "thetah": {"ylabel": r"$\theta_h$", "title": r"Portfolio Choice: Households"},
+#     "psi": {"ylabel": r"$\psi$", "title": r"Capital Share: Experts"},
+#     "sigsigqk": {"ylabel": r"$\sigma+\sigma^{q,k}$", "title": r"Price return diffusion (capital shock)"},
+#     "sigqa": {"ylabel": r"$\sigma^{q,a}$", "title": r"Price return diffusion (productivity shock)"},
+#     "zmuz": {"ylabel": r"$z\mu^z$", "title": r"Drift of wealth share: Experts"},
+#     "zsigzk": {"ylabel": r"$z\sigma^{z,k}$", "title": r"Diffusion of wealth share (capital shock)"},
+#     "zsigza": {"ylabel": r"$z\sigma^{z,a}$", "title": r"Diffusion of wealth share (productivity shock)"},
+#     "zetae_k": {"ylabel": r"$\zeta_e^k$", "title": r"Experts price of risk: capital shock"},
+#     "zetae_a": {"ylabel": r"$\zeta_e^a$", "title": r"Experts price of risk: productivity shock"},
+#     "zetah_k": {"ylabel": r"$\zeta_h^k$", "title": r"Households price of risk: capital shock"},
+#     "zetah_a": {"ylabel": r"$\zeta_h^a$", "title": r"Households price of risk: productivity shock"},
+#     "Je": {"ylabel": r"$J_e$", "title": r"Expert Value Function"},
+#     "Jh": {"ylabel": r"$J_h$", "title": r"Households Value Function"},
+# }
+
+VARS_TO_PLOT = ["epse", "epsh","psi", "sigsigqk", "thetae", "omega"]
 PLOT_ARGS = {
-    "q": {"ylabel": r"$q$", "title": r"Price"},
-    "thetae": {"ylabel": r"$\theta_e$", "title": r"Portfolio Choice: Experts"},
-    "thetah": {"ylabel": r"$\theta_h$", "title": r"Portfolio Choice: Households"},
     "psi": {"ylabel": r"$\psi$", "title": r"Capital Share: Experts"},
     "sigsigqk": {"ylabel": r"$\sigma+\sigma^{q,k}$", "title": r"Price return diffusion (capital shock)"},
-    "sigqa": {"ylabel": r"$\sigma^{q,a}$", "title": r"Price return diffusion (productivity shock)"},
-    "zmuz": {"ylabel": r"$z\mu^z$", "title": r"Drift of wealth share: Experts"},
-    "zsigzk": {"ylabel": r"$z\sigma^{z,k}$", "title": r"Diffusion of wealth share (capital shock)"},
-    "zsigza": {"ylabel": r"$z\sigma^{z,a}$", "title": r"Diffusion of wealth share (productivity shock)"},
-    "zetae_k": {"ylabel": r"$\zeta_e^k$", "title": r"Experts price of risk: capital shock"},
-    "zetae_a": {"ylabel": r"$\zeta_e^a$", "title": r"Experts price of risk: productivity shock"},
-    "zetah_k": {"ylabel": r"$\zeta_h^k$", "title": r"Households price of risk: capital shock"},
-    "zetah_a": {"ylabel": r"$\zeta_h^a$", "title": r"Households price of risk: productivity shock"},
-    "Je": {"ylabel": r"$J_e$", "title": r"Expert Value Function"},
-    "Jh": {"ylabel": r"$J_h$", "title": r"Households Value Function"},
+    "thetae": {"ylabel": r"$\theta_e$", "title": r"Portfolio Choice: Experts"},
+    "omega": {"ylabel": r"$\Omega=J_e/J_h$", "title": r"Ratio of Value Functions ($\Omega=J_e/J_h$)"},
 }
 
 MODEL_CONFIGS = {
@@ -404,6 +415,8 @@ def compute_func(pde_model: Union[PDEModel, PDEModelTimeStep], a_list, z_min, z_
         for var in vars_to_plot:
             if var in pde_model.variable_val_dict:
                 res_dict[f"{var}_{a}"] = pde_model.variable_val_dict[var].detach().cpu().numpy().reshape(-1)
+            elif var == "omega":
+                res_dict[f"{var}_{a}"] = pde_model.variable_val_dict["Je"].detach().cpu().numpy().reshape(-1) / pde_model.variable_val_dict["Jh"].detach().cpu().numpy().reshape(-1)
             elif var == "psi":
                 res_dict[f"psi_{a}"] = np.ones(N)
     return res_dict
@@ -428,18 +441,38 @@ def plot_res(res_dicts: Dict[str, Dict[str, Any]], plot_args: Dict[str, Any], a_
     
     for i, (func_name, plot_arg) in enumerate(plot_args.items()):
         fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(10, 10))
-        for k, l, ls in [("basic", "Basic", "--"), ("timestep", "Time-stepping", "-"), ("timestep_rar", "Time-stepping (RAR)", ":")]:
+        for k, l, ls in [("timestep_rar", "Our Method", "-")]:
             res_dict = res_dicts[k].copy()
             x_plot = res_dict.pop("x_plot")
-            for a in a_list:
+            for i in range(len(a_list)):
+                a = a_list[i]
+                color = COLORS[i]
                 y_vals = res_dict[f"{func_name}_{a}"]
-                ax.plot(x_plot, y_vals, label=r"$a_e$={i} ({l})".format(i=round(a,2), l=l), linestyle=ls)
+                ax.plot(x_plot, y_vals, label=r"$a_e$={i} ({l})".format(i=round(a,2), l=l), linestyle=ls, color=color)
         ax.set_xlabel(x_label)
         ax.set_ylabel(plot_arg["ylabel"])
         ax.set_title(plot_arg["title"])
         ax.legend()
         plt.tight_layout()
         fn = os.path.join(BASE_DIR, "plots", f"{func_name}.jpg")
+        plt.savefig(fn)
+        plt.close()
+
+        fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(10, 10))
+        for k, l, ls, marker in [("basic", "Basic Neural Network", "--", "x"), ("timestep_rar", "Our Method", "-", "")]:
+            res_dict = res_dicts[k].copy()
+            x_plot = res_dict.pop("x_plot")
+            for i in range(len(a_list)):
+                a = a_list[i]
+                color = COLORS[i]
+                y_vals = res_dict[f"{func_name}_{a}"]
+                ax.plot(x_plot, y_vals, label=r"$a_e$={i} ({l})".format(i=round(a,2), l=l), linestyle=ls, marker=marker, color=color)
+        ax.set_xlabel(x_label)
+        ax.set_ylabel(plot_arg["ylabel"])
+        ax.set_title(plot_arg["title"])
+        ax.legend()
+        plt.tight_layout()
+        fn = os.path.join(BASE_DIR, "plots", f"{func_name}_compare.jpg")
         plt.savefig(fn)
         plt.close()
         
@@ -451,7 +484,7 @@ def plot_loss(fn):
         ax[i].set_ylabel("Loss")
         ax[i].set_yscale("log")
         ax[i].set_title(f"Total Loss across Epochs for {region}")
-    for k, l, ls in [("basic", "Basic", "--"), ("timestep", "Time-stepping", "-"), ("timestep_rar", "Time-stepping (RAR)", ":")]:
+    for k, l, ls in [("basic", "Basic Neural Network", "--"), ("timestep", "Time-stepping", "-."), ("timestep_rar", "Our Method", "-")]:
         curr_dir = os.path.join(BASE_DIR, k)
         for i, region in enumerate(["region1", "region2", "region3"]):
             loss_file = os.path.join(curr_dir, f"{region}_min_loss.csv")

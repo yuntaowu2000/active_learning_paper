@@ -14,7 +14,9 @@ import torch
 import tree_model_hd_multioutput_rar as base_model
 import tree_model_ts_hd_multioutput_rar as ts_model
 
-plt.rcParams["font.size"] = 15
+plt.rcParams["font.size"] = 20
+plt.rcParams["lines.linewidth"] = 3
+plt.rcParams["lines.markersize"] = 10
 
 BASE_DIR = "./models/Tree3"
 PLOT_DIR = os.path.join(BASE_DIR, "plots")
@@ -68,7 +70,7 @@ def plot_min_loss(fn):
     ax.set_ylabel("Loss")
     ax.set_yscale("log")
     ax.set_title(f"Total Loss across Epochs")
-    for k, l, ls in [("timestep", "Time-stepping", "-"), ("timestep_rar", "Time-stepping (RAR)", ":")]:
+    for k, l, ls in [("timestep", "Time-stepping", "-"), ("timestep_rar", "Our Method", "-")]:
         curr_dir = os.path.join(BASE_DIR, k)
         loss_file = os.path.join(curr_dir, f"min_loss.csv")
         loss_df = pd.read_csv(loss_file)
@@ -143,19 +145,19 @@ def plot_variables_on_high_residuals(param_base, param_rar):
 
         # plot on z_1=z_2,
         ax[0].plot(x_plot1, plot1_dict_base[var], label="Time-stepping")
-        ax[0].plot(x_plot1, plot1_dict_rar[var], label="Time-stepping (RAR)")
+        ax[0].plot(x_plot1, plot1_dict_rar[var], label="Our Method")
         ax[0].set_xlabel(r"$z_1/z_2$")
         ax[0].set_title(PLOT_ARGS[var]["title"] + " on " + r"$z_1=z_2$")
 
         # plot on z_1=0, z_2
         ax[1].plot(x_plot, plot2_dict_base[var], label="Time-stepping")
-        ax[1].plot(x_plot, plot2_dict_rar[var], label="Time-stepping (RAR)")
+        ax[1].plot(x_plot, plot2_dict_rar[var], label="Our Method")
         ax[1].set_xlabel(r"$z_2$")
         ax[1].set_title(PLOT_ARGS[var]["title"] + " on " + r"$z_1=0$")
 
         # plot on z_2=0, z_1
         ax[2].plot(x_plot, plot3_dict_base[var], label="Time-stepping")
-        ax[2].plot(x_plot, plot3_dict_rar[var], label="Time-stepping (RAR)")
+        ax[2].plot(x_plot, plot3_dict_rar[var], label="Our Method")
         ax[2].set_xlabel(r"$z_1$")
         ax[2].set_title(PLOT_ARGS[var]["title"] + " on " + r"$z_2=0$")
 
@@ -169,7 +171,8 @@ def plot_variables_on_high_residuals(param_base, param_rar):
 def plot_kappas(fn: str):
     fig, ax = plt.subplots(1, 1, figsize=(20, 10))
 
-    for k, l, ls in [("basic", "Basic", "--"), ("basic_rar", "Basic (RAR)", "-."), ("timestep", "Time-stepping", "-"), ("timestep_rar", "Time-stepping (RAR)", ":")]:
+    # ("basic_rar", "Basic (RAR)", "-."), ("timestep", "Time-stepping", "-"), 
+    for k, l, ls in [("basic", "Basic Neural Network", "--"), ("timestep", "Time-stepping", "-."), ("timestep_rar", "Our Method", "-")]:
         curr_params = ALL_PARAMS[k]
         kappa_df = pd.read_csv(os.path.join(BASE_DIR, k, "kappa_val.csv"))
         kappa_cols = [f"kappa_{i+1}" for i in range(curr_params["n_trees"])]
