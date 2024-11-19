@@ -9,7 +9,7 @@ import pandas as pd
 import torch
 from deep_macrofin import (ActivationType, Comparator, OptimizerType, PDEModel,
                            PDEModelTimeStep, SamplingMethod, set_seeds)
-
+from parse_ditella_sol import *
 
 plt.rcParams["font.size"] = 20
 plt.rcParams["lines.linewidth"] = 3
@@ -235,7 +235,7 @@ def plot_res(res_dicts: Dict[str, Dict[str, Any]], plot_args: Dict[str, Any], v_
                 ax.plot(x_plot, y_vals, label=r"$v$={i} ({l})".format(i=round(v,2), l=l), linestyle=ls, color=color, marker=marker)
         ax.set_xlabel(x_label)
         ax.set_ylabel(plot_arg["ylabel"])
-        ax.set_title(plot_arg["title"])
+        # ax.set_title(plot_arg["title"])
         ax.legend()
         plt.tight_layout()
         fn = os.path.join(BASE_DIR, "plots", f"{func_name}.jpg")
@@ -244,7 +244,7 @@ def plot_res(res_dicts: Dict[str, Dict[str, Any]], plot_args: Dict[str, Any], v_
     
     for i, (func_name, plot_arg) in enumerate(plot_args.items()):
         fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(10, 10))
-        for k, l, ls, marker in [("basic", "Basic Neural Network", "--", "x"), ("timestep_lb", "Our Method", "-", "")]:
+        for k, l, ls, marker in [("fd", "Finite Difference", "-.", "x"), ("basic", "Basic Neural Network", "--"), ("timestep_lb", "Our Method", "-", "")]:
             res_dict = res_dicts[k].copy()
             x_plot = res_dict.pop("x_plot")
             for i in range(len(v_list)):
@@ -254,8 +254,8 @@ def plot_res(res_dicts: Dict[str, Dict[str, Any]], plot_args: Dict[str, Any], v_
                 ax.plot(x_plot, y_vals, label=r"$v$={i} ({l})".format(i=round(v,2), l=l), linestyle=ls, color=color, marker=marker)
         ax.set_xlabel(x_label)
         ax.set_ylabel(plot_arg["ylabel"])
-        ax.set_title(plot_arg["title"])
-        ax.legend()
+        # ax.set_title(plot_arg["title"])
+        # ax.legend()
         plt.tight_layout()
         fn = os.path.join(BASE_DIR, "plots", f"{func_name}_compare.jpg")
         plt.savefig(fn)
@@ -266,7 +266,7 @@ def plot_loss(fn):
     ax.set_xlabel("Epochs")
     ax.set_ylabel("Loss")
     ax.set_yscale("log")
-    ax.set_title(f"Total Loss across Epochs")
+    # ax.set_title(f"Total Loss across Epochs")
     for k, l, ls in [("basic", "Basic Neural Network", "--"), ("timestep", "Time-stepping", "-."), ("timestep_lb", "Our Method", "-")]:
         curr_dir = os.path.join(BASE_DIR, k)
         loss_file = os.path.join(curr_dir, f"model_min_loss.csv")
@@ -288,7 +288,7 @@ def plot_loss_weight(fn):
     fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(20, 10))
     ax.set_xlabel("Epochs")
     ax.set_ylabel("Weight")
-    ax.set_title(f"Loss Weight across Epochs (First Time Step)")
+    # ax.set_title(f"Loss Weight across Epochs (First Time Step)")
     curr_dir = os.path.join(BASE_DIR, "timestep_lb")
     loss_weight_file = os.path.join(curr_dir, "loss_weight_logs", f"model_loss_weight_0.csv")
     loss_weight_df = pd.read_csv(loss_weight_file)
@@ -308,7 +308,7 @@ def plot_consumption_convergence(change_target_var={"e_hat": r"$\hat{e}$", "c_ha
         fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(20, 10))
         ax.set_xlabel("Time Step Iteration")
         ax.set_ylabel(change_target_var[var])
-        ax.set_title(f"Convergence of {change_target_var[var]} across Time Steps")
+        # ax.set_title(f"Convergence of {change_target_var[var]} across Time Steps")
         for k, l, ls in [("timestep", "Time-stepping", "-."), ("timestep_lb", "Our Method", "-")]:
             change_df = change_dicts[k]
             ax.plot(change_df["outer_loop_iter"], change_df[f"{var}_mean_val"], label=l, linestyle=ls)
@@ -319,6 +319,7 @@ def plot_consumption_convergence(change_target_var={"e_hat": r"$\hat{e}$", "c_ha
 
 if __name__ == "__main__":
     final_plot_dicts = {}
+    final_plot_dicts["fd"] = ditella_res_dict
     os.makedirs(os.path.join(BASE_DIR, "plots"), exist_ok=True)
     for k in TRAINING_CONFIGS.keys():
         print(f"{k:=^80}")

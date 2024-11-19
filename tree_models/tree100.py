@@ -18,15 +18,15 @@ plt.rcParams["font.size"] = 20
 plt.rcParams["lines.linewidth"] = 3
 plt.rcParams["lines.markersize"] = 10
 
-BASE_DIR = "./models/Tree50"
+BASE_DIR = "./models/Tree100"
 PLOT_DIR = os.path.join(BASE_DIR, "plots")
 os.makedirs(PLOT_DIR, exist_ok=True)
 
 PARAMS = para.params_base.copy()
 PARAMS["sample_method"] ="log_normal"
-PARAMS["n_trees"] = 50
-PARAMS["mu_ys"] = [0.01 * i for i in range(1, 51)]
-PARAMS["sig_ys"] = [0.01 * i for i in range(1, 51)]
+PARAMS["n_trees"] = 100
+PARAMS["mu_ys"] = [0.01 * i for i in range(1, 101)]
+PARAMS["sig_ys"] = [0.01 * i for i in range(1, 101)]
 PARAMS["epoch"] = para.EPOCHS
 PARAMS["outer_loop_size"] = para.OUTER_LOOPS
 PARAMS["resample_times"] = -1

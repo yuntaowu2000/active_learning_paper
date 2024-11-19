@@ -123,7 +123,7 @@ PROBLEM_DOMAIN = {"z": [z_min, z_max], "ae": [a_min, a_max]}
 
 VARS_TO_PLOT = ["epse", "epsh","psi", "sigsigqk", "thetae", "omega"]
 PLOT_ARGS = {
-    "psi": {"ylabel": r"$\psi$", "title": r"Capital Share: Experts"},
+    # "psi": {"ylabel": r"$\psi$", "title": r"Capital Share: Experts"},
     "sigsigqk": {"ylabel": r"$\sigma+\sigma^{q,k}$", "title": r"Price return diffusion (capital shock)"},
     "thetae": {"ylabel": r"$\theta_e$", "title": r"Portfolio Choice: Experts"},
     "omega": {"ylabel": r"$\Omega=J_e/J_h$", "title": r"Ratio of Value Functions ($\Omega=J_e/J_h$)"},
@@ -443,15 +443,19 @@ def plot_res(res_dicts: Dict[str, Dict[str, Any]], plot_args: Dict[str, Any], a_
         fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(10, 10))
         for k, l, ls in [("timestep_rar", "Our Method", "-")]:
             res_dict = res_dicts[k].copy()
-            x_plot = res_dict.pop("x_plot")
+            x_plot: np.ndarray = res_dict.pop("x_plot")
             for i in range(len(a_list)):
                 a = a_list[i]
                 color = COLORS[i]
                 y_vals = res_dict[f"{func_name}_{a}"]
+                if func_name == "thetae":
+                    idx = np.where(x_plot <= 0.2)
+                    x_plot = x_plot[idx]
+                    y_vals = y_vals[idx]
                 ax.plot(x_plot, y_vals, label=r"$a_e$={i} ({l})".format(i=round(a,2), l=l), linestyle=ls, color=color)
         ax.set_xlabel(x_label)
         ax.set_ylabel(plot_arg["ylabel"])
-        ax.set_title(plot_arg["title"])
+        # ax.set_title(plot_arg["title"])
         ax.legend()
         plt.tight_layout()
         fn = os.path.join(BASE_DIR, "plots", f"{func_name}.jpg")
@@ -466,10 +470,14 @@ def plot_res(res_dicts: Dict[str, Dict[str, Any]], plot_args: Dict[str, Any], a_
                 a = a_list[i]
                 color = COLORS[i]
                 y_vals = res_dict[f"{func_name}_{a}"]
+                if func_name == "thetae":
+                    idx = np.where(x_plot <= 0.2)
+                    x_plot = x_plot[idx]
+                    y_vals = y_vals[idx]
                 ax.plot(x_plot, y_vals, label=r"$a_e$={i} ({l})".format(i=round(a,2), l=l), linestyle=ls, marker=marker, color=color)
         ax.set_xlabel(x_label)
         ax.set_ylabel(plot_arg["ylabel"])
-        ax.set_title(plot_arg["title"])
+        # ax.set_title(plot_arg["title"])
         ax.legend()
         plt.tight_layout()
         fn = os.path.join(BASE_DIR, "plots", f"{func_name}_compare.jpg")

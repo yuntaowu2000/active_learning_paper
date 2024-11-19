@@ -287,6 +287,16 @@ def plot_models(model_system: PDEModel,
             "ylabel": rf"${var}$",
             "title": rf"${var}$ vs. ${x_var_ltx}$"
         })
+
+    with open(os.path.join(output_folder, "mse.txt"), "w") as f:
+        total_squares = 0.
+        for i, var in enumerate(VARS_TO_PLOT):
+            curr_square = (plot_dict_model_split[i]["y"] - plot_args_base[i]["y"]) ** 2
+            total_squares += curr_square
+            curr_mse = np.mean(curr_square)
+            print(f"{var} MSE: {curr_mse}", file=f)
+        total_mse = np.mean(curr_square)
+        print(f"Total MSE: {total_mse}", file=f)
     
     for i, var in enumerate(VARS_TO_PLOT):
         fn = os.path.join(output_folder, f"{LATEX_VAR_MAPPING.get(var, var)}.jpg")
@@ -299,7 +309,7 @@ def plot_models(model_system: PDEModel,
         ax.set_ylabel(plot_args_base[i]["ylabel"])
         ax.set_xlabel(f"${x_var_ltx}$")
         ax.legend()
-        ax.set_title(plot_args_base[i]["title"])
+        # ax.set_title(plot_args_base[i]["title"])
         plt.tight_layout()
         plt.savefig(fn)
         plt.close()

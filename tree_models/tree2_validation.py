@@ -103,7 +103,7 @@ def plot_res(res_dicts: Dict[str, Dict[str, Any]], plot_args: Dict[str, Any]):
             ax.plot(x_plot, y_vals, label=rf"{l}", linestyle=ls, marker=marker)
         ax.set_xlabel(x_label)
         ax.set_ylabel(plot_arg["ylabel"])
-        ax.set_title(plot_arg["title"])
+        # ax.set_title(plot_arg["title"])
         ax.legend()
         plt.tight_layout()
         fn = os.path.join(PLOT_DIR, f"{func_name}.jpg")
@@ -115,7 +115,7 @@ def plot_loss(fn):
     ax.set_xlabel("Epochs")
     ax.set_ylabel("Loss")
     ax.set_yscale("log")
-    ax.set_title(f"Total Loss across Epochs")
+    # ax.set_title(f"Total Loss across Epochs")
     # ("basic", "Basic", "--"), 
     for k, l, ls in [("timestep", "Time-stepping", "-."), ("timestep_rar", "Our Method", "-")]:
         curr_dir = os.path.join(BASE_DIR, k)

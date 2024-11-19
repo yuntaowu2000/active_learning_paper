@@ -69,7 +69,7 @@ def plot_min_loss(fn):
     ax.set_xlabel("Epochs")
     ax.set_ylabel("Loss")
     ax.set_yscale("log")
-    ax.set_title(f"Total Loss across Epochs")
+    # ax.set_title(f"Total Loss across Epochs")
     for k, l, ls in [("timestep", "Time-stepping", "-"), ("timestep_rar", "Our Method", "-")]:
         curr_dir = os.path.join(BASE_DIR, k)
         loss_file = os.path.join(curr_dir, f"min_loss.csv")
@@ -91,7 +91,7 @@ def plot_residual_points(fn):
     ax.set_xlabel("$z_1$")
     ax.set_ylabel("$z_2$")
     ax.legend()
-    ax.set_title(f"RARG Sampled Points")
+    # ax.set_title(f"RARG Sampled Points")
     plt.tight_layout()
     plt.savefig(fn)
     plt.close()
@@ -147,19 +147,19 @@ def plot_variables_on_high_residuals(param_base, param_rar):
         ax[0].plot(x_plot1, plot1_dict_base[var], label="Time-stepping")
         ax[0].plot(x_plot1, plot1_dict_rar[var], label="Our Method")
         ax[0].set_xlabel(r"$z_1/z_2$")
-        ax[0].set_title(PLOT_ARGS[var]["title"] + " on " + r"$z_1=z_2$")
+        # ax[0].set_title(PLOT_ARGS[var]["title"] + " on " + r"$z_1=z_2$")
 
         # plot on z_1=0, z_2
         ax[1].plot(x_plot, plot2_dict_base[var], label="Time-stepping")
         ax[1].plot(x_plot, plot2_dict_rar[var], label="Our Method")
         ax[1].set_xlabel(r"$z_2$")
-        ax[1].set_title(PLOT_ARGS[var]["title"] + " on " + r"$z_1=0$")
+        # ax[1].set_title(PLOT_ARGS[var]["title"] + " on " + r"$z_1=0$")
 
         # plot on z_2=0, z_1
         ax[2].plot(x_plot, plot3_dict_base[var], label="Time-stepping")
         ax[2].plot(x_plot, plot3_dict_rar[var], label="Our Method")
         ax[2].set_xlabel(r"$z_1$")
-        ax[2].set_title(PLOT_ARGS[var]["title"] + " on " + r"$z_2=0$")
+        # ax[2].set_title(PLOT_ARGS[var]["title"] + " on " + r"$z_2=0$")
 
         for i in range(3):
             ax[i].set_ylabel(PLOT_ARGS[var]["ylabel"])
@@ -181,7 +181,7 @@ def plot_kappas(fn: str):
         ax.plot(kappa_df["epoch"], kappa_df["kappa"], label=l, linestyle=ls)
     ax.set_xlabel("Epoch")
     ax.set_ylabel("Kappa")
-    ax.set_title(r"$\kappa$ across First 200 Epochs")
+    # ax.set_title(r"$\kappa$ across First 200 Epochs")
     ax.legend(loc="upper right")
     plt.tight_layout()
     plt.savefig(fn)

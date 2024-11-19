@@ -13,7 +13,9 @@ import torch
 import tree_model_hd_multioutput_rar as base_model
 import tree_model_ts_hd_multioutput_rar as ts_model
 
-plt.rcParams["font.size"] = 15
+plt.rcParams["font.size"] = 20
+plt.rcParams["lines.linewidth"] = 3
+plt.rcParams["lines.markersize"] = 10
 
 BASE_DIR = "./models/TreeTiming"
 PLOT_DIR = os.path.join(BASE_DIR, "plots")
@@ -59,7 +61,7 @@ def plot_timing():
     EPOCH_LABELS = [f"n_{n_tree}_epoch_time" for n_tree in N_TREES]
 
     fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(10, 10))
-    for k, l, ls in [("basic", "Basic", "--"), ("basic_rar", "Basic (RAR)", "-."), ("timestep", "Time-stepping", "-"), ("timestep_rar", "Time-stepping (RAR)", ":")]:
+    for k, l, ls in [("timestep", "Time-stepping", "-."), ("timestep_rar", "Time-stepping (RAR)", "-")]:
         df = dfs[k]
         df_mean = df.mean(axis=0)
         df_5tile = df.quantile(q=0.05, axis=0)
@@ -68,8 +70,10 @@ def plot_timing():
         ax.fill_between(N_TREES, df_5tile[TOTAL_LABELS], df_95tile[TOTAL_LABELS], alpha=0.2, color="gray")
     ax.set_xlabel("Number of Trees")
     ax.set_ylabel("Time (s)")
+    # ax.set_xticks(N_TREES)
+    ax.vlines(x=10, ymin=0, ymax=dfs["timestep"]["n_100_total_time"].max(), color="black", linestyles="--")
     ax.legend(loc="upper left")
-    ax.set_title("Training Time (Total)")
+    # ax.set_title("Training Time (Total)")
     plt.tight_layout()
     plt.savefig(os.path.join(PLOT_DIR, "training_time_total.jpg"))
 
@@ -84,8 +88,10 @@ def plot_timing():
         ax.fill_between(N_TREES, df_5tile[EPOCH_LABELS], df_95tile[EPOCH_LABELS], alpha=0.2, color="gray")
     ax.set_xlabel("Number of Trees")
     ax.set_ylabel("Time (s)")
+    # ax.set_xticks(N_TREES)
+    ax.vlines(x=10, ymin=0, ymax=dfs["timestep"]["n_100_epoch_time"].max(), color="black", linestyles="--")
     ax.legend(loc="upper left")
-    ax.set_title("Training Time (Per Epoch)")
+    # ax.set_title("Training Time (Per Epoch)")
     plt.tight_layout()
     plt.savefig(os.path.join(PLOT_DIR, "training_time_per_epoch.jpg"))
 
@@ -115,5 +121,5 @@ if __name__ == "__main__":
                 time_df.loc[i, f"n_{n_tree}_epoch_time"] = epoch_time
         time_df.to_csv(os.path.join(BASE_DIR, f"{k}_timing.csv"))
     plot_timing()
-    shutil.rmtree(curr_params["output_dir"], ignore_errors=True)
+    shutil.rmtree(os.path.join(BASE_DIR, "temp"), ignore_errors=True)
 

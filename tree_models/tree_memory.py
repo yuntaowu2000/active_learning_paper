@@ -15,7 +15,9 @@ import tree_model_hd_multioutput_rar as base_model
 import tree_model_ts_hd_multioutput_rar as ts_model
 from torch.profiler import ProfilerActivity, profile, record_function
 
-plt.rcParams["font.size"] = 15
+plt.rcParams["font.size"] = 20
+plt.rcParams["lines.linewidth"] = 3
+plt.rcParams["lines.markersize"] = 10
 
 BASE_DIR = "./models/TreeMemory"
 PLOT_DIR = os.path.join(BASE_DIR, "plots")
@@ -57,24 +59,24 @@ def plot_mem_usage_flops():
     for k in ALL_PARAMS:
         dfs[k] = pd.read_csv(os.path.join(BASE_DIR, f"{k}_memory.csv"))
     fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(10, 10))
-    for k, l, ls in [("basic", "Basic", "--"), ("basic_rar", "Basic (RAR)", "-."), ("timestep", "Time-stepping", "-"), ("timestep_rar", "Time-stepping (RAR)", ":")]:
+    for k, l, ls in [("basic", "Basic", "--"), ("basic_rar", "Basic (RAR)", ":"), ("timestep", "Time-stepping", "-."), ("timestep_rar", "Time-stepping (RAR)", "-")]:
         df = dfs[k]
         ax.plot(df["n_trees"], df["cuda_memory_total"], label=l, linestyle=ls)
     ax.set_xlabel("Number of Trees")
     ax.set_ylabel("CUDA Memory (MB)")
     ax.legend(loc="upper left")
-    ax.set_title("CUDA Memory Usage (Total)")
+    # ax.set_title("CUDA Memory Usage (Total)")
     plt.tight_layout()
     plt.savefig(os.path.join(PLOT_DIR, "total_cuda_memory_usage.jpg"))
 
     fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(10, 10))
-    for k, l, ls in [("basic", "Basic", "--"), ("basic_rar", "Basic (RAR)", "-."), ("timestep", "Time-stepping", "-"), ("timestep_rar", "Time-stepping (RAR)", ":")]:
+    for k, l, ls in [("basic", "Basic", "--"), ("basic_rar", "Basic (RAR)", ":"), ("timestep", "Time-stepping", "-."), ("timestep_rar", "Time-stepping (RAR)", "-")]:
         df = dfs[k]
         ax.plot(df["n_trees"], df["flops_total"], label=l, linestyle=ls)
     ax.set_xlabel("Number of Trees")
     ax.set_ylabel("GFLOPS")
     ax.legend(loc="upper left")
-    ax.set_title("Number of FLOPS (Total)")
+    # ax.set_title("Number of FLOPS (Total)")
     plt.tight_layout()
     plt.savefig(os.path.join(PLOT_DIR, "total_flops.jpg"))
 
@@ -86,8 +88,10 @@ if __name__ == "__main__":
         res_df = pd.DataFrame(columns=["n_trees", "cuda_memory_total", "flops_total"])
         for i_param, curr_params in enumerate(ALL_PARAMS[k]):
             n_tree = curr_params["n_trees"]
-            if n_tree == 100 and "rar" in k:
-                # A100 also gets OOM, so skip
+            if n_tree >= 50 and "rar" in k:
+                # A100 also gets OOM when profiling, so skip
+                continue
+            elif n_tree == 100:
                 continue
             print("{0:=^80}".format(f"{k} {n_tree}"))
             gc.collect()
@@ -157,21 +161,28 @@ if __name__ == "__main__":
             gc.collect()
             torch.cuda.empty_cache()
         res_df.to_csv(os.path.join(BASE_DIR, f"{k}_memory.csv"), index=False)
-    try:
-        shutil.rmtree(curr_params["output_dir"], ignore_errors=True)
-    except:
-        pass
-    final_df = []
+    shutil.rmtree(os.path.join(BASE_DIR, "temp"), ignore_errors=True)
+    
+    N_TREES.remove(100)
+    final_df = pd.DataFrame(index=["basic", "basic_rar", "timestep", "timestep_rar"], columns=[f"CUDA Memory {k}" for k in N_TREES] + [f"FLOPS {k}" for k in N_TREES])
     for k in ALL_PARAMS:
         res_df = pd.read_csv(os.path.join(BASE_DIR, f"{k}_memory.csv"))
         res_df["model"] = [k for _ in range(len(res_df))]
-        final_df.append(res_df)
-    final_df = pd.concat(final_df)
-    final_df = final_df.set_index(["model", "n_trees"])
-    ltx = final_df.style.format("{:.2f}", subset=["cuda_memory_total", "flops_total"]).to_latex(column_format="ll" + "c" * len(final_df.columns), multirow_align="t", hrules=True)
-    ltx = ltx.replace(" &  & cuda_memory_total & flops_total \\\\\nmodel & n_trees &  &  \\\\", 
-r"""Model & N-Trees & CUDA Memory (MB) & GFLOPS\\""")
-    ltx = ltx.replace(r"\midrule", r"\cmidrule(lr){3-4}")
+        for n_tree in N_TREES:
+            if n_tree >= 50 and "rar" in k:
+                # A100 also gets OOM when profiling, so skip
+                continue
+            elif n_tree == 100:
+                continue
+            idx = res_df[res_df["n_trees"] == n_tree].index
+            final_df.loc[k, f"CUDA Memory {n_tree}"] = "{0:.2f}".format(res_df.loc[idx, "cuda_memory_total"].values[0])
+            final_df.loc[k, f"FLOPS {n_tree}"] = "{0:.2f}".format(res_df.loc[idx, "flops_total"].values[0])
+
+    ltx = final_df.style.to_latex(column_format="l" + "c" * len(final_df.columns), hrules=True)
+    ltx = ltx.replace(" & CUDA Memory 2 & CUDA Memory 3 & CUDA Memory 5 & CUDA Memory 10 & CUDA Memory 20 & CUDA Memory 50 & FLOPS 2 & FLOPS 3 & FLOPS 5 & FLOPS 10 & FLOPS 20 & FLOPS 50 \\\\", 
+r""" & \multicolumn{6}{c}{CUDA Memory (MB)} & \multicolumn{6}{c}{FLOPS ($\times 10^9$)} \\
+ & 2-Tree & 3-Tree & 5-Tree & 10-Tree & 20-Tree & 50-Tree & 2-Tree & 3-Tree & 5-Tree & 10-Tree & 20-Tree & 50-Tree \\""")
+    ltx = ltx.replace(r"\midrule", r"\cmidrule(lr){2-7} \cmidrule(lr){8-13}")
     for k, v in [("basic_rar", "Basic (RAR)"), ("timestep_rar", "Time-stepping (RAR)"), ("basic", "Basic"), ("timestep", "Time-stepping")]:
         ltx = ltx.replace(k, v)
     with open(os.path.join(BASE_DIR, "memory_usage.tex"), "w") as f:
