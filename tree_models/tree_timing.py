@@ -61,12 +61,12 @@ def plot_timing():
     EPOCH_LABELS = [f"n_{n_tree}_epoch_time" for n_tree in N_TREES]
 
     fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(10, 10))
-    for k, l, ls in [("timestep", "Time-stepping", "-."), ("timestep_rar", "Time-stepping (RAR)", "-")]:
+    for k, l, ls, color in [("timestep", "Time-stepping", ":", "blue"), ("timestep_rar", "Time-stepping (RAR)", "-", "green")]:
         df = dfs[k]
         df_mean = df.mean(axis=0)
         df_5tile = df.quantile(q=0.05, axis=0)
         df_95tile = df.quantile(q=0.95, axis=0)
-        ax.plot(N_TREES, df_mean[TOTAL_LABELS], label=l, linestyle=ls)
+        ax.plot(N_TREES, df_mean[TOTAL_LABELS], label=l, linestyle=ls, color=color)
         ax.fill_between(N_TREES, df_5tile[TOTAL_LABELS], df_95tile[TOTAL_LABELS], alpha=0.2, color="gray")
     ax.set_xlabel("Number of Trees")
     ax.set_ylabel("Time (s)")
@@ -79,12 +79,12 @@ def plot_timing():
 
 
     fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(10, 10))
-    for k, l, ls in [("basic", "Basic", "--"), ("basic_rar", "Basic (RAR)", "-."), ("timestep", "Time-stepping", "-"), ("timestep_rar", "Time-stepping (RAR)", ":")]:
+    for k, l, ls, color in [("basic", "Basic", "--", "red"), ("basic_rar", "Basic (RAR)", "-.", "orange"), ("timestep", "Time-stepping", ":", "blue"), ("timestep_rar", "Time-stepping (RAR)", "-", "green")]:
         df = dfs[k]
         df_mean = df.mean(axis=0)
         df_5tile = df.quantile(q=0.05, axis=0)
         df_95tile = df.quantile(q=0.95, axis=0)
-        ax.plot(N_TREES, df_mean[EPOCH_LABELS], label=l, linestyle=ls)
+        ax.plot(N_TREES, df_mean[EPOCH_LABELS], label=l, linestyle=ls, color=color)
         ax.fill_between(N_TREES, df_5tile[EPOCH_LABELS], df_95tile[EPOCH_LABELS], alpha=0.2, color="gray")
     ax.set_xlabel("Number of Trees")
     ax.set_ylabel("Time (s)")

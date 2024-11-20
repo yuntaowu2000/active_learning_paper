@@ -44,9 +44,9 @@ LATEX_VAR_MAPPING = {
 
 VARS_TO_PLOT = ["q", "psi", "sigq"]
 PLOT_ARGS = {
-    "q": {"ylabel": r"$q$", "title": r"Price"},
-    "psi": {"ylabel": r"$\psi$", "title": r"Capital Share: Experts"},
-    "sigq": {"ylabel": r"$\sigma^q$", "title": r"Price return diffusion"},
+    "q": {"ylabel": r"$q$", "title": r"Price", "show_legend": True},
+    "psi": {"ylabel": r"$\psi$", "title": r"Capital Share: Experts", "show_legend": False},
+    "sigq": {"ylabel": r"$\sigma^q$", "title": r"Price return diffusion", "show_legend": False},
 }
 
 PROBLEM_DOMAIN = {
@@ -287,16 +287,6 @@ def plot_models(model_system: PDEModel,
             "ylabel": rf"${var}$",
             "title": rf"${var}$ vs. ${x_var_ltx}$"
         })
-
-    with open(os.path.join(output_folder, "mse.txt"), "w") as f:
-        total_squares = 0.
-        for i, var in enumerate(VARS_TO_PLOT):
-            curr_square = (plot_dict_model_split[i]["y"] - plot_args_base[i]["y"]) ** 2
-            total_squares += curr_square
-            curr_mse = np.mean(curr_square)
-            print(f"{var} MSE: {curr_mse}", file=f)
-        total_mse = np.mean(curr_square)
-        print(f"Total MSE: {total_mse}", file=f)
     
     for i, var in enumerate(VARS_TO_PLOT):
         fn = os.path.join(output_folder, f"{LATEX_VAR_MAPPING.get(var, var)}.jpg")
@@ -308,11 +298,58 @@ def plot_models(model_system: PDEModel,
         ax.plot(x_plot, plot_dict_model_split[i]["y"], linestyle="-", label="Our Method")
         ax.set_ylabel(plot_args_base[i]["ylabel"])
         ax.set_xlabel(f"${x_var_ltx}$")
-        ax.legend()
+        if PLOT_ARGS[var]["show_legend"]:
+            ax.legend()
         # ax.set_title(plot_args_base[i]["title"])
         plt.tight_layout()
         plt.savefig(fn)
         plt.close()
+
+def compute_mse(model_split: Dict[str, PDEModel],
+                output_folder: str,):
+    ## Finite Difference Solution
+    df = pd.read_csv("models/BruSan14_log_utility_solution-raw.csv")
+    plot_args_base = []
+    x_plot_base = df["e"]
+    for var in VARS_TO_PLOT:
+        plot_args_base.append({
+            "y": df[LATEX_VAR_MAPPING.get(var, var)],
+            "ylabel": PLOT_ARGS[var]["ylabel"],
+            "title": PLOT_ARGS[var]["title"]
+        })
+    
+    SV = torch.tensor(x_plot_base, dtype=torch.float32, device=model_split["region1"].device).reshape((-1, 1))
+    ## Split Solution
+    plot_dict_model_split = []
+    for k in ["region1", "region2"]:
+        for i, sv_name in enumerate(model_split[k].state_variables):
+            model_split[k].variable_val_dict[sv_name] = SV[:, i:i+1]
+        model_split[k].update_variables(SV)
+    psi_region1 = model_split["region1"].variable_val_dict["psi"].detach().cpu().numpy().reshape(-1)
+    index_unconstrain = (psi_region1 < 1)
+    index_constrain = (psi_region1 >= 1)
+
+    for var in VARS_TO_PLOT:
+        region1_sol = model_split["region1"].variable_val_dict[LATEX_VAR_MAPPING.get(var, var)].detach().cpu().numpy().reshape(-1)
+        if LATEX_VAR_MAPPING.get(var, var) == "psi":
+            region2_sol = 1
+        else:
+            region2_sol =  model_split["region2"].variable_val_dict[LATEX_VAR_MAPPING.get(var, var)].detach().cpu().numpy().reshape(-1)
+        res = region1_sol * index_unconstrain + region2_sol * index_constrain
+        plot_dict_model_split.append({
+            "y": res,
+            "ylabel": rf"${var}$",
+        })
+
+    with open(os.path.join(output_folder, "mse.txt"), "w") as f:
+        total_squares = 0.
+        for i, var in enumerate(VARS_TO_PLOT):
+            curr_square = (plot_dict_model_split[i]["y"] - plot_args_base[i]["y"]) ** 2
+            total_squares += curr_square
+            curr_mse = np.mean(curr_square)
+            print(f"{var} MSE: {curr_mse}", file=f)
+        total_mse = np.mean(total_squares)
+        print(f"Total MSE: {total_mse}", file=f)
 
 
 if __name__ == "__main__":
@@ -339,6 +376,7 @@ if __name__ == "__main__":
         plot_models(model_system, model_split, 
                     plot_dir,
                     r"\eta")
+        compute_mse(model_split, plot_dir)
         gc.collect()
         torch.cuda.empty_cache()
         if model_type == "KAN":

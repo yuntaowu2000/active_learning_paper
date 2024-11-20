@@ -355,6 +355,8 @@ def train_loop(params):
         pbar = tqdm(range(int(epochs / (np.sqrt(outer_loop + 1)))))
         for epoch in pbar:
             epoch_start_time = time.time()
+            optimizer.zero_grad()
+            gc.collect()
             torch.cuda.empty_cache()
             total_loss, hjb_kappas_, consistency_kappas_ = TP.loss_fun_Net1(kappa_nn, SV)
 
@@ -364,7 +366,7 @@ def train_loop(params):
                 loss_time_boundary += torch.mean(torch.square(model(SV_T1) - prev_vals[name]))
 
             total_loss += loss_time_boundary
-            optimizer.zero_grad()
+            # optimizer.zero_grad()
             total_loss.backward()
             # torch.nn.utils.clip_grad_norm_(para_nn, 1)
     
@@ -538,16 +540,37 @@ def distribution_plot(params, batch_size=5000):
     zeta_to_plot = zetas[:, mu_qs_max_idx].detach().cpu().numpy()
     r_to_plot = r.detach().cpu().numpy().reshape(-1)
     
-    for v, label, name in [(kappa_to_plot, r"$\kappa$", "kappa"),
-                           (q_to_plot, r"$q$", "q"),
-                           (zeta_to_plot, r"$\zeta$", "zeta"),
-                           (r_to_plot, r"$r$", "r"),]:
-        fig, ax = plt.subplots(1, 1, figsize=(5, 5))
-        ax.hist(v, bins=20)
-        ax.set_xlabel(label)
-        plt.savefig(os.path.join(params["output_dir"], "plots", f"distribution_{name}.jpg"),bbox_inches='tight',dpi=300)
-        # plt.show()
-        plt.close()
+    # for v, label, name in [(kappa_to_plot, r"$\kappa$", "kappa"),
+    #                        (q_to_plot, r"$q$", "q"),
+    #                        (zeta_to_plot, r"$\zeta$", "zeta"),
+    #                        (r_to_plot, r"$r$", "r"),]:
+    #     fig, ax = plt.subplots(1, 1, figsize=(5, 5))
+    #     ax.hist(v, bins=20)
+    #     ax.set_xlabel(label)
+    #     plt.savefig(os.path.join(params["output_dir"], "plots", f"distribution_{name}.jpg"),bbox_inches='tight',dpi=300)
+    #     # plt.show()
+    #     plt.close()
+    fig, ax = plt.subplots(1, 4, figsize=(20, 5))
+    ax[0].hist(kappa_to_plot, bins=20)
+    ax[0].set_xlabel(r'$\kappa$')
+    ax[0].set_title(r"$\kappa$ distribution at max $\mu^q$")
+
+    ax[1].hist(q_to_plot, bins=20)
+    ax[1].set_xlabel(r'$q$')
+    ax[1].set_title(r"$q$ distribution at max $\mu^q$")
+
+    ax[2].hist(zeta_to_plot, bins=20)
+    ax[2].set_xlabel(r'$\zeta$')
+    ax[2].set_title(r"$\zeta$ distribution at max $\mu^q$")
+
+    ax[3].hist(r_to_plot, bins=20)
+    ax[3].set_xlabel(r'$r$')
+    ax[3].set_title(r"$r$ distribution")
+
+    name = 'distribution.jpg'
+    plt.savefig(os.path.join(params["output_dir"], "plots", name),bbox_inches='tight',dpi=300)
+    # plt.show()
+    plt.close()
 
 if __name__ == '__main__':
     param_grid = ParameterGrid({

@@ -51,7 +51,7 @@ ALL_PARAMS = {
 }
 
 def plot_min_loss(fn):
-    fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(20, 10))
+    fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(10, 10))
     ax.set_xlabel("Epochs")
     ax.set_ylabel("Loss")
     ax.set_yscale("log")
@@ -67,7 +67,7 @@ def plot_min_loss(fn):
     plt.close()
 
 def plot_kappas(fn: str):
-    fig, ax = plt.subplots(1, 1, figsize=(20, 10))
+    fig, ax = plt.subplots(1, 1, figsize=(10, 10))
 
     for k, l, ls in [("basic", "Basic Neural Network", "--"), ("timestep", "Time-stepping", "-."), ("timestep_rar", "Our Method", "-")]:
         curr_params = ALL_PARAMS[k]

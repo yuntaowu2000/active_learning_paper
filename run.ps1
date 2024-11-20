@@ -7,4 +7,6 @@ Set-Location ../tree_models
 python tree2_validation.py
 python tree3_rar.py
 python tree50.py
+python tree_timing.py
+python tree_memory.py
 Set-Location ../

@@ -34,7 +34,7 @@ required_vars_ditella = {
     "interr": "r", # risk free rate
 }
 
-with open("solutions/solCE 1", "r") as f:
+with open("ditella_sol", "r") as f:
     data_lines = f.readlines()
 
 equations: list[str] = []
@@ -79,6 +79,7 @@ for eq in equations:
     needed_eq[lhs] = res
 
 ditella_res_dict = {}
+ditella_res_dict["x_plot"] = x_grid
 for i, (k, var_name) in enumerate(required_vars_ditella.items()):
     for v_val in [0.1, 0.25, 0.6]:
         if k == "omega":

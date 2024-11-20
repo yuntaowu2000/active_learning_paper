@@ -80,12 +80,12 @@ PROBLEM_DOMAIN = {"x": [0.05, 0.95], "v": [0.05, 0.95]}
 
 VARS_TO_PLOT = ["p", "sigx", "omega", "sigsigp", "signxi", "r"]
 PLOT_ARGS = {
-    "p": {"ylabel": r"$p$", "title": r"Price"},
-    "sigx": {"ylabel": r"$\sigma_x$", "title": r"Diffusion of Wealth Share"},
-    "omega": {"ylabel": r"$\Omega=\xi/\zeta$", "title": r"Ratio of Value Functions ($\Omega=\xi/\zeta$)"},
-    "sigsigp": {"ylabel": r"$\sigma+\sigma_p$", "title": r"Price Return Diffusion"},
-    "signxi": {"ylabel": r"$\pi$", "title": r"Price of Risk"},
-    "r": {"ylabel": r"$r$", "title": r"Risk-Free Rate"},
+    # "p": {"ylabel": r"$p$", "title": r"Price"},
+    # "sigx": {"ylabel": r"$\sigma_x$", "title": r"Diffusion of Wealth Share"},
+    "omega": {"ylabel": r"$\Omega=\xi/\zeta$", "title": r"Ratio of Value Functions ($\Omega=\xi/\zeta$)", "show_legend": True},
+    "sigsigp": {"ylabel": r"$\sigma+\sigma_p$", "title": r"Price Return Diffusion", "show_legend": False},
+    "signxi": {"ylabel": r"$\pi$", "title": r"Price of Risk", "show_legend": False},
+    # "r": {"ylabel": r"$r$", "title": r"Risk-Free Rate"},
 }
 v_list = [0.1, 0.25, 0.6]
 COLORS = ["red", "orange", "blue"]
@@ -225,7 +225,7 @@ def plot_res(res_dicts: Dict[str, Dict[str, Any]], plot_args: Dict[str, Any], v_
 
     for i, (func_name, plot_arg) in enumerate(plot_args.items()):
         fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(10, 10))
-        for k, l, ls, marker in [("timestep_lb", "Our Method", "-", "")]:
+        for k, l, ls, marker in [("fd", "Finite Difference", "-.", "x"), ("timestep_lb", "Our Method", "-", "")]:
             res_dict = res_dicts[k].copy()
             x_plot = res_dict.pop("x_plot")
             for i in range(len(v_list)):
@@ -236,7 +236,8 @@ def plot_res(res_dicts: Dict[str, Dict[str, Any]], plot_args: Dict[str, Any], v_
         ax.set_xlabel(x_label)
         ax.set_ylabel(plot_arg["ylabel"])
         # ax.set_title(plot_arg["title"])
-        ax.legend()
+        if plot_arg["show_legend"]:
+            ax.legend()
         plt.tight_layout()
         fn = os.path.join(BASE_DIR, "plots", f"{func_name}.jpg")
         plt.savefig(fn)
@@ -244,7 +245,7 @@ def plot_res(res_dicts: Dict[str, Dict[str, Any]], plot_args: Dict[str, Any], v_
     
     for i, (func_name, plot_arg) in enumerate(plot_args.items()):
         fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(10, 10))
-        for k, l, ls, marker in [("fd", "Finite Difference", "-.", "x"), ("basic", "Basic Neural Network", "--"), ("timestep_lb", "Our Method", "-", "")]:
+        for k, l, ls, marker in [("fd", "Finite Difference", "-.", "x"), ("basic", "Basic Neural Network", "--", ""), ("timestep_lb", "Our Method", "-", "")]:
             res_dict = res_dicts[k].copy()
             x_plot = res_dict.pop("x_plot")
             for i in range(len(v_list)):
@@ -255,14 +256,39 @@ def plot_res(res_dicts: Dict[str, Dict[str, Any]], plot_args: Dict[str, Any], v_
         ax.set_xlabel(x_label)
         ax.set_ylabel(plot_arg["ylabel"])
         # ax.set_title(plot_arg["title"])
-        # ax.legend()
+        if plot_arg["show_legend"]:
+            ax.legend()
         plt.tight_layout()
         fn = os.path.join(BASE_DIR, "plots", f"{func_name}_compare.jpg")
         plt.savefig(fn)
         plt.close()
 
+def compute_mse(pde_model: PDEModelTimeStep, v_list, vars_to_plot, output_folder: str):
+    ## Finite Difference Solution
+    N = x_grid.shape[0]
+
+    res_dict = {}
+    for v in v_list:
+        SV = torch.zeros((N, 3), device=pde_model.device)
+        SV[:, 0] = torch.tensor(x_grid, dtype=torch.float32, device=pde_model.device)
+        SV[:, 1] = torch.ones((N,)) * v
+        for i, sv_name in enumerate(pde_model.state_variables):
+            pde_model.variable_val_dict[sv_name] = SV[:, i:i+1]
+        pde_model.update_variables(SV)
+        for var in vars_to_plot:
+            res_dict[f"{var}_{v}"] = pde_model.variable_val_dict[var].detach().cpu().numpy().reshape(-1)
+
+    with open(os.path.join(output_folder, "mse.txt"), "w") as f:
+        for i, var in enumerate(VARS_TO_PLOT):
+            total_squares = 0.
+            for v in v_list:
+                curr_square = (res_dict[f"{var}_{v}"] - ditella_res_dict[f"{var}_{v}"]) ** 2
+            total_squares += curr_square
+            curr_mse = np.mean(curr_square) / len(v_list) # average across the slices
+            print(f"{var} MSE: {curr_mse}", file=f)
+
 def plot_loss(fn):
-    fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(20, 10))
+    fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(10, 10))
     ax.set_xlabel("Epochs")
     ax.set_ylabel("Loss")
     ax.set_yscale("log")
@@ -285,7 +311,7 @@ def plot_loss_weight(fn):
         "hjbeq_1": "Experts HJB",
         "hjbeq_2": "Households HJB",
     }
-    fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(20, 10))
+    fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(10, 10))
     ax.set_xlabel("Epochs")
     ax.set_ylabel("Weight")
     # ax.set_title(f"Loss Weight across Epochs (First Time Step)")
@@ -305,14 +331,14 @@ def plot_consumption_convergence(change_target_var={"e_hat": r"$\hat{e}$", "c_ha
         change_dicts[k] = pd.read_csv(os.path.join(BASE_DIR, k, "model_change_dict.csv"))
     
     for var in change_target_var:
-        fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(20, 10))
+        fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(10, 10))
         ax.set_xlabel("Time Step Iteration")
         ax.set_ylabel(change_target_var[var])
         # ax.set_title(f"Convergence of {change_target_var[var]} across Time Steps")
         for k, l, ls in [("timestep", "Time-stepping", "-."), ("timestep_lb", "Our Method", "-")]:
             change_df = change_dicts[k]
             ax.plot(change_df["outer_loop_iter"], change_df[f"{var}_mean_val"], label=l, linestyle=ls)
-        ax.legend(loc="upper right")
+        ax.legend(loc="lower right")
         plt.tight_layout()
         plt.savefig(os.path.join(BASE_DIR, "plots", f"convergence_{var}.jpg"))
         plt.close()
@@ -334,6 +360,8 @@ if __name__ == "__main__":
                 model.train_model(curr_dir, "model.pt", full_log=True)
         model.load_model(torch.load(os.path.join(curr_dir, "model_best.pt"), weights_only=False))
         final_plot_dicts[k] = compute_func(model, v_list, VARS_TO_PLOT)
+        if timestepping and loss_balancing:
+            compute_mse(model, v_list, VARS_TO_PLOT, curr_dir)
         gc.collect()
         torch.cuda.empty_cache()
     plot_res(final_plot_dicts, PLOT_ARGS, v_list)

@@ -24,16 +24,16 @@ os.makedirs(PLOT_DIR, exist_ok=True)
 
 VARS_TO_PLOT = ["k1", "k2", "k3", "q1", "q2", "q3", "r", "zeta1", "zeta2", "zeta3"]
 PLOT_ARGS = {
-    "k1": {"ylabel": r"$\kappa_1$", "title": r"$\kappa_1$"},
-    "k2": {"ylabel": r"$\kappa_2$", "title": r"$\kappa_2$"},
-    "k3": {"ylabel": r"$\kappa_3$", "title": r"$\kappa_3$"},
-    "q1": {"ylabel": r"$q_1$", "title": r"Price of Asset 1 ($q_1$)"},
-    "q2": {"ylabel": r"$q_2$", "title": r"Price of Asset 2 ($q_2$)"},
-    "q3": {"ylabel": r"$q_3$", "title": r"Price of Asset 3 ($q_3$)"},
-    "r": {"ylabel": r"$r$", "title": r"Risk-Free Rate"},
-    "zeta1": {"ylabel": r"$\zeta_1$", "title": r"Price of Risk ($\zeta_1$)"},
-    "zeta2": {"ylabel": r"$\zeta_2$", "title": r"Price of Risk ($\zeta_2$)"},
-    "zeta3": {"ylabel": r"$\zeta_3$", "title": r"Price of Risk ($\zeta_3$)"},
+    "k1": {"ylabel": r"$\kappa_1$", "title": r"$\kappa_1$", "show_legend": True},
+    "k2": {"ylabel": r"$\kappa_2$", "title": r"$\kappa_2$", "show_legend": False},
+    "k3": {"ylabel": r"$\kappa_3$", "title": r"$\kappa_3$", "show_legend": False},
+    "q1": {"ylabel": r"$q_1$", "title": r"Price of Asset 1 ($q_1$)", "show_legend": False},
+    "q2": {"ylabel": r"$q_2$", "title": r"Price of Asset 2 ($q_2$)", "show_legend": False},
+    "q3": {"ylabel": r"$q_3$", "title": r"Price of Asset 3 ($q_3$)", "show_legend": False},
+    "r": {"ylabel": r"$r$", "title": r"Risk-Free Rate", "show_legend": False},
+    "zeta1": {"ylabel": r"$\zeta_1$", "title": r"Price of Risk ($\zeta_1$)", "show_legend": False},
+    "zeta2": {"ylabel": r"$\zeta_2$", "title": r"Price of Risk ($\zeta_2$)", "show_legend": False},
+    "zeta3": {"ylabel": r"$\zeta_3$", "title": r"Price of Risk ($\zeta_3$)", "show_legend": False},
 }
 
 PARAMS = para.params_base.copy()
@@ -65,7 +65,7 @@ ALL_PARAMS = {
 }
 
 def plot_min_loss(fn):
-    fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(20, 10))
+    fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(10, 10))
     ax.set_xlabel("Epochs")
     ax.set_ylabel("Loss")
     ax.set_yscale("log")
@@ -147,29 +147,30 @@ def plot_variables_on_high_residuals(param_base, param_rar):
         ax[0].plot(x_plot1, plot1_dict_base[var], label="Time-stepping")
         ax[0].plot(x_plot1, plot1_dict_rar[var], label="Our Method")
         ax[0].set_xlabel(r"$z_1/z_2$")
-        # ax[0].set_title(PLOT_ARGS[var]["title"] + " on " + r"$z_1=z_2$")
+        ax[0].set_title(PLOT_ARGS[var]["title"] + " on " + r"$z_1=z_2$")
 
         # plot on z_1=0, z_2
         ax[1].plot(x_plot, plot2_dict_base[var], label="Time-stepping")
         ax[1].plot(x_plot, plot2_dict_rar[var], label="Our Method")
         ax[1].set_xlabel(r"$z_2$")
-        # ax[1].set_title(PLOT_ARGS[var]["title"] + " on " + r"$z_1=0$")
+        ax[1].set_title(PLOT_ARGS[var]["title"] + " on " + r"$z_1=0$")
 
         # plot on z_2=0, z_1
         ax[2].plot(x_plot, plot3_dict_base[var], label="Time-stepping")
         ax[2].plot(x_plot, plot3_dict_rar[var], label="Our Method")
         ax[2].set_xlabel(r"$z_1$")
-        # ax[2].set_title(PLOT_ARGS[var]["title"] + " on " + r"$z_2=0$")
+        ax[2].set_title(PLOT_ARGS[var]["title"] + " on " + r"$z_2=0$")
 
         for i in range(3):
             ax[i].set_ylabel(PLOT_ARGS[var]["ylabel"])
-            ax[i].legend(loc="lower right")
+        if PLOT_ARGS[var]["show_legend"]:
+            ax[0].legend(loc="lower right")
         plt.tight_layout()
         plt.savefig(os.path.join(PLOT_DIR, f"{var}_high_residuals.jpg"))
         plt.close()
 
 def plot_kappas(fn: str):
-    fig, ax = plt.subplots(1, 1, figsize=(20, 10))
+    fig, ax = plt.subplots(1, 1, figsize=(10, 10))
 
     # ("basic_rar", "Basic (RAR)", "-."), ("timestep", "Time-stepping", "-"), 
     for k, l, ls in [("basic", "Basic Neural Network", "--"), ("timestep", "Time-stepping", "-."), ("timestep_rar", "Our Method", "-")]:

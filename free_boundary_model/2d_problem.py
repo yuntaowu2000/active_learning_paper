@@ -1,4 +1,5 @@
 import gc
+import glob
 import os
 from copy import deepcopy
 from typing import Any, Dict, List, Union
@@ -124,9 +125,9 @@ PROBLEM_DOMAIN = {"z": [z_min, z_max], "ae": [a_min, a_max]}
 VARS_TO_PLOT = ["epse", "epsh","psi", "sigsigqk", "thetae", "omega"]
 PLOT_ARGS = {
     # "psi": {"ylabel": r"$\psi$", "title": r"Capital Share: Experts"},
-    "sigsigqk": {"ylabel": r"$\sigma+\sigma^{q,k}$", "title": r"Price return diffusion (capital shock)"},
-    "thetae": {"ylabel": r"$\theta_e$", "title": r"Portfolio Choice: Experts"},
-    "omega": {"ylabel": r"$\Omega=J_e/J_h$", "title": r"Ratio of Value Functions ($\Omega=J_e/J_h$)"},
+    "sigsigqk": {"ylabel": r"$\sigma+\sigma^{q,k}$", "title": r"Price return diffusion (capital shock)", "show_legend": True},
+    "thetae": {"ylabel": r"$\theta_e$", "title": r"Portfolio Choice: Experts", "show_legend": False},
+    "omega": {"ylabel": r"$\Omega=J_e/J_h$", "title": r"Ratio of Value Functions ($\Omega=J_e/J_h$)", "show_legend": False},
 }
 
 MODEL_CONFIGS = {
@@ -456,7 +457,8 @@ def plot_res(res_dicts: Dict[str, Dict[str, Any]], plot_args: Dict[str, Any], a_
         ax.set_xlabel(x_label)
         ax.set_ylabel(plot_arg["ylabel"])
         # ax.set_title(plot_arg["title"])
-        ax.legend()
+        if plot_arg["show_legend"]:
+            ax.legend()
         plt.tight_layout()
         fn = os.path.join(BASE_DIR, "plots", f"{func_name}.jpg")
         plt.savefig(fn)
@@ -478,16 +480,46 @@ def plot_res(res_dicts: Dict[str, Dict[str, Any]], plot_args: Dict[str, Any], a_
         ax.set_xlabel(x_label)
         ax.set_ylabel(plot_arg["ylabel"])
         # ax.set_title(plot_arg["title"])
-        ax.legend()
+        if plot_arg["show_legend"]:
+            ax.legend()
         plt.tight_layout()
         fn = os.path.join(BASE_DIR, "plots", f"{func_name}_compare.jpg")
         plt.savefig(fn)
         plt.close()
         
+def plot_residual_points(plot_dir):
+    anchor_point_files = glob.glob(os.path.join(BASE_DIR, "timestep_rar", "anchor_points", "region1_anchor_points_*.npy"))
+    for i, anchor_point_file in enumerate(anchor_point_files):
+        curr_rar_sampled_points = np.load(anchor_point_file)
+        fig, ax = plt.subplots(1, 1, figsize=(10, 10))
+        ax.scatter(curr_rar_sampled_points[:, 0], curr_rar_sampled_points[:, 1], label=f"Outer Loop {i+1}")
+        ax.set_xlabel("$z$")
+        ax.set_ylabel("$a_e$")
+        # ax.set_title(f"RARG Sampled Points")
+        plt.tight_layout()
+        plt.savefig(os.path.join(plot_dir, f"rar_sampled_points_{i}.jpg"))
+        plt.close()
+
+def plot_residual_points_single_image(plot_dir):
+    anchor_point_files = glob.glob(os.path.join(BASE_DIR, "timestep_rar", "anchor_points", "region1_anchor_points_*.npy"))
+    fig, ax = plt.subplots(1, 1, figsize=(10, 10))
+    for i, anchor_point_file in enumerate(anchor_point_files):
+        curr_rar_sampled_points = np.load(anchor_point_file)     
+        ax.scatter(curr_rar_sampled_points[:, 0], curr_rar_sampled_points[:, 1], label=f"Outer Loop {i+1}")
+        ax.set_xlabel("$z$")
+        ax.set_ylabel("$a_e$")
+        # ax.set_title(f"RARG Sampled Points")
+        if i == 3:
+            break
+    ax.set_ylim(0.05, 0.25)
+    ax.legend(loc="lower right")
+    plt.tight_layout()
+    plt.savefig(os.path.join(plot_dir, f"rar_sampled_points.jpg"))
+    plt.close()
 
 def plot_loss(fn):
     fig, ax = plt.subplots(nrows=3, ncols=1, figsize=(20, 30))
-    for i, region in enumerate([r"Region 1 ($\psi < 1$)", r"Region 2 ($\psi = 1$, $\epsilon_e > \epsilon_h$)", r"Region 3 ($\psi = 1$, $\epsilon_e = \epsilon_h$)"]):
+    for i, region in enumerate([r"Financing constraint", r"Shorting constraint", r"No constraint"]):
         ax[i].set_xlabel("Epochs")
         ax[i].set_ylabel("Loss")
         ax[i].set_yscale("log")
@@ -506,7 +538,7 @@ def plot_loss(fn):
 
 if __name__ == "__main__":
     final_plot_dicts = {}
-    os.makedirs(os.path.join(BASE_DIR, "plots"), exist_ok=True)
+    os.makedirs(os.path.join(BASE_DIR, "plots", "residual_points"), exist_ok=True)
     for k in TRAINING_CONFIGS.keys():
         print(f"{k:=^80}")
         timestepping = "timestep" in k
@@ -526,5 +558,7 @@ if __name__ == "__main__":
         torch.cuda.empty_cache()
     plot_res(final_plot_dicts, PLOT_ARGS, a_list)
     plot_loss(os.path.join(BASE_DIR, "plots", "loss.jpg"))
+    plot_residual_points(os.path.join(BASE_DIR, "plots", "residual_points"))
+    plot_residual_points_single_image(os.path.join(BASE_DIR, "plots"))
 
 
