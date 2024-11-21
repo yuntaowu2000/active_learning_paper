@@ -78,6 +78,7 @@ def plot_kappas(fn: str):
         ax.plot(kappa_df["epoch"], kappa_df["kappa"], label=l, linestyle=ls)
     ax.set_xlabel("Epoch")
     ax.set_ylabel("Kappa")
+    ax.set_ylim(0.65, 1.1)
     # ax.set_title(r"$\kappa$ across First 200 Epochs")
     ax.legend(loc="upper right")
     plt.tight_layout()

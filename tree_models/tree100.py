@@ -78,6 +78,7 @@ def plot_kappas(fn: str):
         ax.plot(kappa_df["epoch"], kappa_df["kappa"], label=l, linestyle=ls)
     ax.set_xlabel("Epoch")
     ax.set_ylabel("Kappa")
+    ax.set_ylim(0.65, 1.1)
     # ax.set_title(r"$\kappa$ across First 200 Epochs")
     ax.legend(loc="upper right")
     plt.tight_layout()
@@ -94,8 +95,10 @@ if __name__ == "__main__":
         elif "timestep" in k:
             model_lib = ts_model
         if not os.path.exists(os.path.join(curr_params["output_dir"], "model.pt")):
-            model_lib.train_loop(curr_params)
-            model_lib.distribution_plot(curr_params, 1000)
+            total_time, epoch_time = model_lib.train_loop(curr_params)
+            print(f"Total time: {total_time}s")
+            print(f"Epoch time: {epoch_time}s")
+            # model_lib.distribution_plot(curr_params, 500)
     plot_min_loss(os.path.join(PLOT_DIR, "min_loss.jpg"))
     plot_kappas(os.path.join(PLOT_DIR, "kappa.jpg"))
     

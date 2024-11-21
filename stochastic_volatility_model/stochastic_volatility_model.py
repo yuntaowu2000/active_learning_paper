@@ -284,8 +284,31 @@ def compute_mse(pde_model: PDEModelTimeStep, v_list, vars_to_plot, output_folder
             for v in v_list:
                 curr_square = (res_dict[f"{var}_{v}"] - ditella_res_dict[f"{var}_{v}"]) ** 2
             total_squares += curr_square
-            curr_mse = np.mean(curr_square) / len(v_list) # average across the slices
+            curr_mse = np.mean(total_squares) / len(v_list) # average across the slices
             print(f"{var} MSE: {curr_mse}", file=f)
+
+def compute_consumption_mse(pde_model: PDEModelTimeStep, output_folder: str):
+    N = x_grid.shape[0]
+    x_tensor, v_tensor = torch.meshgrid(torch.tensor(x_grid), torch.tensor(v_grid))
+    SV = torch.zeros((N**2, 3), device=pde_model.device)
+    SV[:, 0] = x_tensor.reshape(-1)
+    SV[:, 1] = v_tensor.reshape(-1)
+    for i, sv_name in enumerate(pde_model.state_variables):
+        pde_model.variable_val_dict[sv_name] = SV[:, i:i+1]
+    pde_model.update_variables(SV)
+    e_hat = pde_model.variable_val_dict["e_hat"].detach().cpu().numpy().reshape(N, N)
+    c_hat = pde_model.variable_val_dict["c_hat"].detach().cpu().numpy().reshape(N, N)
+
+    e_original = np.array(needed_eq["intere"]["original"])
+    e_grid = e_original.reshape((len(v_grid), len(x_grid)))
+    c_original = np.array(needed_eq["intere"]["original"])
+    c_grid = c_original.reshape((len(v_grid), len(x_grid)))
+    
+    mse_e = np.mean((e_grid - e_hat) ** 2)
+    mse_c = np.mean((c_grid - c_hat) ** 2)
+    with open(os.path.join(output_folder, "mse_consumption.txt"), "w") as f:
+        print(f"e MSE: {mse_e}", file=f)
+        print(f"c MSE: {mse_c}", file=f)
 
 def plot_loss(fn):
     fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(10, 10))
@@ -362,6 +385,7 @@ if __name__ == "__main__":
         final_plot_dicts[k] = compute_func(model, v_list, VARS_TO_PLOT)
         if timestepping and loss_balancing:
             compute_mse(model, v_list, VARS_TO_PLOT, curr_dir)
+            compute_consumption_mse(model, curr_dir)
         gc.collect()
         torch.cuda.empty_cache()
     plot_res(final_plot_dicts, PLOT_ARGS, v_list)

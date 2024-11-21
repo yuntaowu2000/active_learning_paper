@@ -156,18 +156,22 @@ class Training_Sampler():
     
     def sample_rar(self, kappa_nn, TP):
         # random sample 1000 points for validation, choose the highest ones
+        if self.sv_count > 50:
+            sample_size = 500
+        else:
+            sample_size = 1000
         if self.params["sample_method"] == "uniform":
             SV = np.random.uniform(low=[0] * (self.sv_count + 1), 
                          high=[1] * (self.sv_count + 1), 
-                         size=(1000, self.sv_count + 1))
+                         size=(sample_size, self.sv_count + 1))
             SV = torch.Tensor(SV)
         elif self.params["sample_method"] == "log_normal":
             ys = [0] * len(self.params["mu_ys"])
             for i in range(len(self.params["mu_ys"])):
-                ys[i] = torch.distributions.log_normal.LogNormal(self.params["mu_ys"][i], self.params["sig_ys"][i]).sample((1000, 1))
+                ys[i] = torch.distributions.log_normal.LogNormal(self.params["mu_ys"][i], self.params["sig_ys"][i]).sample((sample_size, 1))
             ys = torch.einsum("jbi -> bj", torch.stack(ys))
             zs_ts = ys[:, :-1] / torch.sum(ys, dim=1, keepdim=True) # the last dimension should be dropped
-            ts = torch.Tensor(np.random.uniform([0], [1], (1000, 1)))
+            ts = torch.Tensor(np.random.uniform([0], [1], (sample_size, 1)))
             SV = torch.cat([zs_ts, ts], dim=1)
         SV = SV.to(device)
         total_loss, hjb_kappas_, consistency_kappas_ = TP.loss_fun_Net1(kappa_nn, SV)
@@ -202,6 +206,7 @@ class Training_pde(Environments):
             - SV: (share, t)
         '''
         SV   = SV.clone()
+        torch.cuda.empty_cache()
         SV.requires_grad_(True)
         
         z = SV[:, :-1]
@@ -277,18 +282,21 @@ class Training_pde(Environments):
         lconsistency = torch.sum(torch.mean(torch.square(consistency_kappas), dim=0))
 
         # Store variables
-        self.kappas = kappa_vec
-        self.qs = q_vec
-        self.zetas = zetas
-        self.r = r
-        self.mu_z_geos = mu_z_geos
-        self.sig_z_geos = sig_z_geos
-        self.mu_z_aris = mu_z_aris
-        self.sig_z_aris = sig_z_aris
-        self.mu_qs = mu_qs
-        self.sig_qs = sig_qs
-        self.mu_kappas = mu_kappas
-        self.sig_kappas = sig_kappas
+        self.kappas = kappa_vec.detach().cpu()
+        self.qs = q_vec.detach().cpu()
+        self.zetas = zetas.detach().cpu()
+        self.r = r.detach().cpu()
+        self.mu_z_geos = mu_z_geos.detach().cpu()
+        self.sig_z_geos = sig_z_geos.detach().cpu()
+        self.mu_z_aris = mu_z_aris.detach().cpu()
+        self.sig_z_aris = sig_z_aris.detach().cpu()
+        self.mu_qs = mu_qs.detach().cpu()
+        self.sig_qs = sig_qs.detach().cpu()
+        self.mu_kappas = mu_kappas.detach().cpu()
+        self.sig_kappas = sig_kappas.detach().cpu()
+
+        del kappa_vec, q_vec, zetas, r, mu_z_geos, sig_z_geos, mu_z_aris, sig_z_aris, mu_qs, sig_qs, mu_kappas, sig_kappas
+        torch.cuda.empty_cache()
 
         total_loss = lhjbs + lconsistency
         return total_loss, hjb_kappas, consistency_kappas
@@ -389,6 +397,9 @@ def train_loop(params):
                 anchor_points = TS.sample_rar(kappa_nn, TP).to(device)
                 SV = torch.vstack([SV, anchor_points])
                 SV.requires_grad_(True)
+                del anchor_points
+                gc.collect()
+                torch.cuda.empty_cache()
             epoch_end_time = time.time()
             epoch_times.append(epoch_end_time - epoch_start_time)
         if params["resample_times"] > 0:
@@ -431,7 +442,9 @@ def train_loop(params):
             max_rel_change = max(max_rel_change, rel_change)
         
         for k in prev_vals:
+            # del prev_vals[k]
             prev_vals[k] = new_vals[k]
+            del new_vals[k]
 
         total_rel_change = min(max_abs_change, max_rel_change)
         all_changes["total"] = total_rel_change
@@ -441,7 +454,11 @@ def train_loop(params):
 
         if all_changes["total"] < outer_loop_convergence_thres:
             break
+        del SV
+        del total_loss
+        gc.collect()
         torch.cuda.empty_cache()
+    gc.collect()
     torch.cuda.empty_cache()
     end_time = time.time()
     summary_to_write = "Model Architecture:\n"

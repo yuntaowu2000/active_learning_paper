@@ -183,9 +183,10 @@ if __name__ == "__main__":
 r""" & \multicolumn{6}{c}{CUDA Memory (MB)} & \multicolumn{6}{c}{FLOPS ($\times 10^9$)} \\
  & 2-Tree & 3-Tree & 5-Tree & 10-Tree & 20-Tree & 50-Tree & 2-Tree & 3-Tree & 5-Tree & 10-Tree & 20-Tree & 50-Tree \\""")
     ltx = ltx.replace(r"\midrule", r"\cmidrule(lr){2-7} \cmidrule(lr){8-13}")
-    for k, v in [("basic_rar", "Basic (RAR)"), ("timestep_rar", "Time-stepping (RAR)"), ("basic", "Basic"), ("timestep", "Time-stepping")]:
+    for k, v in [("basic_rar", "Basic (RAR)"), ("timestep_rar", "Our Method"), ("basic", "Basic"), ("timestep", "Time-stepping")]:
         ltx = ltx.replace(k, v)
+    ltx = ltx.replace("nan", "")
     with open(os.path.join(BASE_DIR, "memory_usage.tex"), "w") as f:
         f.write(ltx)
-    plot_mem_usage_flops()
+    # plot_mem_usage_flops()
 

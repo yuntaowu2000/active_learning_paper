@@ -61,7 +61,7 @@ def plot_timing():
     EPOCH_LABELS = [f"n_{n_tree}_epoch_time" for n_tree in N_TREES]
 
     fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(10, 10))
-    for k, l, ls, color in [("timestep", "Time-stepping", ":", "blue"), ("timestep_rar", "Time-stepping (RAR)", "-", "green")]:
+    for k, l, ls, color in [("timestep", "Time-stepping", ":", "blue"), ("timestep_rar", "Our Method", "-", "green")]:
         df = dfs[k]
         df_mean = df.mean(axis=0)
         df_5tile = df.quantile(q=0.05, axis=0)
@@ -79,7 +79,8 @@ def plot_timing():
 
 
     fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(10, 10))
-    for k, l, ls, color in [("basic", "Basic", "--", "red"), ("basic_rar", "Basic (RAR)", "-.", "orange"), ("timestep", "Time-stepping", ":", "blue"), ("timestep_rar", "Time-stepping (RAR)", "-", "green")]:
+    # ("basic_rar", "Basic (RAR)", "-.", "orange"), 
+    for k, l, ls, color in [("basic", "Basic Neural Network", "--", "red"), ("timestep", "Time-stepping", ":", "blue"), ("timestep_rar", "Our Method", "-", "green")]:
         df = dfs[k]
         df_mean = df.mean(axis=0)
         df_5tile = df.quantile(q=0.05, axis=0)
