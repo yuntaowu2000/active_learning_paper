@@ -290,6 +290,7 @@ def train_loop(params):
 
     min_loss_dict = defaultdict(list)
     kappa_val_dict = defaultdict(list)
+    all_loss_dict = defaultdict(list)
 
     epoch_times = []
     start_time = time.time()
@@ -308,6 +309,8 @@ def train_loop(params):
   
         optimizer.step()
         loss_val = total_loss.item()
+        all_loss_dict["epoch"].append(epoch)
+        all_loss_dict["total_loss"].append(loss_val)
         if (loss_val < min_loss):
             min_loss = loss_val
             best_model_kappa.load_state_dict(kappa_nn.state_dict())
@@ -334,6 +337,7 @@ def train_loop(params):
 
 
     pd.DataFrame(min_loss_dict).to_csv(f"{output_dir}/min_loss.csv", index=False)
+    pd.DataFrame(all_loss_dict).to_csv(f"{output_dir}/all_loss.csv", index=False)
     pd.DataFrame(kappa_val_dict).to_csv(f"{output_dir}/kappa_val.csv", index=False)
     torch.save({"model": best_model_kappa.state_dict(), "params": params}, os.path.join(output_dir, "model.pt"))
 

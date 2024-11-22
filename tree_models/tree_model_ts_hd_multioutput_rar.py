@@ -231,7 +231,7 @@ class Training_pde(Environments):
         dkappa_dzz = vmap(hessian(compute_kappa), chunk_size=self.params["batch_size"])(SV)[:,:,:-1,:-1]
         dq_dzz = vmap(hessian(compute_q), chunk_size=self.params["batch_size"])(SV)[:,:,:-1,:-1]
         
-         # Compute dynamics of z
+        # Compute dynamics of z
         mu_ys = torch.tensor(self.params["mu_ys"], device=device).unsqueeze(0)
         sig_ys = torch.tensor(self.params["sig_ys"], device=device).unsqueeze(0)
 
@@ -342,6 +342,7 @@ def train_loop(params):
     change_dict = defaultdict(list)
     min_loss_dict = defaultdict(list)
     kappa_val_dict = defaultdict(list)
+    all_loss_dict = defaultdict(list)
 
     SV_T0 = TS.sample_boundary_cond(0.0).to(device)
     SV_T0.requires_grad_(True)
@@ -380,6 +381,9 @@ def train_loop(params):
     
             optimizer.step()
             loss_val = total_loss.item()
+            all_loss_dict["outer_loop_iter"].append(outer_loop)
+            all_loss_dict["epoch"].append(len(all_loss_dict["epoch"]))
+            all_loss_dict["total_loss"].append(loss_val)
             if (loss_val < min_loss):
                 min_loss = loss_val
                 best_model_kappa.load_state_dict(kappa_nn.state_dict())
@@ -469,6 +473,7 @@ def train_loop(params):
         f.write(summary_to_write)
 
     pd.DataFrame(min_loss_dict).to_csv(f"{output_dir}/min_loss.csv", index=False)
+    pd.DataFrame(all_loss_dict).to_csv(f"{output_dir}/all_loss.csv", index=False)
     pd.DataFrame(change_dict).to_csv(f"{output_dir}/change_dict.csv", index=False)
     pd.DataFrame(kappa_val_dict).to_csv(f"{output_dir}/kappa_val.csv", index=False)
 
