@@ -283,7 +283,7 @@ def compute_mse(pde_model: PDEModelTimeStep, v_list, vars_to_plot, output_folder
             total_squares = 0.
             for v in v_list:
                 curr_square = (res_dict[f"{var}_{v}"] - ditella_res_dict[f"{var}_{v}"]) ** 2
-            total_squares += curr_square
+                total_squares += curr_square
             curr_mse = np.mean(total_squares) / len(v_list) # average across the slices
             print(f"{var} MSE: {curr_mse}", file=f)
 
@@ -366,6 +366,19 @@ def plot_consumption_convergence(change_target_var={"e_hat": r"$\hat{e}$", "c_ha
         plt.savefig(os.path.join(BASE_DIR, "plots", f"convergence_{var}.jpg"))
         plt.close()
 
+def plot_abs_changes(plot_dir):
+    change_dict = pd.read_csv(os.path.join(BASE_DIR, "timestep_lb", "model_change_dict.csv"))
+    for var, label in [("xi_abs", r"$|\xi_{t+1}-\xi_{t}|$"), ("zeta_abs", r"$|\zeta_{t+1}-\zeta_{t}|$"),
+                       ("e_hat_abs", r"$|\hat{e}_{t+1}-\hat{e}_{t}|$"), ("c_hat_abs", r"$|\hat{c}_{t+1}-\hat{c}_{t}|$"),]:
+        fig, ax = plt.subplots(1, 1, figsize=(10, 10))
+        ax.plot(change_dict["outer_loop_iter"], change_dict[var])
+        ax.set_yscale("log")
+        ax.set_xlabel("Time Step Iteration")
+        ax.set_ylabel(label)
+        plt.tight_layout()
+        plt.savefig(os.path.join(plot_dir, f"{var}_change.jpg"))
+        plt.close()
+
 if __name__ == "__main__":
     final_plot_dicts = {}
     final_plot_dicts["fd"] = ditella_res_dict
@@ -392,3 +405,4 @@ if __name__ == "__main__":
     plot_loss(os.path.join(BASE_DIR, "plots", "loss.jpg"))
     plot_loss_weight(os.path.join(BASE_DIR, "plots", "loss_weight.jpg"))
     plot_consumption_convergence()
+    plot_abs_changes(os.path.join(BASE_DIR, "plots"))

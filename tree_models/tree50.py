@@ -56,10 +56,11 @@ def plot_min_loss(fn):
     ax.set_ylabel("Loss")
     ax.set_yscale("log")
     # ax.set_title(f"Total Loss across Epochs")
-    for k, l, ls in [("timestep", "Time-stepping", "-."), ("timestep_rar", "Our Method", "-")]:
+    for k, l, ls in [("timestep_rar", "Our Method", "-")]:
         curr_dir = os.path.join(BASE_DIR, k)
         loss_file = os.path.join(curr_dir, f"min_loss.csv")
         loss_df = pd.read_csv(loss_file)
+        loss_df = loss_df[loss_df["epoch"] < 200]
         ax.plot(loss_df["epoch"], loss_df["total_loss"], label=l, linestyle=ls)
     ax.legend()
     plt.tight_layout()
@@ -68,21 +69,56 @@ def plot_min_loss(fn):
 
 def plot_kappas(fn: str):
     fig, ax = plt.subplots(1, 1, figsize=(10, 10))
-
-    for k, l, ls in [("basic", "Basic Neural Network", "--"), ("timestep", "Time-stepping", "-."), ("timestep_rar", "Our Method", "-")]:
+    twin_ax = ax.twinx()
+    ax.set_xlabel("Epoch")
+    ax.set_ylabel(r"$\kappa$ (Our Method)")
+    twin_ax.set_ylabel(r"$\kappa$ (Basic Neural Network)")
+    twin_ax.yaxis.set_major_formatter(plt.FormatStrFormatter("%.5f"))
+    # ("timestep", "Time-stepping", "-."),
+    for k, l, ls, color, curr_ax in [("basic", "Basic Neural Network", "--", "lightskyblue", twin_ax),
+                                    ("timestep_rar", "Our Method", "-", "orange", ax)]:
         curr_params = ALL_PARAMS[k]
         kappa_df = pd.read_csv(os.path.join(BASE_DIR, k, "kappa_val.csv"))
         kappa_cols = [f"kappa_{i+1}" for i in range(curr_params["n_trees"])]
         kappa_df["kappa"] = kappa_df[kappa_cols].mean(axis=1)
         kappa_df = kappa_df[kappa_df["epoch"] < 200]
-        ax.plot(kappa_df["epoch"], kappa_df["kappa"], label=l, linestyle=ls)
-    ax.set_xlabel("Epoch")
-    ax.set_ylabel("Kappa")
-    ax.set_ylim(0.65, 1.1)
+        curr_ax.plot(kappa_df["epoch"], kappa_df["kappa"], label=l, linestyle=ls, color=color)
+    ax_lines, ax_labels = ax.get_legend_handles_labels()
+    twinax_lines, twinax_labels = twin_ax.get_legend_handles_labels()
+    ax_lines.extend(twinax_lines)
+    ax_labels.extend(twinax_labels)
+    ax.legend(ax_lines, ax_labels, loc="upper right")
+    twin_ax.set_ylim(0.6895, 0.690)
+    # ax.set_ylim(0.65, 1.1)
     # ax.set_title(r"$\kappa$ across First 200 Epochs")
-    ax.legend(loc="upper right")
     plt.tight_layout()
     plt.savefig(fn)
+
+def plot_loss_progression(fn):
+    fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(10, 10))
+    ax.set_xlabel("Epochs")
+    ax.set_ylabel("Loss (Our Method)")
+    ax.set_yscale("log")
+    twin_ax = ax.twinx()
+    twin_ax.set_yscale("log")
+    twin_ax.set_ylabel("Loss (Basic Neural Network)")
+
+    for k, l, ls, color, curr_ax in [("basic", "Basic Neural Network", "--", "lightskyblue", twin_ax), 
+                                     ("timestep_rar", "Our Method", "-", "orange", ax)]:
+        loss_file = os.path.join(BASE_DIR, k, f"all_loss.csv")
+        loss_df = pd.read_csv(loss_file)
+        loss_df = loss_df[loss_df["epoch"] < 200]
+        curr_ax.plot(loss_df["epoch"], loss_df["total_loss"], label=l, linestyle=ls, color=color)
+
+    ax_lines, ax_labels = ax.get_legend_handles_labels()
+    twinax_lines, twinax_labels = twin_ax.get_legend_handles_labels()
+    ax_lines.extend(twinax_lines)
+    ax_labels.extend(twinax_labels)
+
+    ax.legend(ax_lines, ax_labels, loc="upper right")
+    plt.tight_layout()
+    plt.savefig(fn)
+    plt.close()
 
 if __name__ == "__main__":
     for k in ALL_PARAMS:
@@ -99,4 +135,5 @@ if __name__ == "__main__":
             model_lib.distribution_plot(curr_params, 1000)
     plot_min_loss(os.path.join(PLOT_DIR, "min_loss.jpg"))
     plot_kappas(os.path.join(PLOT_DIR, "kappa.jpg"))
+    plot_loss_progression(os.path.join(PLOT_DIR, "loss.jpg"))
     

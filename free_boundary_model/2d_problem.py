@@ -125,9 +125,9 @@ PROBLEM_DOMAIN = {"z": [z_min, z_max], "ae": [a_min, a_max]}
 VARS_TO_PLOT = ["epse", "epsh","psi", "sigsigqk", "thetae", "omega"]
 PLOT_ARGS = {
     # "psi": {"ylabel": r"$\psi$", "title": r"Capital Share: Experts"},
-    "sigsigqk": {"ylabel": r"$\sigma+\sigma^{q,k}$", "title": r"Price return diffusion (capital shock)", "show_legend": True},
+    "omega": {"ylabel": r"$\Omega=J_e/J_h$", "title": r"Ratio of Value Functions ($\Omega=J_e/J_h$)", "show_legend": True},
     "thetae": {"ylabel": r"$\theta_e$", "title": r"Portfolio Choice: Experts", "show_legend": False},
-    "omega": {"ylabel": r"$\Omega=J_e/J_h$", "title": r"Ratio of Value Functions ($\Omega=J_e/J_h$)", "show_legend": False},
+    "sigsigqk": {"ylabel": r"$\sigma+\sigma^{q,k}$", "title": r"Price return diffusion (capital shock)", "show_legend": False},
 }
 
 MODEL_CONFIGS = {
@@ -536,6 +536,18 @@ def plot_loss(fn):
     plt.savefig(fn)
     plt.close()
 
+def plot_abs_changes(plot_dir):
+    change_dict = pd.read_csv(os.path.join(BASE_DIR, "timestep_rar", "region1_change_dict.csv"))
+    for var, label in [("Je_abs", r"$|Je_{t+1}-Je_{t}|$"), ("Jh_abs", r"$|Jh_{t+1}-Jh_{t}|$")]:
+        fig, ax = plt.subplots(1, 1, figsize=(10, 10))
+        ax.set_yscale("log")
+        ax.plot(change_dict["outer_loop_iter"], change_dict[var])
+        ax.set_xlabel("Time Step Iteration")
+        ax.set_ylabel(label)
+        plt.tight_layout()
+        plt.savefig(os.path.join(plot_dir, f"{var}_change.jpg"))
+        plt.close()
+
 if __name__ == "__main__":
     final_plot_dicts = {}
     os.makedirs(os.path.join(BASE_DIR, "plots", "residual_points"), exist_ok=True)
@@ -560,5 +572,6 @@ if __name__ == "__main__":
     plot_loss(os.path.join(BASE_DIR, "plots", "loss.jpg"))
     plot_residual_points(os.path.join(BASE_DIR, "plots", "residual_points"))
     plot_residual_points_single_image(os.path.join(BASE_DIR, "plots"))
+    plot_abs_changes(os.path.join(BASE_DIR, "plots"))
 
 
