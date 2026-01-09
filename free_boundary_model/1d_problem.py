@@ -75,18 +75,16 @@ MODEL_CONFIGS = {
             "activation_type": ActivationType.SiLU,
         }
     },
-    "KAN": {
+    "MLP_ReLU": {
         "q": {
-            "hidden_units": [1, 1],
-            "layer_type": LayerType.KAN,
-            "activation_type": ActivationType.SiLU,
+            "positive": True,
+            "activation_type": ActivationType.ReLU,
         },
         "psi": {
-            "hidden_units": [1, 1],
-            "layer_type": LayerType.KAN,
-            "activation_type": ActivationType.SiLU,
+            "positive": True, 
+            "activation_type": ActivationType.ReLU,
         }
-    }
+    },
 }
 
 TRAINING_CONFIGS = {
@@ -96,12 +94,12 @@ TRAINING_CONFIGS = {
         "num_epochs": 20000,
         "optimizer_type": OptimizerType.Adam,
     },
-    "KAN": {
+    "MLP_ReLU": {
         "sampling_method": SamplingMethod.FixedGrid, 
         "batch_size": 1000,
-        "num_epochs": 200,
-        "lr": 1,
-    }
+        "num_epochs": 20000,
+        "optimizer_type": OptimizerType.Adam,
+    },
 }
 
 EQUATIONS = {
@@ -219,28 +217,24 @@ def add_model_equations(model: Union[PDEModel, Dict[str, PDEModel]]):
                 model[k].add_endog_equation(endog_eq[0], weight=endog_eq[1], loss_reduction=LossReductionMethod.SSE)
         return model
 
-def plot_models(model_system: PDEModel, 
-                model_split: Dict[str, PDEModel],
-                output_folder: str,
-                x_var_ltx = r"$\eta$",):
-    
+def plot_models(
+    model_system: PDEModel, 
+    model_split: Dict[str, PDEModel],
+    output_folder: str,
+):
     ## Finite Difference Solution
     df = pd.read_csv("models/BruSan14_log_utility_solution-raw.csv")
-    plot_args_base = []
+    plot_args_base = {}
     x_plot_base = df["e"]
     for var in VARS_TO_PLOT:
-        plot_args_base.append({
-            "y": df[LATEX_VAR_MAPPING.get(var, var)],
-            "ylabel": PLOT_ARGS[var]["ylabel"],
-            "title": PLOT_ARGS[var]["title"]
-        })
+        plot_args_base[var] = df[LATEX_VAR_MAPPING.get(var, var)]
 
     ## Baseline no split solution
     N = 1000
     SV = torch.linspace(PROBLEM_DOMAIN["e"][0], PROBLEM_DOMAIN["e"][1], N, device=model_system.device).reshape(-1, 1)
     x_plot = SV.detach().cpu().numpy().reshape(-1)
 
-    plot_dict_model_system = []
+    plot_dict_model_system = {}
     for i, sv_name in enumerate(model_system.state_variables):
         model_system.variable_val_dict[sv_name] = SV[:, i:i+1]
     model_system.update_variables(SV)
@@ -259,14 +253,10 @@ def plot_models(model_system: PDEModel,
             region1_sol = model_system.systems["system_crisis_region"].variable_val_dict[LATEX_VAR_MAPPING.get(var, var)].detach().cpu().numpy().reshape(-1)
             region2_sol =  model_system.systems["system_normal_region"].variable_val_dict[LATEX_VAR_MAPPING.get(var, var)].detach().cpu().numpy().reshape(-1)
             res = region1_sol * index_unconstrain + region2_sol * index_constrain
-        plot_dict_model_system.append({
-            "y": res,
-            "ylabel": PLOT_ARGS[var]["ylabel"],
-            "title": PLOT_ARGS[var]["title"]
-        })
+        plot_dict_model_system[var] = res
 
     ## Split Solution
-    plot_dict_model_split = []
+    plot_dict_model_split = {}
     for k in ["region1", "region2"]:
         for i, sv_name in enumerate(model_split[k].state_variables):
             model_split[k].variable_val_dict[sv_name] = SV[:, i:i+1]
@@ -282,45 +272,70 @@ def plot_models(model_system: PDEModel,
         else:
             region2_sol =  model_split["region2"].variable_val_dict[LATEX_VAR_MAPPING.get(var, var)].detach().cpu().numpy().reshape(-1)
         res = region1_sol * index_unconstrain + region2_sol * index_constrain
-        plot_dict_model_split.append({
-            "y": res,
-            "ylabel": rf"${var}$",
-            "title": rf"${var}$ vs. ${x_var_ltx}$"
-        })
+        plot_dict_model_split[var] = res
     
-    for i, var in enumerate(VARS_TO_PLOT):
-        fn = os.path.join(output_folder, f"{LATEX_VAR_MAPPING.get(var, var)}.jpg")
-        fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(10, 10))
-        ax.plot(x_plot_base, plot_args_base[i]["y"], linestyle="-.", marker="x", label="Finite Difference")
-
-        ax.plot(x_plot, plot_dict_model_system[i]["y"], linestyle="--", label="Basic Neural Network")
-
-        ax.plot(x_plot, plot_dict_model_split[i]["y"], linestyle="-", label="Our Method")
-        ax.set_ylabel(plot_args_base[i]["ylabel"])
-        ax.set_xlabel(f"${x_var_ltx}$")
+    for var in VARS_TO_PLOT:
+        fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(8, 6))
+        ax.plot(x_plot_base, plot_args_base[var], linestyle="-.", marker="x", color="#000000", label="Finite Difference", markevery=10)
+        ax.plot(x_plot, plot_dict_model_system[var], linestyle="--", color="#D9D9D9", label="Basic Neural Network")
+        ax.plot(x_plot, plot_dict_model_split[var], linestyle="-", color="#5492ab", label="Our Method")
+        ax.set_ylabel(PLOT_ARGS[var]["ylabel"], fontsize=16)
+        ax.set_xlabel(r"$\eta$", fontsize=16)
+        ax.tick_params(axis="both", which="major", labelsize=14)
         if PLOT_ARGS[var]["show_legend"]:
-            ax.legend()
-        # ax.set_title(plot_args_base[i]["title"])
+            ax.legend(loc="lower right", frameon=False, fontsize=14)
         plt.tight_layout()
-        plt.savefig(fn)
+        plt.savefig(os.path.join(output_folder, f"{LATEX_VAR_MAPPING.get(var, var)}.pdf"))
         plt.close()
 
-def compute_mse(model_split: Dict[str, PDEModel],
-                output_folder: str,):
+def format_sci(x):
+    sci_str = f"{x:.2e}"  # Convert to scientific notation
+    base, exp = sci_str.split("e")  # Split into base and exponent
+    exp = int(exp)  # Convert exponent to integer to remove leading zeros and '+'
+    if exp == 0:
+        return f"{base}"
+    else:
+        return f"${base} \\times 10^{{{exp}}}$"
+    
+def compute_mse(
+    model_system: PDEModel, 
+    model_split: Dict[str, PDEModel],
+    output_folder: str,
+):
     ## Finite Difference Solution
     df = pd.read_csv("models/BruSan14_log_utility_solution-raw.csv")
-    plot_args_base = []
+    plot_args_base = {}
     x_plot_base = df["e"]
     for var in VARS_TO_PLOT:
-        plot_args_base.append({
-            "y": df[LATEX_VAR_MAPPING.get(var, var)],
-            "ylabel": PLOT_ARGS[var]["ylabel"],
-            "title": PLOT_ARGS[var]["title"]
-        })
+        plot_args_base[var] = df[LATEX_VAR_MAPPING.get(var, var)]
     
     SV = torch.tensor(x_plot_base, dtype=torch.float32, device=model_split["region1"].device).reshape((-1, 1))
+
+    ## Baseline no split solution
+    plot_dict_model_system = {}
+    for i, sv_name in enumerate(model_system.state_variables):
+        model_system.variable_val_dict[sv_name] = SV[:, i:i+1]
+    model_system.update_variables(SV)
+    for sys_name in model_system.systems:
+        model_system.systems[sys_name].eval({}, model_system.variable_val_dict)
+    psi_system = model_system.variable_val_dict["psi"].detach().cpu().numpy().reshape(-1)
+    q = model_system.variable_val_dict["q"].detach().cpu().numpy().reshape(-1)
+    index_unconstrain = (psi_system < 1)
+    index_constrain = (psi_system >= 1)
+    for var in VARS_TO_PLOT:
+        if LATEX_VAR_MAPPING.get(var, var) == "q":
+            res = q
+        elif LATEX_VAR_MAPPING.get(var, var) == "psi":
+            res = psi_system
+        else:
+            region1_sol = model_system.systems["system_crisis_region"].variable_val_dict[LATEX_VAR_MAPPING.get(var, var)].detach().cpu().numpy().reshape(-1)
+            region2_sol =  model_system.systems["system_normal_region"].variable_val_dict[LATEX_VAR_MAPPING.get(var, var)].detach().cpu().numpy().reshape(-1)
+            res = region1_sol * index_unconstrain + region2_sol * index_constrain
+        plot_dict_model_system[var] = res
+
+    
     ## Split Solution
-    plot_dict_model_split = []
+    plot_dict_model_split = {}
     for k in ["region1", "region2"]:
         for i, sv_name in enumerate(model_split[k].state_variables):
             model_split[k].variable_val_dict[sv_name] = SV[:, i:i+1]
@@ -336,24 +351,28 @@ def compute_mse(model_split: Dict[str, PDEModel],
         else:
             region2_sol =  model_split["region2"].variable_val_dict[LATEX_VAR_MAPPING.get(var, var)].detach().cpu().numpy().reshape(-1)
         res = region1_sol * index_unconstrain + region2_sol * index_constrain
-        plot_dict_model_split.append({
-            "y": res,
-            "ylabel": rf"${var}$",
-        })
+        plot_dict_model_split[var] = res
 
-    with open(os.path.join(output_folder, "mse.txt"), "w") as f:
-        total_squares = 0.
-        for i, var in enumerate(VARS_TO_PLOT):
-            curr_square = (plot_dict_model_split[i]["y"] - plot_args_base[i]["y"]) ** 2
-            total_squares += curr_square
-            curr_mse = np.mean(curr_square)
-            print(f"{var} MSE: {curr_mse}", file=f)
-        total_mse = np.mean(total_squares)
-        print(f"Total MSE: {total_mse}", file=f)
+    res_df = pd.DataFrame(
+        index=["Basic Neural Network", "Our Method"],
+        columns=[PLOT_ARGS[var]["ylabel"] for var in VARS_TO_PLOT],
+    )
 
+    for var in VARS_TO_PLOT:
+        curr_numerical = plot_args_base[var]
+        curr_base = plot_dict_model_system[var]
+        curr_split = plot_dict_model_split[var]
+        base_mse = np.mean((curr_base - curr_numerical)**2)
+        split_mse = np.mean((curr_split - curr_numerical)**2)
+        res_df.loc["Basic Neural Network", PLOT_ARGS[var]["ylabel"]] = format_sci(base_mse)
+        res_df.loc["Our Method", PLOT_ARGS[var]["ylabel"]] = format_sci(split_mse)
+    
+    ltx = res_df.style.to_latex(column_format="l" + "c"*len(var), hrules=True)
+    with open(f"{output_folder}/mse.tex", "w") as f:
+        f.write(ltx)
 
 if __name__ == "__main__":
-    for model_type in ["MLP", "KAN"]:
+    for model_type in ["MLP", "MLP_ReLU"]:
         print(f"{model_type:=^80}")
         plot_dir = os.path.join(BASE_DIR, model_type, "plots")
         os.makedirs(plot_dir, exist_ok=True)
@@ -373,44 +392,8 @@ if __name__ == "__main__":
             if not os.path.exists(os.path.join(BASE_DIR, model_type, "split", f"{k}_best.pt")):
                 model_split[k].train_model(os.path.join(BASE_DIR, model_type, "split"), f"{k}.pt", full_log=True)
             model_split[k].load_model(torch.load(os.path.join(BASE_DIR, model_type, "split", f"{k}_best.pt"), weights_only=False))
-        plot_models(model_system, model_split, 
-                    plot_dir,
-                    r"\eta")
-        compute_mse(model_split, plot_dir)
-        gc.collect()
-        torch.cuda.empty_cache()
-        if model_type == "KAN":
-            x = model_system.sample(0)
-            set_seeds(0)
-            model_system.endog_vars["q"].model(x)
-            model_system.endog_vars["psi"].model(x)
-            model_system.endog_vars["q"].model.auto_symbolic()
-            model_system.endog_vars["psi"].model.auto_symbolic()
-            q_formula = model_system.endog_vars["q"].model.symbolic_formula(floating_digit=4)[0][0]
-            psi_formula = model_system.endog_vars["psi"].model.symbolic_formula(floating_digit=4)[0][0]
-            with open(os.path.join(BASE_DIR, model_type, "system", "model_formula.txt"), "w") as f:
-                f.write(f"q={q_formula}\n")
-                f.write(f"psi={psi_formula}\n")
-
-            x = model_split["region1"].sample(0)
-            set_seeds(0)
-            model_split["region1"].endog_vars["q"].model(x)
-            model_split["region1"].endog_vars["psi"].model(x)
-            model_split["region1"].endog_vars["q"].model.auto_symbolic()
-            model_split["region1"].endog_vars["psi"].model.auto_symbolic()
-            q_formula = model_split["region1"].endog_vars["q"].model.symbolic_formula(floating_digit=4)[0][0]
-            psi_formula = model_split["region1"].endog_vars["psi"].model.symbolic_formula(floating_digit=4)[0][0]
-
-            model_split["region2"].endog_vars["q"].model(x)
-            model_split["region2"].endog_vars["q"].model.auto_symbolic(lib=["x"])
-            q_formula_region2 = model_split["region2"].endog_vars["q"].model.symbolic_formula(floating_digit=4)[0][0]
-
-            with open(os.path.join(BASE_DIR, model_type, "split", "model_formula.txt"), "w") as f:
-                f.write("Region 1:\n")
-                f.write(f"q={q_formula}\n")
-                f.write(f"psi={psi_formula}\n")
-                f.write("Region 2:\n")
-                f.write(f"q={q_formula_region2}\n")
+        plot_models(model_system, model_split, plot_dir)
+        compute_mse(model_system, model_split, plot_dir)
         gc.collect()
         torch.cuda.empty_cache()
 

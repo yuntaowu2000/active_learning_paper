@@ -80,8 +80,7 @@ z_max = 0.99
 a_min = 0.1
 a_max = 0.2
 ae_bar = (a_min + a_max) / 2
-a_list = [a_min, ae_bar, a_max]
-COLORS = ["red", "orange", "blue"]
+a_list = [ae_bar]
 PARAMS = {
     "ah": 0.03,
     "sig": 0.1,
@@ -159,14 +158,14 @@ TRAINING_CONFIGS = {
     },
     "timestep": {
         "batch_size": 500, 
-        "num_outer_iterations": 50, 
+        "num_outer_iterations": 70, 
         "num_inner_iterations": 5000,
         "sampling_method": SamplingMethod.UniformRandom, 
         "time_batch_size": 1,
     },
     "timestep_rar": {
         "batch_size": 500, 
-        "num_outer_iterations": 50, 
+        "num_outer_iterations": 70, 
         "num_inner_iterations": 5000,
         "sampling_method": SamplingMethod.RARG, 
         "time_batch_size": 1,
@@ -437,53 +436,51 @@ def compute_final_plot_dict(res_dict1: Dict[str, Dict[str, Any]],
     final_plot_dict["x_plot"] = res_dict1["x_plot"]
     return final_plot_dict
 
-def plot_res(res_dicts: Dict[str, Dict[str, Any]], plot_args: Dict[str, Any], a_list: List[float]):
+def plot_res(res_dicts: Dict[str, Dict[str, Any]], plot_args: Dict[str, Any], plot_dir):
     x_label = "Wealth share (z)"
     
     for i, (func_name, plot_arg) in enumerate(plot_args.items()):
-        fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(10, 10))
-        for k, l, ls in [("timestep_rar", "Our Method", "-")]:
+        fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(8, 6))
+        for k, l, ls, color in [("timestep_rar", "Our Method", "-", "#5492ab")]:
             res_dict = res_dicts[k].copy()
             x_plot: np.ndarray = res_dict.pop("x_plot")
-            for i in range(len(a_list)):
-                a = a_list[i]
-                color = COLORS[i]
-                y_vals = res_dict[f"{func_name}_{a}"]
-                if func_name == "thetae":
-                    idx = np.where(x_plot <= 0.2)
-                    x_plot = x_plot[idx]
-                    y_vals = y_vals[idx]
-                ax.plot(x_plot, y_vals, label=r"$a_e$={i} ({l})".format(i=round(a,2), l=l), linestyle=ls, color=color)
-        ax.set_xlabel(x_label)
-        ax.set_ylabel(plot_arg["ylabel"])
+            a = ae_bar
+            y_vals = res_dict[f"{func_name}_{a}"]
+            if func_name == "thetae":
+                idx = np.where(x_plot <= 0.2)
+                x_plot = x_plot[idx]
+                y_vals = y_vals[idx]
+            ax.plot(x_plot, y_vals, label=l, linestyle=ls, color=color)
+        ax.set_xlabel(x_label, fontsize=16)
+        ax.set_ylabel(plot_arg["ylabel"], fontsize=16)
+        ax.tick_params(axis="both", which="major", labelsize=14)
         # ax.set_title(plot_arg["title"])
-        if plot_arg["show_legend"]:
-            ax.legend()
+        # if plot_arg["show_legend"]:
+        #     ax.legend(loc="upper left", frameon=False, fontsize=14)
         plt.tight_layout()
-        fn = os.path.join(BASE_DIR, "plots", f"{func_name}.jpg")
+        fn = os.path.join(plot_dir, f"{func_name}.pdf")
         plt.savefig(fn)
         plt.close()
 
-        fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(10, 10))
-        for k, l, ls, marker in [("basic", "Basic Neural Network", "--", "x"), ("timestep_rar", "Our Method", "-", "")]:
+        fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(8, 6))
+        for k, l, ls, color in [("basic", "Basic Neural Network", "--", "#D9D9D9"), ("timestep_rar", "Our Method", "-", "#5492ab")]:
             res_dict = res_dicts[k].copy()
             x_plot = res_dict.pop("x_plot")
-            for i in range(len(a_list)):
-                a = a_list[i]
-                color = COLORS[i]
-                y_vals = res_dict[f"{func_name}_{a}"]
-                if func_name == "thetae":
-                    idx = np.where(x_plot <= 0.2)
-                    x_plot = x_plot[idx]
-                    y_vals = y_vals[idx]
-                ax.plot(x_plot, y_vals, label=r"$a_e$={i} ({l})".format(i=round(a,2), l=l), linestyle=ls, marker=marker, color=color)
-        ax.set_xlabel(x_label)
-        ax.set_ylabel(plot_arg["ylabel"])
+            a = ae_bar
+            y_vals = res_dict[f"{func_name}_{a}"]
+            if func_name == "thetae":
+                idx = np.where(x_plot <= 0.2)
+                x_plot = x_plot[idx]
+                y_vals = y_vals[idx]
+            ax.plot(x_plot, y_vals, label=l, linestyle=ls, color=color)
+        ax.set_xlabel(x_label, fontsize=16)
+        ax.set_ylabel(plot_arg["ylabel"], fontsize=16)
+        ax.tick_params(axis="both", which="major", labelsize=14)
         # ax.set_title(plot_arg["title"])
         if plot_arg["show_legend"]:
-            ax.legend()
+            ax.legend(loc="upper left", frameon=False, fontsize=14)
         plt.tight_layout()
-        fn = os.path.join(BASE_DIR, "plots", f"{func_name}_compare.jpg")
+        fn = os.path.join(plot_dir, f"{func_name}_compare.pdf")
         plt.savefig(fn)
         plt.close()
         
@@ -502,39 +499,41 @@ def plot_residual_points(plot_dir):
 
 def plot_residual_points_single_image(plot_dir):
     anchor_point_files = glob.glob(os.path.join(BASE_DIR, "timestep_rar", "anchor_points", "region1_anchor_points_*.npy"))
-    fig, ax = plt.subplots(1, 1, figsize=(10, 10))
-    for i, anchor_point_file in enumerate(anchor_point_files):
-        curr_rar_sampled_points = np.load(anchor_point_file)     
-        ax.scatter(curr_rar_sampled_points[:, 0], curr_rar_sampled_points[:, 1], label=f"Outer Loop {i+1}")
-        ax.set_xlabel("$z$")
-        ax.set_ylabel("$a_e$")
-        # ax.set_title(f"RARG Sampled Points")
-        if i == 3:
-            break
-    ax.set_ylim(0.05, 0.25)
-    ax.legend(loc="lower right")
+    fig, ax = plt.subplots(1, 1, figsize=(8, 6))
+    for i in range(4):
+        curr_rar_sampled_points = np.load(anchor_point_files[i])     
+        ax.scatter(curr_rar_sampled_points[:, 0], curr_rar_sampled_points[:, 1], label=f"Outer Loop {i+1}", s=16)
+    ax.legend(
+        loc="upper center",
+        bbox_to_anchor=(0.5, -0.15),  # move legend below plot
+        ncol=2,
+        frameon=False,
+        fontsize=14
+    )
+    ax.set_xlabel("$z$", fontsize=16)
+    ax.set_ylabel("$a_e$", fontsize=16)
+    ax.tick_params(axis="both", which="major", labelsize=14)
     plt.tight_layout()
-    plt.savefig(os.path.join(plot_dir, f"rar_sampled_points.jpg"))
+    plt.savefig(os.path.join(plot_dir, f"rar_sampled_points.pdf"))
     plt.close()
 
-def plot_loss(fn):
-    fig, ax = plt.subplots(nrows=3, ncols=1, figsize=(20, 30))
-    for i, region in enumerate([r"Financing constraint", r"Shorting constraint", r"No constraint"]):
-        ax[i].set_xlabel("Epochs")
-        ax[i].set_ylabel("Loss")
-        ax[i].set_yscale("log")
-        ax[i].set_title(f"Total Loss across Epochs for {region}")
-    for k, l, ls in [("basic", "Basic Neural Network", "--"), ("timestep", "Time-stepping", "-."), ("timestep_rar", "Our Method", "-")]:
-        curr_dir = os.path.join(BASE_DIR, k)
+def plot_loss(plot_dir):
+    for loss_name, plot_prefix in [("total_loss", "loss"), ("hjbeq_1", "loss_hjb_e"), ("hjbeq_2", "loss_hjb_c")]:
         for i, region in enumerate(["region1", "region2", "region3"]):
-            loss_file = os.path.join(curr_dir, f"{region}_min_loss.csv")
-            loss_df = pd.read_csv(loss_file)
-            ax[i].plot(loss_df["epoch"], loss_df["total_loss"], label=l, linestyle=ls)
-    for i in range(3):
-        ax[i].legend()
-    plt.tight_layout()
-    plt.savefig(fn)
-    plt.close()
+            fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(8, 6))
+            ax.set_yscale("log")
+            for k, l, ls, color in [("basic", "Basic Neural Network", "--", "#D9D9D9"), ("timestep", "Time-stepping", "-.", "#317e46"), ("timestep_rar", "Our Method", "-", "#5492ab")]:
+                curr_dir = os.path.join(BASE_DIR, k)
+                if k == "basic":
+                    loss_file = os.path.join(curr_dir, f"{region}_min_loss.csv")
+                else:
+                    loss_file = os.path.join(curr_dir, f"{region}_global_min_loss.csv")
+                loss_df = pd.read_csv(loss_file)
+                ax.plot(loss_df["epoch"], loss_df[loss_name], label=l, linestyle=ls, color=color)
+            ax.legend()
+            plt.tight_layout()
+            plt.savefig(f"{plot_dir}/{plot_prefix}_{region}.pdf")
+            plt.close()
 
 def plot_abs_changes(plot_dir):
     change_dict = pd.read_csv(os.path.join(BASE_DIR, "timestep_rar", "region1_change_dict.csv"))
@@ -545,12 +544,13 @@ def plot_abs_changes(plot_dir):
         ax.set_xlabel("Time Step Iteration")
         ax.set_ylabel(label)
         plt.tight_layout()
-        plt.savefig(os.path.join(plot_dir, f"{var}_change.jpg"))
+        plt.savefig(os.path.join(plot_dir, f"{var}_change.pdf"))
         plt.close()
 
 if __name__ == "__main__":
     final_plot_dicts = {}
-    os.makedirs(os.path.join(BASE_DIR, "plots", "residual_points"), exist_ok=True)
+    plot_dir = os.path.join(BASE_DIR, "plots")
+    os.makedirs(plot_dir, exist_ok=True)
     for k in TRAINING_CONFIGS.keys():
         print(f"{k:=^80}")
         timestepping = "timestep" in k
@@ -568,10 +568,9 @@ if __name__ == "__main__":
         final_plot_dicts[k] = final_plot_dict
         gc.collect()
         torch.cuda.empty_cache()
-    plot_res(final_plot_dicts, PLOT_ARGS, a_list)
-    plot_loss(os.path.join(BASE_DIR, "plots", "loss.jpg"))
-    plot_residual_points(os.path.join(BASE_DIR, "plots", "residual_points"))
-    plot_residual_points_single_image(os.path.join(BASE_DIR, "plots"))
-    plot_abs_changes(os.path.join(BASE_DIR, "plots"))
+    plot_res(final_plot_dicts, PLOT_ARGS, plot_dir)
+    plot_loss(plot_dir)
+    plot_residual_points_single_image(plot_dir)
+    plot_abs_changes(plot_dir)
 
 

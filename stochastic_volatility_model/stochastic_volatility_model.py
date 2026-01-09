@@ -15,7 +15,10 @@ plt.rcParams["font.size"] = 20
 plt.rcParams["lines.linewidth"] = 3
 plt.rcParams["lines.markersize"] = 10
 
-BASE_DIR = "./models/StochasticVolatility"
+default_dtype = torch.float64
+torch.set_default_dtype(default_dtype)
+
+BASE_DIR = "./models/StochasticVolatility_64bit"
 os.makedirs(BASE_DIR, exist_ok=True)
 
 LATEX_VAR_MAPPING = {
@@ -110,14 +113,14 @@ TRAINING_CONFIGS = {
     },
     "timestep": {
         "batch_size": 500, 
-        "num_outer_iterations": 50, 
+        "num_outer_iterations": 70, 
         "num_inner_iterations": 5000,
         "sampling_method": SamplingMethod.UniformRandom, 
         "time_batch_size": 1,
     },
     "timestep_lb": {
         "batch_size": 500, 
-        "num_outer_iterations": 50, 
+        "num_outer_iterations": 70, 
         "num_inner_iterations": 5000,
         "sampling_method": SamplingMethod.UniformRandom, 
         "time_batch_size": 1,
@@ -224,7 +227,7 @@ def plot_res(res_dicts: Dict[str, Dict[str, Any]], plot_args: Dict[str, Any], v_
     x_label = "Wealth share of experts (x)"
 
     for i, (func_name, plot_arg) in enumerate(plot_args.items()):
-        fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(10, 10))
+        fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(8, 6))
         for k, l, ls, marker in [("fd", "Finite Difference", "-.", "x"), ("timestep_lb", "Our Method", "-", "")]:
             res_dict = res_dicts[k].copy()
             x_plot = res_dict.pop("x_plot")
@@ -233,18 +236,18 @@ def plot_res(res_dicts: Dict[str, Dict[str, Any]], plot_args: Dict[str, Any], v_
                 color = COLORS[i]
                 y_vals = res_dict[f"{func_name}_{v}"]
                 ax.plot(x_plot, y_vals, label=r"$v$={i} ({l})".format(i=round(v,2), l=l), linestyle=ls, color=color, marker=marker)
-        ax.set_xlabel(x_label)
-        ax.set_ylabel(plot_arg["ylabel"])
+        ax.set_xlabel("", fontsize=16)
+        ax.set_ylabel(plot_arg["ylabel"], fontsize=16)
         # ax.set_title(plot_arg["title"])
         if plot_arg["show_legend"]:
-            ax.legend()
+            ax.legend(loc="upper right", frameon=False, fontsize=14)
         plt.tight_layout()
-        fn = os.path.join(BASE_DIR, "plots", f"{func_name}.jpg")
+        fn = os.path.join(BASE_DIR, "plots", f"{func_name}.pdf")
         plt.savefig(fn)
         plt.close()
     
     for i, (func_name, plot_arg) in enumerate(plot_args.items()):
-        fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(10, 10))
+        fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(8, 6))
         for k, l, ls, marker in [("fd", "Finite Difference", "-.", "x"), ("basic", "Basic Neural Network", "--", ""), ("timestep_lb", "Our Method", "-", "")]:
             res_dict = res_dicts[k].copy()
             x_plot = res_dict.pop("x_plot")
@@ -253,24 +256,27 @@ def plot_res(res_dicts: Dict[str, Dict[str, Any]], plot_args: Dict[str, Any], v_
                 color = COLORS[i]
                 y_vals = res_dict[f"{func_name}_{v}"]
                 ax.plot(x_plot, y_vals, label=r"$v$={i} ({l})".format(i=round(v,2), l=l), linestyle=ls, color=color, marker=marker)
-        ax.set_xlabel(x_label)
-        ax.set_ylabel(plot_arg["ylabel"])
+        ax.set_xlabel("", fontsize=16)
+        ax.set_ylabel(plot_arg["ylabel"], fontsize=16)
         # ax.set_title(plot_arg["title"])
         if plot_arg["show_legend"]:
-            ax.legend()
+            ax.legend(loc="upper right", frameon=False, fontsize=14)
         plt.tight_layout()
-        fn = os.path.join(BASE_DIR, "plots", f"{func_name}_compare.jpg")
+        fn = os.path.join(BASE_DIR, "plots", f"{func_name}_compare.pdf")
         plt.savefig(fn)
         plt.close()
 
-def compute_mse(pde_model: PDEModelTimeStep, v_list, vars_to_plot, output_folder: str):
+def compute_mse_grid(pde_model: Union[PDEModel, PDEModelTimeStep], v_list, vars_to_plot):
     ## Finite Difference Solution
     N = x_grid.shape[0]
 
     res_dict = {}
     for v in v_list:
-        SV = torch.zeros((N, 3), device=pde_model.device)
-        SV[:, 0] = torch.tensor(x_grid, dtype=torch.float32, device=pde_model.device)
+        if isinstance(pde_model, PDEModelTimeStep):
+            SV = torch.zeros((N, 3), device=pde_model.device)
+        else:
+            SV = torch.zeros((N, 2), device=pde_model.device)
+        SV[:, 0] = torch.tensor(x_grid, dtype=default_dtype, device=pde_model.device)
         SV[:, 1] = torch.ones((N,)) * v
         for i, sv_name in enumerate(pde_model.state_variables):
             pde_model.variable_val_dict[sv_name] = SV[:, i:i+1]
@@ -278,55 +284,107 @@ def compute_mse(pde_model: PDEModelTimeStep, v_list, vars_to_plot, output_folder
         for var in vars_to_plot:
             res_dict[f"{var}_{v}"] = pde_model.variable_val_dict[var].detach().cpu().numpy().reshape(-1)
 
-    with open(os.path.join(output_folder, "mse.txt"), "w") as f:
-        for i, var in enumerate(VARS_TO_PLOT):
-            total_squares = 0.
-            for v in v_list:
-                curr_square = (res_dict[f"{var}_{v}"] - ditella_res_dict[f"{var}_{v}"]) ** 2
-                total_squares += curr_square
-            curr_mse = np.mean(total_squares) / len(v_list) # average across the slices
-            print(f"{var} MSE: {curr_mse}", file=f)
+    model_mses = {}
+    model_rel_maes = {}
+    for i, var in enumerate(vars_to_plot):
+        total_squares = 0.
+        total_abs_err = 0.
+        total_abs_ref = 0.
+        for v in v_list:
+            numerical_sol = ditella_res_dict[f"{var}_{v}"]
+            curr_sol = res_dict[f"{var}_{v}"]
+            total_squares += (numerical_sol - curr_sol) ** 2
+            total_abs_err += np.abs(numerical_sol - curr_sol)
+            total_abs_ref += np.abs(numerical_sol)
+        curr_mse = np.mean(total_squares) / len(v_list) # average across the slices
+        curr_mae = np.mean(total_abs_err) / np.mean(total_abs_ref)
+        model_mses[var] = curr_mse
+        model_rel_maes[var] = curr_mae
+    return model_mses, model_rel_maes
 
-def compute_consumption_mse(pde_model: PDEModelTimeStep, output_folder: str):
+def compute_mse(pde_model: Union[PDEModel, PDEModelTimeStep], vars_to_plot):
+    ## Finite Difference Solution
     N = x_grid.shape[0]
-    x_tensor, v_tensor = torch.meshgrid(torch.tensor(x_grid), torch.tensor(v_grid))
-    SV = torch.zeros((N**2, 3), device=pde_model.device)
+    x_tensor, v_tensor = torch.meshgrid(torch.tensor(x_grid), torch.tensor(v_grid), indexing="ij")
+    if isinstance(pde_model, PDEModelTimeStep):
+        SV = torch.zeros((N**2, 3), device=pde_model.device)
+    else:
+        SV = torch.zeros((N**2, 2), device=pde_model.device)
+
+    res_dict = {}
     SV[:, 0] = x_tensor.reshape(-1)
     SV[:, 1] = v_tensor.reshape(-1)
     for i, sv_name in enumerate(pde_model.state_variables):
         pde_model.variable_val_dict[sv_name] = SV[:, i:i+1]
     pde_model.update_variables(SV)
-    e_hat = pde_model.variable_val_dict["e_hat"].detach().cpu().numpy().reshape(N, N)
-    c_hat = pde_model.variable_val_dict["c_hat"].detach().cpu().numpy().reshape(N, N)
+    for var in vars_to_plot:
+        res_dict[var] = pde_model.variable_val_dict[var].detach().cpu().numpy().reshape(N, N)
 
-    e_original = np.array(needed_eq["intere"]["original"])
-    e_grid = e_original.reshape((len(v_grid), len(x_grid)))
-    c_original = np.array(needed_eq["intere"]["original"])
-    c_grid = c_original.reshape((len(v_grid), len(x_grid)))
+    model_mses = {}
+    model_rel_maes = {}
+    for var in vars_to_plot:
+        numerical_sol = np.array(needed_eq[var]["original"]).reshape((len(v_grid), len(x_grid))).T
+        curr_sol = res_dict[var]
+        curr_mse = np.mean((numerical_sol - curr_sol)**2)
+        curr_rel_maes = np.mean(np.abs(numerical_sol - curr_sol)) / np.mean(np.abs(curr_sol))
+        model_mses[var] = curr_mse
+        model_rel_maes[var] = curr_rel_maes
+    return model_mses, model_rel_maes
+
+# def compute_consumption_mse(pde_model: PDEModelTimeStep, output_folder: str):
+#     N = x_grid.shape[0]
+#     x_tensor, v_tensor = torch.meshgrid(torch.tensor(x_grid), torch.tensor(v_grid), indexing="ij")
+#     SV = torch.zeros((N**2, 3), device=pde_model.device)
+#     SV[:, 0] = x_tensor.reshape(-1)
+#     SV[:, 1] = v_tensor.reshape(-1)
+#     for i, sv_name in enumerate(pde_model.state_variables):
+#         pde_model.variable_val_dict[sv_name] = SV[:, i:i+1]
+#     pde_model.update_variables(SV)
+#     e_hat = pde_model.variable_val_dict["e_hat"].detach().cpu().numpy().reshape(N, N)
+#     c_hat = pde_model.variable_val_dict["c_hat"].detach().cpu().numpy().reshape(N, N)
+
+#     e_original = np.array(needed_eq["intere"]["original"])
+#     e_grid = e_original.reshape((len(v_grid), len(x_grid)))
+#     c_original = np.array(needed_eq["interc"]["original"])
+#     c_grid = c_original.reshape((len(v_grid), len(x_grid)))
     
-    mse_e = np.mean((e_grid - e_hat) ** 2)
-    mse_c = np.mean((c_grid - c_hat) ** 2)
-    with open(os.path.join(output_folder, "mse_consumption.txt"), "w") as f:
-        print(f"e MSE: {mse_e}", file=f)
-        print(f"c MSE: {mse_c}", file=f)
+#     mse_e = np.mean((e_grid - e_hat) ** 2)
+#     mse_c = np.mean((c_grid - c_hat) ** 2)
+#     rel_rmse_e = np.sqrt(np.mean((e_grid - e_hat) ** 2)) / np.sqrt(np.mean(e_grid ** 2))
+#     rel_rmse_c = np.sqrt(np.mean((c_grid - c_hat) ** 2)) / np.sqrt(np.mean(c_grid ** 2))
+#     linf_e = np.max(np.abs(e_grid - e_hat))
+#     linf_c = np.max(np.abs(c_grid - c_hat))
+#     max_rel_err_e = np.max(np.abs(e_grid - e_hat) / (np.abs(e_grid) + 1e-8))
+#     max_rel_err_c = np.max(np.abs(c_grid - c_hat) / (np.abs(c_grid) + 1e-8))
+#     with open(os.path.join(output_folder, "mse_consumption.txt"), "w") as f:
+#         print(f"e MSE: {mse_e}", file=f)
+#         print(f"c MSE: {mse_c}", file=f)
+#     return {"e": mse_e, "c": mse_c, "e_rel": rel_rmse_e, "c_rel": rel_rmse_c, "e_linf": linf_e, "c_linf": linf_c, "e_rel_linf": max_rel_err_e, "c_rel_linf": max_rel_err_c}
 
-def plot_loss(fn):
-    fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(10, 10))
-    ax.set_xlabel("Epochs")
-    ax.set_ylabel("Loss")
-    ax.set_yscale("log")
-    # ax.set_title(f"Total Loss across Epochs")
-    for k, l, ls in [("basic", "Basic Neural Network", "--"), ("timestep", "Time-stepping", "-."), ("timestep_lb", "Our Method", "-")]:
-        curr_dir = os.path.join(BASE_DIR, k)
-        loss_file = os.path.join(curr_dir, f"model_min_loss.csv")
-        loss_df = pd.read_csv(loss_file)
-        ax.plot(loss_df["epoch"], loss_df["total_loss"], label=l, linestyle=ls)
-    ax.legend()
-    plt.tight_layout()
-    plt.savefig(fn)
-    plt.close()
 
-def plot_loss_weight(fn):
+def plot_loss(plot_dir):
+    for loss_name, plot_name in [("total_loss", "loss.pdf"), ("hjbeq_1", "loss_hjb_e.pdf"), ("hjbeq_2", "loss_hjb_c.pdf")]:
+        fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(8, 6))
+        # ax.set_xlabel("Epochs")
+        # ax.set_ylabel("Loss")
+        ax.set_yscale("log")
+        # ax.set_title(f"Total Loss across Epochs")
+        for k, l, ls, color in [("basic", "Basic Neural Network", "--", "#D9D9D9"), ("timestep", "Time-stepping", "-.", "#317e46"), ("timestep_lb", "Our Method", "-", "#5492ab")]:
+            curr_dir = os.path.join(BASE_DIR, k)
+            if k == "basic":
+                loss_file = os.path.join(curr_dir, f"model_min_loss.csv")
+            else:
+                loss_file = os.path.join(curr_dir, f"model_global_min_loss.csv")
+            loss_df = pd.read_csv(loss_file)
+            ax.plot(loss_df["epoch"], loss_df[loss_name], label=l, linestyle=ls, color=color)
+        ax.legend(loc="upper right", frameon=False, fontsize=14)
+        ax.tick_params(axis="both", which="major", labelsize=14)
+        plt.tight_layout()
+        plt.savefig(f"{plot_dir}/{plot_name}")
+        plt.close()
+
+
+def plot_loss_weight(plot_dir):
     loss_name_map = {
         "endogeq_1": "Consumption FOC",
         "endogeq_2": "Market Clearing",
@@ -334,18 +392,20 @@ def plot_loss_weight(fn):
         "hjbeq_1": "Experts HJB",
         "hjbeq_2": "Households HJB",
     }
-    fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(10, 10))
-    ax.set_xlabel("Epochs")
-    ax.set_ylabel("Weight")
+    fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(8, 6))
+    # ax.set_xlabel("Epochs")
+    # ax.set_ylabel("Weight")
     # ax.set_title(f"Loss Weight across Epochs (First Time Step)")
     curr_dir = os.path.join(BASE_DIR, "timestep_lb")
     loss_weight_file = os.path.join(curr_dir, "loss_weight_logs", f"model_loss_weight_0.csv")
     loss_weight_df = pd.read_csv(loss_weight_file)
     for k, label in loss_name_map.items():
         ax.plot(loss_weight_df["epoch"], loss_weight_df[k], label=label)
-    ax.legend()
+    ax.legend(loc="lower left", frameon=False, fontsize=14)
+    ax.tick_params(axis="both", which="major", labelsize=14)
+    ax.set_ylim(0.0, 2.0)
     plt.tight_layout()
-    plt.savefig(fn)
+    plt.savefig(os.path.join(plot_dir, "loss_weight.pdf"))
     plt.close()
 
 def plot_consumption_convergence(change_target_var={"e_hat": r"$\hat{e}$", "c_hat": r"$\hat{c}$"}):
@@ -379,30 +439,77 @@ def plot_abs_changes(plot_dir):
         plt.savefig(os.path.join(plot_dir, f"{var}_change.jpg"))
         plt.close()
 
+def format_sci(x):
+    sci_str = f"{x:.2e}"  # Convert to scientific notation
+    base, exp = sci_str.split("e")  # Split into base and exponent
+    exp = int(exp)  # Convert exponent to integer to remove leading zeros and '+'
+    if exp == 0:
+        return f"{base}"
+    else:
+        return f"${base} \\times 10^{{{exp}}}$"
+
+def format_pct(x):
+    return f"{x * 100:.2f}\\%"
+    
+def summarize_mses(all_mses: Dict[str, Dict[str, float]], vars, outdir, loss_type="mse"):
+    idx = ["Basic", "Time-stepping", "Our Method"]
+    idx_map = {"basic": "Basic", "timestep": "Time-stepping", "timestep_lb": "Our Method"}
+    cols = vars
+    res_df = pd.DataFrame(index=idx, columns=cols)
+    for model, model_mses in all_mses.items():
+        for var_name, loss in model_mses.items():
+            res_df.loc[idx_map[model], var_name] = format_sci(loss) if loss_type == "mse" else format_pct(loss)
+    ltx = res_df.style.to_latex(column_format="l" + "c"*len(cols), hrules=True, multicol_align="c")
+    ltx = ltx.replace(" & p & sigx & omega & sigsigp & signxi & r & e_hat & c_hat ", r" & $p$ & $\sigma_x$ & $\Omega=\xi/\zeta$ & $\sigma+\sigma_p$ & $\pi$ & $r$ & $\hat{e}$ & $\hat{c}$ ")
+    with open(f"{outdir}/loss_{loss_type}_summary.tex", "w") as f:
+        f.write(ltx)
+
+# def summarize_consumption_loss(all_consumpion_errors: Dict[str, Dict[str, float]], outdir):
+#     idx = ["Basic", "Time-stepping", "Our Method"]
+#     idx_map = {"basic": "Basic", "timestep": "Time-stepping", "timestep_lb": "Our Method"}
+#     cols = pd.MultiIndex.from_tuples([("MSE", "e"), ("MSE", "c"), ("Relative RMSE", "e"), ("Relative RMSE", "c"), 
+#                                       (r"$L^{\infty}$", "e"), (r"$L^{\infty}$", "c"),
+#                                       (r"Relative $L^{\infty}$", "e"), (r"Relative $L^{\infty}$", "c")])
+#     res_df = pd.DataFrame(index=idx, columns=cols)
+#     for model, model_consumption in all_consumpion_errors.items():
+#         res_df.loc[idx_map[model], ("MSE", "e")] = format_sci(model_consumption["e"])
+#         res_df.loc[idx_map[model], ("MSE", "c")] = format_sci(model_consumption["c"])
+#         res_df.loc[idx_map[model], ("Relative RMSE", "e")] = format_pct(model_consumption["e_rel"])
+#         res_df.loc[idx_map[model], ("Relative RMSE", "c")] = format_pct(model_consumption["c_rel"])
+#         res_df.loc[idx_map[model], (r"$L^{\infty}$", "e")] = format_sci(model_consumption["e_linf"])
+#         res_df.loc[idx_map[model], (r"$L^{\infty}$", "c")] = format_sci(model_consumption["c_linf"])
+#         res_df.loc[idx_map[model], (r"Relative $L^{\infty}$", "e")] = format_pct(model_consumption["e_rel_linf"])
+#         res_df.loc[idx_map[model], (r"Relative $L^{\infty}$", "c")] = format_pct(model_consumption["c_rel_linf"])
+#     ltx = res_df.style.to_latex(column_format="l" + "c"*len(cols), hrules=True, multicol_align="c")
+#     with open(f"{outdir}/consumption_error_summary.tex", "w") as f:
+#         f.write(ltx)
+
 if __name__ == "__main__":
     final_plot_dicts = {}
     final_plot_dicts["fd"] = ditella_res_dict
-    os.makedirs(os.path.join(BASE_DIR, "plots"), exist_ok=True)
+    PLOT_DIR = os.path.join(BASE_DIR, "plots")
+    os.makedirs(PLOT_DIR, exist_ok=True)
+    all_mses = {}
+    all_rel_maes = {}
     for k in TRAINING_CONFIGS.keys():
         print(f"{k:=^80}")
         timestepping = "timestep" in k
         loss_balancing = "lb" in k
         curr_dir = os.path.join(BASE_DIR, k)
         model: Union[PDEModel, PDEModelTimeStep] = setup_model(timestepping=timestepping, loss_balancing=loss_balancing)
-        if not os.path.exists(os.path.join(curr_dir, f"model_best.pt")):
-            if timestepping:
-                model.train_model(curr_dir, "model.pt", full_log=True, variables_to_track=["e_hat", "c_hat"])
-            else:
-                model.train_model(curr_dir, "model.pt", full_log=True)
+        if not os.path.exists(os.path.join(curr_dir, f"model.pt")):
+            model.train_model(curr_dir, "model.pt", full_log=True, variables_to_track=["e_hat", "c_hat"])
         model.load_model(torch.load(os.path.join(curr_dir, "model_best.pt"), weights_only=False))
         final_plot_dicts[k] = compute_func(model, v_list, VARS_TO_PLOT)
-        if timestepping and loss_balancing:
-            compute_mse(model, v_list, VARS_TO_PLOT, curr_dir)
-            compute_consumption_mse(model, curr_dir)
+        mses, rel_maes = compute_mse_grid(model, v_list, VARS_TO_PLOT + ["e_hat", "c_hat"])
+        all_mses[k] = mses
+        all_rel_maes[k] = rel_maes
         gc.collect()
         torch.cuda.empty_cache()
     plot_res(final_plot_dicts, PLOT_ARGS, v_list)
-    plot_loss(os.path.join(BASE_DIR, "plots", "loss.jpg"))
-    plot_loss_weight(os.path.join(BASE_DIR, "plots", "loss_weight.jpg"))
+    plot_loss(PLOT_DIR)
+    plot_loss_weight(PLOT_DIR)
     plot_consumption_convergence()
-    plot_abs_changes(os.path.join(BASE_DIR, "plots"))
+    plot_abs_changes(PLOT_DIR)
+    summarize_mses(all_mses, VARS_TO_PLOT + ["e_hat", "c_hat"], PLOT_DIR, "mse")
+    summarize_mses(all_rel_maes, VARS_TO_PLOT + ["e_hat", "c_hat"], PLOT_DIR, "mae")
