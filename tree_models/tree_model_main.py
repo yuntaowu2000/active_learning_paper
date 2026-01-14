@@ -428,9 +428,11 @@ def plot_residual_points(curr_base_dir, plot_dir):
 def compute_hjb_error(model: PDEModelTimeStep, n_eval=5000):
     hjb_errs = np.zeros(n_eval)
     # temporarily add a new equation for analysis
-    model.add_equation("hjb_err=compute_hjb_kappa(k, dk_dt, dk_dz, dk_dzz, mu_z_aris, sig_z_aris, mu_kappas)")
+    if "eq_test" not in model.equations:
+        model.add_equation("hjb_err=compute_hjb_kappa(k, dk_dt, dk_dz, dk_dzz, mu_z_aris, sig_z_aris, mu_kappas)", label="test")
     model_batch_size = model.batch_size
     for batch_i in tqdm(range(n_eval//model_batch_size + 1), desc="computing HJB residual distribution"):
+        torch.cuda.empty_cache()
         SV = model.sample()
         SV[:, -1] = 0
         SV.requires_grad_(True)
@@ -441,14 +443,19 @@ def compute_hjb_error(model: PDEModelTimeStep, n_eval=5000):
         lidx_min = batch_i*model_batch_size
         lidx_max = min((batch_i+1)*model_batch_size, n_eval)
         ridx_max = min(model_batch_size, (lidx_max-lidx_min))
-        curr_hjb_errs = model.variable_val_dict["mu_qs"].detach().cpu().numpy().reshape(-1)
-        hjb_errs[lidx_min:lidx_max] = np.abs(curr_hjb_errs[:ridx_max]) # get the abs error
+        curr_hjb_errs = model.variable_val_dict["hjb_err"].detach().cpu().numpy().reshape(-1)
+        hjb_errs[lidx_min:lidx_max] = np.abs(curr_hjb_errs[:ridx_max]) ** 2 # get the squared error
+        del SV
+        gc.collect()
+        torch.cuda.empty_cache()
     return hjb_errs
 
 def plot_hjb_error_distribution(model: PDEModelTimeStep, model_rar: PDEModelTimeStep, plot_dir, n_eval=5000):
     hjb_errs = compute_hjb_error(model, n_eval)
     hjb_rar_errs = compute_hjb_error(model_rar, n_eval)
-
+    weights_ts  = np.ones_like(hjb_errs) / len(hjb_errs)
+    weights_rar = np.ones_like(hjb_rar_errs) / len(hjb_rar_errs)
+    
     # clip the errors that are too small
     eps = 1e-10
     hjb_errs = np.clip(hjb_errs, eps, None)
@@ -467,18 +474,18 @@ def plot_hjb_error_distribution(model: PDEModelTimeStep, model_rar: PDEModelTime
     fig, ax = plt.subplots(1, 1, figsize=(8, 6))
 
     ax.hist(
-        hjb_rar_errs, bins=bins, cumulative=True, density=True, 
+        hjb_rar_errs, bins=bins, weights=weights_rar,
         alpha=1.0, color="#5492ab", edgecolor="black", label="Our Method",
     )
 
     ax.hist(
-        hjb_errs, bins=bins, cumulative=True, density=True, 
-        alpha=0.8, color="#D9D9D9", edgecolor="black", label="Time-stepping",
+        hjb_errs, bins=bins, weights=weights_ts,
+        alpha=0.5, color="#D9D9D9", edgecolor="black", label="Time-stepping",
     )
 
     ax.set_xscale("log")
     ax.set_xlabel("", fontsize=16)
-    ax.set_ylabel("Fraction of HJB residuals ≤ x", fontsize=16)
+    ax.set_ylabel("Frequency", fontsize=16)
     ax.tick_params(axis="both", which="major", labelsize=14)
     ax.legend(loc="upper left", frameon=False, fontsize=14)
 
