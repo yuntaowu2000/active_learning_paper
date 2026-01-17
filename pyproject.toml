@@ -1,0 +1,17 @@
+[project]
+name = "active-learning-paper"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "yuntaowu2000",email = "49249544+yuntaowu2000@users.noreply.github.com"}
+]
+readme = "README.md"
+requires-python = ">=3.12,<4.0"
+dependencies = [
+    "deep-macrofin (>=0.4.0)"
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
