@@ -451,9 +451,9 @@ def plot_res(res_dicts: Dict[str, Dict[str, Any]], plot_args: Dict[str, Any], pl
                 x_plot = x_plot[idx]
                 y_vals = y_vals[idx]
             ax.plot(x_plot, y_vals, label=l, linestyle=ls, color=color)
-        ax.set_xlabel(x_label, fontsize=16)
-        ax.set_ylabel(plot_arg["ylabel"], fontsize=16)
-        ax.tick_params(axis="both", which="major", labelsize=14)
+        ax.set_xlabel(x_label, fontsize=20)
+        ax.set_ylabel(plot_arg["ylabel"], fontsize=20)
+        ax.tick_params(axis="both", which="major", labelsize=20)
         # ax.set_title(plot_arg["title"])
         # if plot_arg["show_legend"]:
         #     ax.legend(loc="upper left", frameon=False, fontsize=14)
@@ -473,12 +473,12 @@ def plot_res(res_dicts: Dict[str, Dict[str, Any]], plot_args: Dict[str, Any], pl
                 x_plot = x_plot[idx]
                 y_vals = y_vals[idx]
             ax.plot(x_plot, y_vals, label=l, linestyle=ls, color=color)
-        ax.set_xlabel(x_label, fontsize=16)
-        ax.set_ylabel(plot_arg["ylabel"], fontsize=16)
-        ax.tick_params(axis="both", which="major", labelsize=14)
+        ax.set_xlabel(x_label, fontsize=20)
+        ax.set_ylabel(plot_arg["ylabel"], fontsize=20)
+        ax.tick_params(axis="both", which="major", labelsize=20)
         # ax.set_title(plot_arg["title"])
         if plot_arg["show_legend"]:
-            ax.legend(loc="upper left", frameon=False, fontsize=14)
+            ax.legend(loc="upper left", frameon=False, fontsize=20)
         plt.tight_layout()
         fn = os.path.join(plot_dir, f"{func_name}_compare.pdf")
         plt.savefig(fn)
@@ -502,17 +502,17 @@ def plot_residual_points_single_image(plot_dir):
     fig, ax = plt.subplots(1, 1, figsize=(8, 6))
     for i in range(4):
         curr_rar_sampled_points = np.load(anchor_point_files[i])     
-        ax.scatter(curr_rar_sampled_points[:, 0], curr_rar_sampled_points[:, 1], label=f"Outer Loop {i+1}", s=16)
+        ax.scatter(curr_rar_sampled_points[:, 0], curr_rar_sampled_points[:, 1], label=f"Outer Loop {i+1}", s=40)
     ax.legend(
         loc="upper center",
         bbox_to_anchor=(0.5, -0.15),  # move legend below plot
         ncol=2,
         frameon=False,
-        fontsize=14
+        fontsize=20
     )
-    ax.set_xlabel("$z$", fontsize=16)
-    ax.set_ylabel("$a_e$", fontsize=16)
-    ax.tick_params(axis="both", which="major", labelsize=14)
+    ax.set_xlabel("$z$", fontsize=20)
+    ax.set_ylabel("$a_e$", fontsize=20)
+    ax.tick_params(axis="both", which="major", labelsize=20)
     plt.tight_layout()
     plt.savefig(os.path.join(plot_dir, f"rar_sampled_points.pdf"))
     plt.close()

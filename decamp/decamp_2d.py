@@ -145,7 +145,7 @@ def get_model(
 def plot_solution(model_active: PDEModel, plot_dir):
     fig, ax = plt.subplots(1, 1, figsize=(8, 6))
 
-    for mu, marker in [(0.0, "o"), (0.01, "^"), (0.02, "s")]:
+    for mu, marker in [(0.01, "^")]: # (0.0, "o"), (0.02, "s")
         SV = torch.zeros((100, 2), device=model_active.device)
         SV[:, 0] = torch.linspace(0.0, 0.6, 100, device=model_active.device)
         SV[:, 1] = mu
@@ -156,8 +156,8 @@ def plot_solution(model_active: PDEModel, plot_dir):
     ax.set_xlabel("c", fontsize=16)
     ax.set_ylabel("F(c)", fontsize=16)
     ax.set_ylim(9, 12)
-    ax.tick_params(axis="both", which="major", labelsize=14)
-    ax.legend(loc="upper left", frameon=False, fontsize=14)
+    ax.tick_params(axis="both", which="major", labelsize=18)
+    # ax.legend(loc="upper left", frameon=False, fontsize=18)
     plt.tight_layout()
     plt.savefig(f"{plot_dir}/decamp_fit.pdf")
     plt.close()
@@ -166,6 +166,7 @@ def plot_loss(model_dir, plot_dir):
     model_loss = pd.read_csv(f"{model_dir}/model_loss.csv")
     model_active_loss = pd.read_csv(f"{model_dir}/model_active_loss.csv")
 
+    x_ticks = [0, 5000, 10000, 15000, 20000]
     # HJB loss
     idx_max = model_loss["hjbeq_1"].idxmax()
     active_idx_max = model_active_loss["hjbeq_1"].idxmax()
@@ -173,8 +174,9 @@ def plot_loss(model_dir, plot_dir):
     ax.plot(model_loss["epoch"].values[idx_max:], model_loss["hjbeq_1"].values[idx_max:], label="Basic Neural Network", linestyle="--", color="#D9D9D9")
     ax.plot(model_active_loss["epoch"].values[active_idx_max:], model_active_loss["hjbeq_1"].values[active_idx_max:], label="Our Method", linestyle="-", color="#5492ab")
     ax.set_yscale("log")
-    ax.tick_params(axis="both", which="major", labelsize=14)
-    ax.legend(loc="upper right", frameon=False, fontsize=14)
+    ax.tick_params(axis="both", which="major", labelsize=18)
+    ax.set_xticks(x_ticks, x_ticks, fontsize=18)
+    ax.legend(loc="upper right", frameon=False, fontsize=18)
     plt.tight_layout()
     plt.savefig(f"{plot_dir}/decamp_loss_hjb.pdf")
     plt.close()
@@ -186,7 +188,8 @@ def plot_loss(model_dir, plot_dir):
     ax.plot(model_loss["epoch"].values[idx_max:], model_loss["hjbeq_2"].values[idx_max:], label="Basic Neural Network", linestyle="--", color="#D9D9D9")
     ax.plot(model_active_loss["epoch"].values[active_idx_max:], model_active_loss["hjbeq_2"].values[active_idx_max:], label="Our Method", linestyle="-", color="#5492ab")
     ax.set_yscale("log")
-    ax.tick_params(axis="both", which="major", labelsize=14)
+    ax.tick_params(axis="both", which="major", labelsize=18)
+    ax.set_xticks(x_ticks, x_ticks, fontsize=18)
     # ax.legend(loc="upper right", frameon=False, fontsize=14)
     plt.tight_layout()
     plt.savefig(f"{plot_dir}/decamp_loss_cstar.pdf")
@@ -208,6 +211,7 @@ def plot_loss(model_dir, plot_dir):
     ax.plot(model_active_loss["epoch"], model_active_loss["rolling_ratio"], label="Our Method", linestyle="-", color="#5492ab")
     ax.set_yscale("log")
     ax.tick_params(axis="both", which="major", labelsize=14)
+    ax.set_xticks(x_ticks, x_ticks, fontsize=18)
     # ax.legend(loc="upper right", frameon=False, fontsize=14)
     plt.tight_layout()
     plt.savefig(f"{plot_dir}/decamp_loss_cstar_stability.pdf")

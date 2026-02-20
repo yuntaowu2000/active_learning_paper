@@ -236,11 +236,11 @@ def plot_res(res_dicts: Dict[str, Dict[str, Any]], plot_args: Dict[str, Any], v_
                 color = COLORS[i]
                 y_vals = res_dict[f"{func_name}_{v}"]
                 ax.plot(x_plot, y_vals, label=r"$v$={i} ({l})".format(i=round(v,2), l=l), linestyle=ls, color=color, marker=marker)
-        ax.set_xlabel("", fontsize=16)
-        ax.set_ylabel(plot_arg["ylabel"], fontsize=16)
+        ax.set_xlabel("", fontsize=20)
+        ax.set_ylabel(plot_arg["ylabel"], fontsize=20)
         # ax.set_title(plot_arg["title"])
         if plot_arg["show_legend"]:
-            ax.legend(loc="upper right", frameon=False, fontsize=14)
+            ax.legend(loc="upper right", frameon=False, fontsize=20)
         plt.tight_layout()
         fn = os.path.join(BASE_DIR, "plots", f"{func_name}.pdf")
         plt.savefig(fn)
@@ -256,11 +256,11 @@ def plot_res(res_dicts: Dict[str, Dict[str, Any]], plot_args: Dict[str, Any], v_
                 color = COLORS[i]
                 y_vals = res_dict[f"{func_name}_{v}"]
                 ax.plot(x_plot, y_vals, label=r"$v$={i} ({l})".format(i=round(v,2), l=l), linestyle=ls, color=color, marker=marker)
-        ax.set_xlabel("", fontsize=16)
-        ax.set_ylabel(plot_arg["ylabel"], fontsize=16)
+        ax.set_xlabel("", fontsize=20)
+        ax.set_ylabel(plot_arg["ylabel"], fontsize=20)
         # ax.set_title(plot_arg["title"])
         if plot_arg["show_legend"]:
-            ax.legend(loc="upper right", frameon=False, fontsize=14)
+            ax.legend(loc="upper right", frameon=False, fontsize=20)
         plt.tight_layout()
         fn = os.path.join(BASE_DIR, "plots", f"{func_name}_compare.pdf")
         plt.savefig(fn)
@@ -377,8 +377,8 @@ def plot_loss(plot_dir):
                 loss_file = os.path.join(curr_dir, f"model_global_min_loss.csv")
             loss_df = pd.read_csv(loss_file)
             ax.plot(loss_df["epoch"], loss_df[loss_name], label=l, linestyle=ls, color=color)
-        ax.legend(loc="upper right", frameon=False, fontsize=14)
-        ax.tick_params(axis="both", which="major", labelsize=14)
+        ax.legend(loc="upper right", frameon=False, fontsize=20)
+        ax.tick_params(axis="both", which="major", labelsize=20)
         plt.tight_layout()
         plt.savefig(f"{plot_dir}/{plot_name}")
         plt.close()
@@ -401,8 +401,8 @@ def plot_loss_weight(plot_dir):
     loss_weight_df = pd.read_csv(loss_weight_file)
     for k, label in loss_name_map.items():
         ax.plot(loss_weight_df["epoch"], loss_weight_df[k], label=label)
-    ax.legend(loc="lower left", frameon=False, fontsize=14)
-    ax.tick_params(axis="both", which="major", labelsize=14)
+    ax.legend(loc="lower left", frameon=False, fontsize=18)
+    ax.tick_params(axis="both", which="major", labelsize=20)
     ax.set_ylim(0.0, 2.0)
     plt.tight_layout()
     plt.savefig(os.path.join(plot_dir, "loss_weight.pdf"))

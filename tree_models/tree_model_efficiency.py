@@ -57,16 +57,16 @@ def plot_timing(plot_dir):
         rar_time_mean[i] = rar_res["mean"]
         rar_time_5percent[i] = rar_res["5percent"]
         rar_time_95percent[i] = rar_res["95percent"]
-    fig, ax = plt.subplots(1, 1, figsize=(6, 6))
+    fig, ax = plt.subplots(1, 1, figsize=(8, 6))
     ax.plot(n_trees, time_mean, linestyle="-.", color="#317e46", label="Time-stepping")
     ax.fill_between(n_trees, time_5percent, time_95percent, alpha=0.2, color="gray")
 
     ax.plot(n_trees, rar_time_mean, linestyle="-", color="#5492ab", label="Our Method")
     ax.fill_between(n_trees, rar_time_5percent, rar_time_95percent, alpha=0.2, color="gray")
-    ax.set_xlabel("Number of Trees", fontsize=16)
-    ax.set_ylabel("Time (s)", fontsize=16)
-    ax.tick_params(axis="both", which="major", labelsize=14)
-    ax.legend(loc="upper left", frameon=False, fontsize=14)
+    ax.set_xlabel("Number of Trees", fontsize=20)
+    ax.set_ylabel("Time (s)", fontsize=20)
+    ax.tick_params(axis="both", which="major", labelsize=20)
+    ax.legend(loc="upper left", frameon=False, fontsize=20)
     plt.tight_layout()
     plt.savefig(f"{plot_dir}/tree_timing.pdf")
     plt.close()

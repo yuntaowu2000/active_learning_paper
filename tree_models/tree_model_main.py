@@ -3,6 +3,8 @@ import glob
 import os
 import time
 
+import matplotlib
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -345,10 +347,10 @@ def plot_1d(model: PDEModelTimeStep, model_rar: PDEModelTimeStep, plot_dir: str)
         ax.plot(x_plot_base, plot_args_base[i]["y"], label="PyMacroFin", color="#000000", linestyle="-.", marker="x", markevery=10)
         ax.plot(x_plot, plot_args_timestep[i]["y"], label="Timestep", color="#317e46", linestyle="-.")
         ax.plot(x_plot, plot_args_rar[i]["y"], label="Our Method", color="#5492ab")
-        ax.set_xlabel("", fontsize=16)
-        ax.set_ylabel("", fontsize=16)
-        ax.tick_params(axis="both", which="major", labelsize=14)
-        ax.legend(frameon=False, fontsize=14)
+        ax.set_xlabel("", fontsize=20)
+        ax.set_ylabel("", fontsize=20)
+        ax.tick_params(axis="both", which="major", labelsize=25)
+        ax.legend(frameon=False, fontsize=25)
         plt.tight_layout()
         plt.savefig(f"{plot_dir}/{vars[i]}.pdf")
         plt.close()
@@ -378,14 +380,14 @@ def plot_2d(model: PDEModelTimeStepCustomSample, plot_dir: str):
     for i in range(len(plot_args_rar)):
         fig, ax = plt.subplots(1, 1, figsize=(8, 6))
         ax.plot(x_plot, plot_args_rar[i]["y"], label="Our Method", color="#5492ab")
-        ax.set_xlabel(xlabel, fontsize=16)
-        ax.set_ylabel(plot_args_rar[i]["ylabel"], fontsize=16)
-        ax.tick_params(axis="both", which="major", labelsize=14)
+        ax.set_xlabel(xlabel, fontsize=20)
+        ax.set_ylabel(plot_args_rar[i]["ylabel"], fontsize=20)
+        ax.tick_params(axis="both", which="major", labelsize=20)
         # ax.legend(frameon=False, fontsize=14)
         plt.savefig(f"{plot_dir}/{vars[i]}.pdf")
         plt.close()
 
-def plot_loss(curr_base_dir, plot_dir):
+def plot_loss(curr_base_dir, plot_dir, fontsize=20):
     for loss_name, plot_name in [("total_loss", "loss.pdf"), ("hjbeq_1", "loss_hjb.pdf")]:
         fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(8, 6))
         # ax.set_xlabel("Epochs")
@@ -397,8 +399,8 @@ def plot_loss(curr_base_dir, plot_dir):
             loss_file = os.path.join(curr_dir, f"model_global_min_loss.csv")
             loss_df = pd.read_csv(loss_file)
             ax.plot(loss_df["epoch"], loss_df[loss_name], label=l, linestyle=ls, color=color)
-        ax.tick_params(axis="both", which="major", labelsize=14)
-        ax.legend(loc="upper right", frameon=False, fontsize=14)
+        ax.tick_params(axis="both", which="major", labelsize=fontsize)
+        ax.legend(loc="upper right", frameon=False, fontsize=fontsize)
         plt.tight_layout()
         plt.savefig(f"{plot_dir}/{plot_name}")
         plt.close()
@@ -408,19 +410,19 @@ def plot_residual_points(curr_base_dir, plot_dir):
     curr_rar_sampled_points = []
     for anchor_point_file in anchor_point_files:
         curr_rar_sampled_points.append(np.load(anchor_point_file))
-    fig, ax = plt.subplots(1, 1, figsize=(6, 6))
+    fig, ax = plt.subplots(1, 1, figsize=(8, 8))
     for i in range(4):
-        ax.scatter(curr_rar_sampled_points[i][:, 0], curr_rar_sampled_points[i][:, 1], label=f"Outer Loop {i+1}", s=16)
+        ax.scatter(curr_rar_sampled_points[i][:, 0], curr_rar_sampled_points[i][:, 1], label=f"Outer Loop {i+1}", s=40)
     ax.legend(
         loc="upper center",
         bbox_to_anchor=(0.5, -0.15),
         ncol=2,
         frameon=False,
-        fontsize=14
+        fontsize=20
     )
-    ax.set_xlabel("$z_1$", fontsize=16)
-    ax.set_ylabel("$z_2$", fontsize=16)
-    ax.tick_params(axis="both", which="major", labelsize=14)
+    ax.set_xlabel("$z_1$", fontsize=20)
+    ax.set_ylabel("$z_2$", fontsize=20)
+    ax.tick_params(axis="both", which="major", labelsize=20)
     plt.tight_layout()
     plt.savefig(f"{plot_dir}/residual_points.pdf")
     plt.close()
@@ -484,10 +486,12 @@ def plot_hjb_error_distribution(model: PDEModelTimeStep, model_rar: PDEModelTime
     )
 
     ax.set_xscale("log")
-    ax.set_xlabel("", fontsize=16)
-    ax.set_ylabel("Frequency", fontsize=16)
-    ax.tick_params(axis="both", which="major", labelsize=14)
-    ax.legend(loc="upper left", frameon=False, fontsize=14)
+    ax.set_xlabel("", fontsize=20)
+    ax.set_ylabel("Frequency", fontsize=20)
+    ymin, ymax = ax.get_ylim()
+    ax.set_ylim(ymin, ymax * 1.1)
+    ax.tick_params(axis="both", which="major", labelsize=20)
+    ax.legend(loc="upper left", frameon=False, fontsize=20)
 
     plt.tight_layout()
     plt.savefig(f"{plot_dir}/hjb_residuals.pdf")
@@ -498,7 +502,7 @@ BASE_PARAMS = {
     "rho" : 0.05, # Fund discount rate
 }
 MU_SIGS = {
-    k: [0.01 * i for i in range(1, k+1)] for k in [2, 3] # , 5, 10, 20, 40, 50
+    k: [0.01 * i for i in range(1, k+1)] for k in [2, 3, 50] # , 5, 10, 20, 40, 50
 }
 # N_MODELS = 50
 BASE_DIR = "./models/"
@@ -535,11 +539,13 @@ if __name__ == "__main__":
         gc.collect()
         torch.cuda.empty_cache()
 
+        fontsize = 20
         if n_tree == 2:
             plot_1d(model, model_rar, plot_dir)
             eval_1d(model, model_rar, plot_dir)
+            fontsize = 25
         elif n_tree == 3:
             plot_residual_points(curr_base_dir, plot_dir)
             plot_2d(model_rar, plot_dir)
-        plot_loss(curr_base_dir, plot_dir)
+        plot_loss(curr_base_dir, plot_dir, fontsize)
         plot_hjb_error_distribution(model, model_rar, plot_dir)
