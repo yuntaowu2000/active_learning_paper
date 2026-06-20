@@ -15,7 +15,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 from deep_macrofin import PDEModel, PDEModelTimeStep
-from deep_macrofin import OptimizerType, LossReductionMethod, SamplingMethod, set_seeds
+from deep_macrofin import Comparator, OptimizerType, LossReductionMethod, SamplingMethod, set_seeds
 
 
 # ---------------------------------------------------------------------------
@@ -107,26 +107,6 @@ class StackedAgent:
 
     def value(self, SV: torch.Tensor):
         return self.compute(SV)[0]
-
-    def value_jac(self, SV: torch.Tensor):
-        """Fused value + Jacobian (no Hessian).  Used by the t=0 FOC anchor,
-        which needs only spatial first derivatives -- skipping the Hessian
-        halves the cost of that extra boundary forward pass."""
-        params, buffers = _stack_module_state_with_grad([a.model for a in self._agents])
-        template = self._template
-
-        def value_scalar(p, b, x):
-            return functional_call(template, (p, b), (x,)).squeeze(-1)
-
-        def fwd_per_net(p, b):
-            return vmap(lambda x: value_scalar(p, b, x))(SV)
-
-        def jac_per_net(p, b):
-            return vmap(jacrev(lambda x: value_scalar(p, b, x)))(SV)
-
-        val = vmap(fwd_per_net)(params, buffers).transpose(0, 1).contiguous()   # (B, N)
-        jac = vmap(jac_per_net)(params, buffers).transpose(0, 1).contiguous()   # (B, N, D)
-        return val, jac
 
 
 # ---------------------------------------------------------------------------
@@ -431,10 +411,11 @@ class PDEModelTimeStepNAgents(PDEModelNAgents, PDEModelTimeStep):
         min_t = float(self.config.get("min_t", 0.0))
         SV_t0 = torch.cat([SV[:, :-1], torch.full_like(SV[:, -1:], min_t)], dim=1)
         xstack, xactive = self._xi_stack
-        val, jac = xstack.value_jac(SV_t0)
+        val, jac, hess = xstack.compute(SV_t0)
         N = len(xactive)
         vd["xi_active_t0"]      = val[:, :N]
         vd["xi_active_Jac_t0"]  = jac[:, :N]
+        vd["xi_active_Hess_t0"] = hess[:, :N]
         astack, aactive = self._alpha_stack
         aval = astack.value(SV_t0)
         vd["alpha_active_t0"]   = aval[:, :len(aactive)]
@@ -920,6 +901,7 @@ def get_model(model_path: str, n_active: int, params: dict,
         Js = f"xi_active_Jac[:, :, :{n_state}]"
         Js0 = f"xi_active_Jac_t0[:, :, :{n_state}]"
         Hs = f"xi_active_Hess[:, :, :{n_state}, :{n_state}]"
+        Hs0 = f"xi_active_Hess_t0[:, :, :{n_state}, :{n_state}]"
         eqs = [
             f"SV_share=compute_share_sv(SV, {n_state})",
             f"xi_Jac_s={Js}",
@@ -952,16 +934,16 @@ def get_model(model_path: str, n_active: int, params: dict,
             "foc_active_target=compute_foc_active(q, gamma_active, varsigma_active)",
             "pricing_target=compute_pricing_n(SV_share, varsigma_active, sigR_norm, gamma_active)",
 
-            # t=0 portfolio-FOC anchor.  We rebuild the FOC target on the
-            # extracted (t = min_t) slice using share-only spatial derivatives so
-            # the binding portfolio constraint is enforced precisely where the
-            # solution is read off.  (A stationary-HJB anchor was tried here too
-            # but only added a Hessian-heavy second chain without improving the
-            # free-boundary fit -- the bottleneck is FOC enforcement, not the
-            # value-function curvature -- so it was removed.)
+            # t=0 enforcement.  The pseudo-time march only converges to the
+            # stationary solution if the t=0 slice is itself a fixed point of the
+            # *stationary* operator.  We therefore rebuild the full FOC + HJB
+            # residual at t=0 using share-only (no mu_t, no t-Jacobian) drifts,
+            # so the boundary slice is pinned to the true convex equilibrium.
             f"xi_Jac_s_t0={Js0}",
+            f"xi_Hess_s_t0={Hs0}",
             "y_t0=compute_y_closed(SV_share, xi_active_t0)",
             "dy_dx_t0=compute_dy_dx_closed(SV_share, xi_active_t0, xi_Jac_s_t0)",
+            "d2y_dx2_t0=compute_d2y_dx2_closed(SV_share, xi_active_t0, xi_Jac_s_t0, xi_Hess_s_t0)",
             "sigy_t0=compute_sigy_n(SV_share, y_t0, dy_dx_t0, alpha_active_t0, sigma)",
             "sigR_t0=sigma.reshape(1,2)-sigy_t0",
             "sigR_norm_t0=torch.sqrt(torch.sum(sigR_t0 ** 2, dim=1, keepdim=True))",
@@ -970,6 +952,16 @@ def get_model(model_path: str, n_active: int, params: dict,
             "varsigma_active_t0=compute_varsigma_active(gamma_active, psi_active, sigxi_active_t0, sigR_t0)",
             "q_t0=gamma_active[0]*(alpha_active_t0[:, 0:1]+varsigma_active_t0[:, 0:1])",
             "foc_active_target_t0=compute_foc_active(q_t0, gamma_active, varsigma_active_t0)",
+            # --- stationary HJB at t=0 (share-only drift/diffusion) ---------
+            "pi_t0=q_t0*sigR_norm_t0**2",
+            "eta_t0=q_t0*sigR_norm_t0",
+            "mux_t0=compute_mux_n(SV_share, xi_active_t0, alpha_active_t0, y_t0, q_t0, sigR_t0, kappa, omega_active)",
+            "a_mat_t0=compute_a_mat_n(sigx_active_t0)",
+            "muxi_active_t0=compute_muxi_active(xi_active_t0, xi_Jac_s_t0, xi_Hess_s_t0, mux_t0, a_mat_t0)",
+            "muy_t0=compute_muy_n(y_t0, dy_dx_t0, d2y_dx2_t0, mux_t0, a_mat_t0)",
+            "muP_t0=compute_muP_n(muy_t0, sigy_t0, sigma, mu)",
+            "r_t0=y_t0+muP_t0-pi_t0",
+            "hjb_t0=compute_hjb_n(gamma_active, psi_active, muxi_active_t0, sigxi_active_t0, sigR_t0, r_t0, eta_t0, alpha_active_t0, sigR_norm_t0, xi_active_t0, rho)",
         ]
     else:
         eqs = [
@@ -1009,15 +1001,29 @@ def get_model(model_path: str, n_active: int, params: dict,
     model.add_endog_equation("pi=pricing_target", label="pricing")
     # HJB residual. 
     model.add_hjb_equation("hjb", loss_reduction=LossReductionMethod.MAE)
+    model.add_constraint("alpha_active", Comparator.LEQ, "alpha_caps")
 
     if timestepping:
-        for nm, shp in [("xi_active_t0", (batch_size, n_active)), ("xi_active_Jac_t0", (batch_size, n_active, n_state)),
+        for nm, shp in [("xi_active_t0", (batch_size, n_active)), ("xi_active_Jac_t0", (batch_size, n_active, n_state)), ("xi_active_Hess_t0", (batch_size, n_active, n_state, n_state)),
                         ("alpha_active_t0", (batch_size, n_active))
         ]:
             model.variable_val_dict[nm] = torch.zeros(shp, device=model.device)
         # Anchor the portfolio FOC at the t=0 boundary slice (see t0 chain
         # above).  Weighted so it does not swamp the interior PDE residuals.
         model.add_endog_equation("torch.minimum(alpha_caps - alpha_active_t0, foc_active_target_t0 - alpha_active_t0)=0", label="vi_active_t0")
+        # Anchor the pseudo-time derivative d(xi)/dt = 0 at t = min_t.  The slice
+        # we extract must be a STEADY STATE, but the parabolic interior loss only
+        # drives  StatOp[xi] - d(xi)/dt -> 0, so a non-zero d(xi)/dt at t=0 lets
+        # the *stationary* residual -- the one that actually pins y -- stay large
+        # (empirically ~1e-4 while the reported time-dependent HJB is ~1e-7).
+        # The last column of the t=0 Jacobian injected in ``_inject_t0_base`` IS
+        # d(xi)/dt, so this anchor costs no extra Hessian.  Labelled ``*_t0`` so
+        # ``evaluate_validation_losses`` excludes it from the reported totals.
+        model.add_endog_equation("xi_active_Jac_t0[:, :, -1:]=0", label="dxidt_t0")
+        # Pin the t=0 slice to the *stationary* HJB so the backward march can
+        # only converge to the true (convex) equilibrium, not an arbitrary
+        # time-dependent profile that happens to satisfy the FOC.
+        # model.add_hjb_equation("hjb_t0", label="hjb_t0", loss_reduction=LossReductionMethod.MAE)
 
     if timestepping and init_guess is not None:
         model.set_initial_guess({k: v for k, v in init_guess.items()
@@ -2309,10 +2315,10 @@ if __name__ == "__main__":
 
     if args.float64:
         torch.set_default_dtype(torch.float64)
-        base_dir = "./models/GP_NN_NAgents_faster_64bits"
+        base_dir = "./models/GP_NN_NAgents_faster_64bits_soft_cap"
     else:
         torch.set_default_dtype(torch.float32)
-        base_dir = "./models/GP_NN_NAgents_faster"
+        base_dir = "./models/GP_NN_NAgents_faster_soft_cap"
 
     n, gamma_active, psi_active, alpha_caps, suffix = make_case(args.case)
     print(f"[gp_n_agents_NN] case={args.case}  N={n}  gamma_active={gamma_active} alpha_caps={alpha_caps}")

@@ -274,6 +274,10 @@ def post_process(x, H1, H2, alpha1, alpha2, params):
         "alpha_1": alpha1, "alpha_2": alpha2,
         "y": y, "pi": pi, "r": r, "eta": eta,
         "sigma_R": sigma_R, "q": q,
+        # drift / diffusion of the free wealth share x_1 -- needed to forward
+        # simulate the stationary distribution (see gp_n_agents_simulate.py).
+        # ``pi`` above is the (aggregate) risk premium.
+        "mux": mu_x, "sigma_x": sigma_x,
     })
 
 
@@ -325,6 +329,7 @@ _CASES = {
     "asym2":       dict(gamma=(8.0, 4.0), cap=np.inf),
     "sym2_const":  dict(gamma=(4.0, 4.0), cap=1.8),
     "asym2_const": dict(gamma=(8.0, 4.0), cap=1.8),
+    "asym2_const2": dict(gamma=(8.0, 4.0), cap=1.3),
 }
 
 
@@ -356,6 +361,6 @@ if __name__ == "__main__":
     parser.add_argument("--N", type=int, default=80)
     args = parser.parse_args()
 
-    cases = ["sym2", "asym2", "sym2_const", "asym2_const"]
+    cases = ["asym2_const2"]
     for c in cases:
         run_case(c, N=args.N)
