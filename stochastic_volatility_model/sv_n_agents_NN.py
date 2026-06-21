@@ -1218,7 +1218,7 @@ def _forward_states(model, SV_np, chunk=2000):
     n = SV_np.shape[0]
     for c in range(0, n, chunk):
         SV = torch.tensor(SV_np[c:c + chunk], device=model.device, dtype=torch.get_default_dtype())
-        SV.requires_grad_(True)
+        # SV.requires_grad_(True)
         for i, nm in enumerate(model.state_variables):
             model.variable_val_dict[nm] = SV[:, i:i + 1]
         model.variable_val_dict["SV"] = SV
@@ -1265,7 +1265,7 @@ def _validation_states(model, n_samples=10000, seed=0):
     return np.concatenate([x_states, v], axis=1)
 
 
-def compute_validation_losses(model, SV_val):
+def compute_validation_losses(model, SV_val, chunk_size=2000):
     """Per-component validation losses + per-type HJB + total, on common states.
 
     Residual components use the same reductions as training: HJB groups are the
@@ -1275,7 +1275,7 @@ def compute_validation_losses(model, SV_val):
     capital, so there is no free theta and no FOC residual to satisfy).
     """
     with model_on(model):
-        out = _forward_states(model, SV_val)
+        out = _forward_states(model, SV_val, chunk_size)
     res = {
         "HJB expert": float(np.mean(np.abs(out["hjb_expert"]))),
         "HJB household": float(np.mean(np.abs(out["hjb_household"]))),
@@ -1287,9 +1287,9 @@ def compute_validation_losses(model, SV_val):
     res["Total"] = sum(res.values())
     return res
 
-def compute_theta_chat_distributions(model, SV_val):
+def compute_theta_chat_distributions(model, SV_val, chunk_size=2000):
     with model_on(model):
-        out = _forward_states(model, SV_val)
+        out = _forward_states(model, SV_val, chunk_size)
     gamma_vec = model.statics["gamma"].cpu().reshape(-1).numpy()
     theta_full = out["theta_full"]
     chat_full = out["chat"]
@@ -1342,10 +1342,9 @@ METHOD_DISPLAY = {
     "timestep_rar_lb": "Time-stepping + RAR + LB",
 }
 
-def compare_loss_table(models, baseline_key="basic", n_samples=10000, seed=0,
-                       cols=None):
+def compare_loss_table(models, baseline_key="basic", n_samples=10000, chunk_size=2000, seed=0, cols=None):
     SV_val = _validation_states(next(iter(models.values())), n_samples=n_samples, seed=seed)
-    rows = {name: compute_validation_losses(m, SV_val) for name, m in models.items()}
+    rows = {name: compute_validation_losses(m, SV_val, chunk_size) for name, m in models.items()}
     base = rows[baseline_key]
     # default: every reported component (Total kept last), so the columns adapt
     # to the case (e.g. Capital FOC only appears for K > 2).
@@ -1361,8 +1360,7 @@ def compare_loss_table(models, baseline_key="basic", n_samples=10000, seed=0,
     return pd.DataFrame.from_dict(renamed_rows, orient="index")[ordered]
 
 
-def compute_welfare_equivalent_losses(models, baseline_key="basic",
-                                      n_samples=10000, seed=0):
+def compute_welfare_equivalent_losses(models, baseline_key="basic", n_samples=10000, chunk_size=2000, seed=0):
     """Map each residual to a certainty-equivalent consumption-wealth (c/W)
     cost (units 1/time), averaged over a validation sample.
 
@@ -1377,7 +1375,7 @@ def compute_welfare_equivalent_losses(models, baseline_key="basic",
         gamma = st["gamma"].detach().cpu().numpy().reshape(-1)
         e_idx = st["expert_idx"]; v_index = st["v_index"]
         with model_on(model):
-            out = _forward_states(model, SV_val)
+            out = _forward_states(model, SV_val, chunk_size)
         v = SV_val[:, v_index]
         hjb_k = out["hjb_k"]
         x_full = np.concatenate([SV_val[:, :st["K"] - 1],
@@ -1606,8 +1604,7 @@ def plot_rar_anchors(model_path, K, out_dir, file_name="rar_anchors.pdf", timest
     plt.close(fig)
 
 
-def plot_aggregate_scatter(model, out_dir, file_name="aggregate_scatter.pdf",
-                           n_samples=4000, v_fixed=0.25, seed=0):
+def plot_aggregate_scatter(model, out_dir, file_name="aggregate_scatter.pdf", n_samples=4000, chunk_size=2000, v_fixed=0.25, seed=0):
     """For K>2 cases, scatter p / risk premium / omega against two summaries of
     the wealth distribution at fixed v:
 
@@ -1634,7 +1631,7 @@ def plot_aggregate_scatter(model, out_dir, file_name="aggregate_scatter.pdf",
     SV_np = np.concatenate([shares[:, :K - 1], np.full((n_samples, 1), v_fixed)], axis=1)
 
     with model_on(model):
-        out = _forward_states(model, SV_np)
+        out = _forward_states(model, SV_np, chunk_size)
     expert_share = shares[:, e_idx].sum(axis=1)
     herfindahl = (shares ** 2).sum(axis=1)
     xi = out["xi_active"]
@@ -1660,9 +1657,9 @@ def plot_aggregate_scatter(model, out_dir, file_name="aggregate_scatter.pdf",
     plt.close(fig)
 
 
-def plot_theta_chat_histogram(model, out_dir, seed=0):
+def plot_theta_chat_histogram(model, out_dir, seed=0, chunk_size=2000):
     SV_val = _validation_states(model, n_samples=10000, seed=seed)
-    generated_df = compute_theta_chat_distributions(model, SV_val)
+    generated_df = compute_theta_chat_distributions(model, SV_val, chunk_size=chunk_size)
     os.makedirs(out_dir, exist_ok=True)
     for var in ["theta", "chat"]:
         fig, ax = plt.subplots(1, 1, figsize=(6.2, 4.8))
@@ -1835,37 +1832,41 @@ def main():
     cmp_dir = os.path.join(base_dir, "comparison")
     os.makedirs(cmp_dir, exist_ok=True)
 
+    if K >= 10:
+        chunk_size = 500
+    else:
+        chunk_size = 2000
+
     # ---- 1) Loss tables (computed over ALL trained methods) -----------------
     loss_df = welfare_df = None
     if "basic" in models:
-        loss_df = compare_loss_table(models, baseline_key="basic")
+        loss_df = compare_loss_table(models, baseline_key="basic", chunk_size=chunk_size)
         loss_df.to_csv(os.path.join(cmp_dir, "comparative_losses.csv"))
         df_to_latex(loss_df, os.path.join(cmp_dir, "comparative_losses.tex"))
         print("\n[sv_n_agents] comparative loss table (vs basic):")
         print(loss_df.to_string(float_format=lambda x: f"{x:.3e}"))
 
-        welfare_df = compute_welfare_equivalent_losses(models, baseline_key="basic")
+        welfare_df = compute_welfare_equivalent_losses(models, baseline_key="basic", chunk_size=chunk_size)
         welfare_df.to_csv(os.path.join(cmp_dir, "welfare_equivalent_losses.csv"))
         df_to_latex(welfare_df, os.path.join(cmp_dir, "welfare_equivalent_losses.tex"))
         print("\n[sv_n_agents] welfare-equivalent loss table (c/W, vs basic):")
         print(welfare_df.to_string(float_format=lambda x: f"{x:.3e}"))
 
     if "timestep" in models:
-        loss_df = compare_loss_table(models, baseline_key="timestep")
+        loss_df = compare_loss_table(models, baseline_key="timestep", chunk_size=chunk_size)
         loss_df.to_csv(os.path.join(cmp_dir, "comparative_losses_timestep.csv"))
         df_to_latex(loss_df, os.path.join(cmp_dir, "comparative_losses_timestep.tex"))
         print("\n[sv_n_agents] comparative loss table (vs timestep):")
         print(loss_df.to_string(float_format=lambda x: f"{x:.3e}"))
 
-        welfare_df = compute_welfare_equivalent_losses(models, baseline_key="timestep")
+        welfare_df = compute_welfare_equivalent_losses(models, baseline_key="timestep", chunk_size=chunk_size)
         welfare_df.to_csv(os.path.join(cmp_dir, "welfare_equivalent_losses_timestep.csv"))
         df_to_latex(welfare_df, os.path.join(cmp_dir, "welfare_equivalent_losses_timestep.tex"))
         print("\n[sv_n_agents] welfare-equivalent loss table (c/W, vs timestep):")
         print(welfare_df.to_string(float_format=lambda x: f"{x:.3e}"))
 
     # ---- pick basic + the best-improving method(s) for the overlay plots ----
-    plot_models = select_plot_methods(models, loss_df=loss_df, welfare_df=welfare_df,
-                                       baseline_key="basic")
+    plot_models = select_plot_methods(models, loss_df=loss_df, welfare_df=welfare_df, baseline_key="basic")
     plot_paths = {k: model_paths[k] for k in plot_models}
     plot_ts = {k: ts_map[k] for k in plot_models}
     print(f"[sv_n_agents] plotting methods: {list(plot_models)}")
@@ -1894,20 +1895,18 @@ def main():
         # plot histograms + aggregate scatter (p / risk premium / omega vs the
         # total expert wealth share at v=0.25) for the high-dimensional cases.
         for name, ts, rar, lb in [(n, *CONFIGS[n]) for n in models]:
-            plot_theta_chat_histogram(models[name], model_paths[name])
-            plot_aggregate_scatter(models[name], cmp_dir, file_name=f"aggregate_scatter_{name}.pdf")
+            plot_theta_chat_histogram(models[name], model_paths[name], chunk_size=chunk_size)
+            plot_aggregate_scatter(models[name], cmp_dir, file_name=f"aggregate_scatter_{name}.pdf", chunk_size=chunk_size)
 
     # ---- 3) RAR anchor scatter (rar configs, K=2) ---------------------------
     for name, ts, rar, lb in [(n, *CONFIGS[n]) for n in models]:
         if rar:
-            plot_rar_anchors(model_paths[name], K, cmp_dir,
-                             file_name=f"rar_anchors_{name}.pdf", timestepping=ts)
+            plot_rar_anchors(model_paths[name], K, cmp_dir, file_name=f"rar_anchors_{name}.pdf", timestepping=ts)
 
     # ---- 4) Loss-weight evolution (lb configs) ------------------------------
     for name, ts, rar, lb in [(n, *CONFIGS[n]) for n in models]:
         if lb:
-            plot_loss_weights(model_paths[name], cmp_dir,
-                              file_name=f"loss_weight_{name}.pdf", timestepping=ts)
+            plot_loss_weights(model_paths[name], cmp_dir, file_name=f"loss_weight_{name}.pdf", timestepping=ts)
 
     # ---- 5) HJB / total loss convergence (basic + best method) --------------
     plot_loss_decay(plot_paths, cmp_dir, plot_ts)

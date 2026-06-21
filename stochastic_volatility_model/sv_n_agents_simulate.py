@@ -58,7 +58,7 @@ matplotlib.use("Agg")
 # ---------------------------------------------------------------------------
 
 def load_model(base_dir, case, config="timestep", width=30, layers=4,
-               gamma=None, tau=None, sigma=None, a=None):
+               gamma=None, tau=None, sigma=None, a=None, foc=None):
     """Load a trained checkpoint (``model_best.pt``) for ``case``/``config``.
 
     The economic parameters MUST match those used at training time -- the saved
@@ -68,20 +68,28 @@ def load_model(base_dir, case, config="timestep", width=30, layers=4,
     the wrong constants silently produces a different economy on the same
     weights.  Params are parsed from the ``free_pr_{gamma}_{tau}_{sigma}_{a}``
     directory name; explicit arguments override the parsed values.
+
+    ``foc`` MUST match the training mode: a FOC model has NO theta networks and
+    hard-wires theta from the interior FOC, so rebuilding it in free-theta mode
+    leaves 17 random theta nets, which makes theta_anchor = 1 - sum(others) go
+    negative -> chi (hence the idiosyncratic premium) goes negative.  When
+    ``foc`` is None it is auto-detected from a ``_FOC`` tag in the directory name.
     """
+    if foc is None:
+        foc = "FOC" in os.path.basename(os.path.normpath(base_dir)).upper()
     ts, rar, lb = CONFIGS[config]
     K, eidx, hidx, gamma_vec, caps_E = make_case(case, gamma)
     mpath = os.path.join(base_dir, case, config)
     if not os.path.exists(os.path.join(mpath, "model_best.pt")):
         raise FileNotFoundError(f"no trained checkpoint at {mpath}/model_best.pt -- train first.")
     print(f"[load_model] params from '{os.path.basename(os.path.normpath(base_dir))}': "
-          f"gamma={gamma} tau={tau} sigma={sigma} a={a}")
+          f"gamma={gamma} tau={tau} sigma={sigma} a={a} foc={foc}")
     model = get_model(
         mpath, K, eidx, hidx, gamma_vec, caps_E,
         model_size=[width] * layers,
         timestepping=ts, rar=rar, loss_balancing=lb,
         params=BASE_PARAMS | {"tau": float(tau), "a": float(a), "sigma": float(sigma)},
-        train=False,
+        train=False, foc=foc,
     )
     return model
 
@@ -137,9 +145,15 @@ class NNEconomy:
         sig_agg = vd["sig_agg"].detach().cpu().numpy().reshape(-1)
         chi = vd["chi"].detach().cpu().numpy().reshape(-1)
         x_full = vd["x_full"].detach().cpu().numpy()
-        x_E0 = x_full[:, self.expert_idx[0]]                          # anchor expert share
+        theta_full = vd["theta_full"].detach().cpu().numpy()
+        i0 = self.expert_idx[0]
+        x_E0 = x_full[:, i0]                          # anchor expert wealth share
+        theta_E0 = theta_full[:, i0]                  # anchor expert capital share
         agg = pi * sig_agg
-        idio = chi / x_E0                            # = gamma*(phi v)^2 / x_E0^2
+        # anchor's idiosyncratic premium = chi * theta_0/x_0 = gamma_0 (phi v theta_0/x_0)^2
+        # (the term that enters its return).  Reduces to chi/x = gamma*(phi v)^2/x^2
+        # in the 2-agent case where the lone expert holds all capital (theta_0 = 1).
+        idio = chi * theta_E0 / x_E0
         return dict(pi=pi, sig_agg=sig_agg, agg_rp=agg, idio_rp=idio, total_rp=agg + idio)
 
 
@@ -428,6 +442,10 @@ def main():
     parser.add_argument("--case", default="agents2")
     parser.add_argument("--config", default="timestep", choices=list(CONFIGS))
     parser.add_argument("--base-dir", default="./models/SV_NAgents_64bit_baseline_6.0_1.15_0.06_0.1")
+    parser.add_argument("--foc", dest="foc", action="store_true", default=None,
+                        help="load an interior-FOC checkpoint (hard-wired theta); auto-detected from a _FOC dir tag if unset")
+    parser.add_argument("--no-foc", dest="foc", action="store_false",
+                        help="force free-theta loading even if the dir name contains _FOC")
     parser.add_argument("--float64", action="store_true")
     parser.add_argument("--width", type=int, default=30)
     parser.add_argument("--layers", type=int, default=4)
@@ -487,7 +505,7 @@ def main():
     if args.source == "nn":
         model = load_model(args.base_dir, args.case, args.config, width=args.width,
                            layers=args.layers, gamma=args.gamma, tau=args.tau,
-                           sigma=args.sigma, a=args.a)
+                           sigma=args.sigma, a=args.a, foc=args.foc)
         economy = NNEconomy(model)
         out_dir = args.out or os.path.join(args.base_dir, args.case, args.config, "simulation")
     else:
@@ -506,5 +524,6 @@ if __name__ == "__main__":
 '''
 python sv_n_agents_simulate.py --sweep  --sigmas 0.0125,0.028,0.04 --gammas 5,10 --taus 0.5,1.15,2.0  --sweep-out ./ditella_rp_sweep.csv
 python sv_n_agents_simulate.py --float64 --base-dir ./models/SV_NAgents_64bit_6.0_1.15_0.06_0.1 --case agents2 --sigma 0.06 --a 0.1 --tau 1.15 --gamma 6.0 --config timestep_lb
-python sv_n_agents_simulate.py --float64 --base-dir ./models/SV_NAgents_64bit_6.0_1.15_0.06_0.1 --case agents2 --sigma 0.06 --a 0.1 --tau 1.15 --gamma 6.0 --config timestep
+python sv_n_agents_simulate.py --float64 --base-dir ./models/SV_NAgents_64bit_improved2_FOC_5.0_1.15_0.06_0.1 --case agents20 --sigma 0.06 --a 0.1 --tau 1.15 --gamma 6.0 --config timestep
+python sv_n_agents_simulate.py --float64 --base-dir ./models/SV_NAgents_64bit_improved2_FOC_5.0_1.15_0.06_0.1 --case agents20 --sigma 0.06 --a 0.1 --tau 1.15 --gamma 6.0 --config timestep_rar --foc
 '''
