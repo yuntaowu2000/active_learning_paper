@@ -948,6 +948,7 @@ class PDEModelTimeStepNAgentsSV(_SVNAgentMixin, PDEModelTimeStep):
             self.anchor_points = torch.vstack((self.anchor_points, new_anchors))
         del SV_int, l_int, SV_t0, l_t0
         gc.collect(); torch.cuda.empty_cache()
+        return new_anchors
 
     # -- outer-loop convergence / variable tracking -------------------------
     # The library's __check_outer_loop_converge rebuilds every tracked variable
@@ -1021,7 +1022,7 @@ def get_model(model_path, K, expert_idx, household_idx, gamma_vec, caps_E,
               params=BASE_PARAMS, train=True, num_outer=70, num_inner=5000,
               min_inner=1000, loss_log_interval=50, max_t=1.0, init_guess=None,
               share_alpha_lo=SHARE_ALPHA_LO, share_alpha_hi=SHARE_ALPHA_HI,
-              lr_decay_every=20, lr_decay_gamma=0.5, foc=False):
+              lr_decay_every=20, lr_decay_gamma=0.5, loss_balancing_alpha=0.9, loss_balancing_temp=0.1, bernoulli_prob=0.99, foc=False):
     """Assemble (and train if no checkpoint) the heterogeneous N-agent SV model.
 
     expert_idx / household_idx : 0-based agent indices (their union is 0..K-1).
@@ -1034,6 +1035,9 @@ def get_model(model_path, K, expert_idx, household_idx, gamma_vec, caps_E,
     set_seeds(0)
     assert caps_E[0] >= 1e3, "First expert anchors chi and must be unconstrained (caps_E[0] >= 1e3)."
 
+    if rar:
+        batch_size = batch_size // 2
+    
     if timestepping:
         cfg = {"batch_size": batch_size, "time_batch_size": 1,
                "min_t": 0.0, "max_t": max_t,
@@ -1046,7 +1050,7 @@ def get_model(model_path, K, expert_idx, household_idx, gamma_vec, caps_E,
                "loss_balancing": loss_balancing, "rar": rar, "refinement_rounds": 10,
                "share_alpha_lo": share_alpha_lo, "share_alpha_hi": share_alpha_hi,
                "lr_decay_every": lr_decay_every, "lr_decay_gamma": lr_decay_gamma,
-               "foc": foc,
+               "foc": foc, "loss_balancing_alpha": loss_balancing_alpha, "loss_balancing_temp": loss_balancing_temp, "bernoulli_prob": bernoulli_prob,
         }
         model = PDEModelTimeStepNAgentsSV("sv_n_agents", cfg)
     else:
@@ -1055,9 +1059,10 @@ def get_model(model_path, K, expert_idx, household_idx, gamma_vec, caps_E,
                "optimizer_type": OptimizerType.Adam, "lr": lr,
                "loss_balancing": loss_balancing, "rar": rar, "refinement_rounds": 10,
                "share_alpha_lo": share_alpha_lo, "share_alpha_hi": share_alpha_hi,
-               "foc": foc}
+               "foc": foc, "loss_balancing_alpha": loss_balancing_alpha, "loss_balancing_temp": loss_balancing_temp, "bernoulli_prob": bernoulli_prob,
+            }
         model = PDEModelNAgentsSV("sv_n_agents", cfg)
-
+    
     state_names = [f"x_{i+1}" for i in range(K - 1)] + ["v"]
     domain = {f"x_{i+1}": [0.1 / K, 1 - 0.1 / K] for i in range(K - 1)}
     domain["v"] = list(V_DOMAIN)
@@ -1528,7 +1533,7 @@ def plot_loss_decay(model_paths, out_dir, timestepping_map,
     colors = plt.get_cmap("tab10")
     for c, (name, path) in enumerate(model_paths.items()):
         ts = timestepping_map.get(name, False)
-        fname = "model_global_min_loss.csv" if ts else "model_loss.csv"
+        fname = "model_global_min_loss.csv" if ts else "model_min_loss.csv"
         fpath = os.path.join(path, fname)
         if not os.path.exists(fpath):
             continue
@@ -1739,11 +1744,14 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--case", choices=["agents2", "agents5", "agents5_cap", "agents5_cap2", "agents20", "agents50"], default="agents2")
     parser.add_argument("--epochs", type=int, default=50000)
-    parser.add_argument("--outer", type=int, default=70, help="num_outer_iterations for time-stepping configs")
+    parser.add_argument("--outer", type=int, default=100, help="num_outer_iterations for time-stepping configs")
     parser.add_argument("--batch", type=int, default=500)
     parser.add_argument("--layers", type=int, default=4)
     parser.add_argument("--width", type=int, default=64)
     parser.add_argument("--lr", type=float, default=1e-3)
+    parser.add_argument("--loss_balancing_temp", type=float, default=1.0)
+    parser.add_argument("--loss_balancing_alpha", type=float, default=0.8)
+    parser.add_argument("--bernoulli_prob", type=float, default=0.999)
     parser.add_argument("--num-inner", type=int, default=5000,
                         help="num_inner_iterations at outer 0 (the library decays it ~1/sqrt(outer) down to --min-inner)")
     parser.add_argument("--min-inner", type=int, default=1000,
@@ -1792,10 +1800,10 @@ def main():
     dir_tag = "_FOC" if args.foc else ""
     if args.float64:
         torch.set_default_dtype(torch.float64)
-        base_dir = f"./models/SV_NAgents_64bit_improved2{dir_tag}_{gamma}_{tau}_{sigma}_{a}/{args.case}"
+        base_dir = f"./models/SV_NAgents_64bit_260623{dir_tag}_{gamma}_{tau}_{sigma}_{a}/{args.case}"
     else:
         torch.set_default_dtype(torch.float32)
-        base_dir = f"./models/SV_NAgents_improved2{dir_tag}_{gamma}_{tau}_{sigma}_{a}/{args.case}"
+        base_dir = f"./models/SV_NAgents_260623{dir_tag}_{gamma}_{tau}_{sigma}_{a}/{args.case}"
 
     K, eidx, hidx, gamma_vec, caps_E = make_case(args.case, gamma)
     print(f"[sv_n_agents] case={args.case} K={K} experts={eidx} households={hidx}")
@@ -1816,6 +1824,7 @@ def main():
             timestepping=ts, rar=rar, loss_balancing=lb, num_outer=args.outer,
             num_inner=args.num_inner, min_inner=args.min_inner,
             lr_decay_every=args.lr_decay_every, lr_decay_gamma=args.lr_decay_gamma,
+            loss_balancing_alpha=args.loss_balancing_alpha, loss_balancing_temp=args.loss_balancing_temp, bernoulli_prob=args.bernoulli_prob,
             foc=args.foc,
             init_guess=ts_init_guess, params=BASE_PARAMS | {"tau": tau, "a": a, "sigma": sigma},
             share_alpha_lo=args.alpha_lo, share_alpha_hi=args.alpha_hi,
@@ -1909,6 +1918,8 @@ def main():
             plot_loss_weights(model_paths[name], cmp_dir, file_name=f"loss_weight_{name}.pdf", timestepping=ts)
 
     # ---- 5) HJB / total loss convergence (basic + best method) --------------
+    plot_paths = {k: model_paths[k] for k in ["basic", "timestep", "timestep_rar"]}
+    plot_ts = {k: ts_map[k] for k in ["basic", "timestep", "timestep_rar"]}
     plot_loss_decay(plot_paths, cmp_dir, plot_ts)
     print(f"[sv_n_agents] loss-decay plot saved to {cmp_dir}")
 
@@ -1928,3 +1939,4 @@ if __name__ == "__main__":
     # --case agents5 --float64 --a 0.1 --sigma 0.02 --tau 1.15 --gamma 5.0
     # --case agents20 --float64 --a 0.1 --sigma 0.06 --tau 1.15 --gamma 5.0
     # --case agents20 --float64 --a 0.1 --sigma 0.06 --tau 1.15 --gamma 5.0 --foc
+    # --case agents20 --float64 --a 0.1 --sigma 0.06 --tau 1.15 --gamma 5.0 --foc --loss_balancing_temp 1.0
