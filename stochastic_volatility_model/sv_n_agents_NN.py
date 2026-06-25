@@ -1188,6 +1188,16 @@ def make_case(case: str, gamma):
         expert_idx = list(range(n_E)); household_idx = list(range(n_E, K))
         gamma_vec = [3.0 + 7.0 * i / (n_E - 1) for i in range(n_E)] + [12.0, 14.0]
         caps_E = [1e6] * n_E
+    elif case == "agents40":
+        # 36 experts + 4 households.  Same HARD design as agents20/agents50:
+        # wide expert spread [3, 10.5] (anchor index 0 = least averse, so capital
+        # concentrates there and takes large leverage), households more averse
+        # [12..16.5] holding little wealth.  gamma_vec length K (experts then hh).
+        K = 40
+        n_E = 36
+        expert_idx = list(range(n_E)); household_idx = list(range(n_E, K))
+        gamma_vec = [3.0 + 7.5 * i / (n_E - 1) for i in range(n_E)] + [12.0, 13.5, 15.0, 16.5]
+        caps_E = [1e6] * n_E
     elif case == "agents50":
         # 45 experts + 5 households.  Same HARD design as agents20: wide expert
         # spread [3, 11] (anchor = least averse -> capital concentrates there),
@@ -1742,7 +1752,7 @@ def main():
     import argparse
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--case", choices=["agents2", "agents5", "agents5_cap", "agents5_cap2", "agents20", "agents50"], default="agents2")
+    parser.add_argument("--case", choices=["agents2", "agents5", "agents5_cap", "agents5_cap2", "agents20", "agents40", "agents50"], default="agents2")
     parser.add_argument("--epochs", type=int, default=50000)
     parser.add_argument("--outer", type=int, default=100, help="num_outer_iterations for time-stepping configs")
     parser.add_argument("--batch", type=int, default=500)
@@ -1940,3 +1950,4 @@ if __name__ == "__main__":
     # --case agents20 --float64 --a 0.1 --sigma 0.06 --tau 1.15 --gamma 5.0
     # --case agents20 --float64 --a 0.1 --sigma 0.06 --tau 1.15 --gamma 5.0 --foc
     # --case agents20 --float64 --a 0.1 --sigma 0.06 --tau 1.15 --gamma 5.0 --foc --loss_balancing_temp 1.0
+    # --case agents50 --float64 --a 0.1 --sigma 0.06 --tau 1.15 --gamma 5.0 --foc --loss_balancing_temp 1.0
