@@ -46,7 +46,7 @@ import torch
 import matplotlib
 import matplotlib.pyplot as plt
 
-from sv_n_agents_NN import (
+from sv_n_agents_NN_loss_split import (
     BASE_PARAMS, CONFIGS, V_DOMAIN, get_model, make_case, PDEModelNAgentsSV, PDEModelTimeStepNAgentsSV
 )
 from ditella_numerical import DITELLA_PARAMS, solve_ditella
@@ -107,8 +107,27 @@ class NNEconomy:
         self.model: Union[PDEModelNAgentsSV, PDEModelTimeStepNAgentsSV] = model
         self.K = model.statics["K"]
         self.expert_idx = list(model.statics["expert_idx"])
+        self.household_idx = list(model.statics["household_idx"])
+        self.gamma_vec = model.statics["gamma"].detach().cpu().numpy().reshape(-1)
         self.v_lo, self.v_hi = model.statics.get("v_domain", V_DOMAIN)
         self.share_lo, self.share_hi = 0.1 / self.K, 1.0 - 0.1 / self.K
+
+    def portfolio(self, x_states, v):
+        """Per-agent wealth share ``x_k`` (P, K) and the risky-asset fraction of
+        each agent's OWN wealth ``theta_k / x_k`` (P, K) at (x_states, v).
+
+        ``theta_k`` is the share of aggregate capital held by expert ``k``; its
+        value is ``theta_k * p * kappa = theta_k * N`` (with ``N`` aggregate
+        wealth) while the agent's wealth is ``x_k * N``, so the fraction of the
+        agent's wealth held in risky capital is ``theta_k / x_k``.  Households
+        hold no capital (``theta = 0``) -> 0% risky.
+        """
+        vd = self._forward(x_states, v)
+        x_full = vd["x_full"].detach().cpu().numpy()          # (P, K)
+        theta_full = vd["theta_full"].detach().cpu().numpy()  # (P, K)
+        risky_frac = np.zeros_like(x_full)
+        np.divide(theta_full, x_full, out=risky_frac, where=x_full > 1e-12)
+        return x_full, risky_frac
 
     def _forward(self, x_states, v):
         model = self.model
@@ -349,6 +368,68 @@ def analyze(economy, sim, out_dir, burn_in_frac=0.2):
 
 
 # ---------------------------------------------------------------------------
+# Portfolio composition by wealth decile
+# ---------------------------------------------------------------------------
+def plot_portfolio_deciles(economy, sim, out_dir, n_deciles=10, burn_in_frac=0.2,
+                           max_states=20000, chunk=2000, seed=0,
+                           file_name="portfolio_deciles.pdf"):
+    """Risky-asset share of own wealth (``theta_k / x_k``) by wealth decile.
+
+    Pools every ``(path, time, agent-type)`` point of the ergodic simulation
+    (after burn-in) into ``(wealth x_k, risky fraction theta_k/x_k)`` pairs
+    (households contribute risky = 0), sorts by wealth, splits into ``n_deciles``
+    equal-count bins, and plots the mean risky fraction per decile as a stacked
+    Risky/Safe bar (Safe = 1 - risky, the bond position).  Returns the raw
+    (unclipped) per-decile means and prints them.
+    """
+    os.makedirs(out_dir, exist_ok=True)
+    x_hist, v_hist, t = sim["x_hist"], sim["v_hist"], sim["t"]
+    burn = int(len(t) * burn_in_frac)
+    x_pool = x_hist[burn:].reshape(-1, x_hist.shape[-1])       # (M, K-1)
+    v_pool = v_hist[burn:].reshape(-1)                         # (M,)
+    M = x_pool.shape[0]
+    if M > max_states:                                        # subsample for cost
+        rng = np.random.default_rng(seed)
+        sel = rng.choice(M, size=max_states, replace=False)
+        x_pool, v_pool = x_pool[sel], v_pool[sel]
+
+    wealth_list, risky_list = [], []
+    for c in range(0, x_pool.shape[0], chunk):
+        xf, rf = economy.portfolio(x_pool[c:c + chunk], v_pool[c:c + chunk])
+        wealth_list.append(xf)
+        risky_list.append(rf)
+    wealth = np.concatenate(wealth_list, 0).reshape(-1)        # (M*K,)
+    risky = np.concatenate(risky_list, 0).reshape(-1)         # (M*K,)
+
+    order = np.argsort(wealth)
+    wealth_s, risky_s = wealth[order], risky[order]
+    edges = np.linspace(0, len(wealth_s), n_deciles + 1).astype(int)
+    dec_risky = np.array([risky_s[edges[i]:edges[i + 1]].mean() for i in range(n_deciles)])
+    dec_wealth = np.array([wealth_s[edges[i]:edges[i + 1]].mean() for i in range(n_deciles)])
+
+    risky_plot = np.clip(dec_risky, 0.0, 1.0)
+    safe_plot = np.clip(1.0 - dec_risky, 0.0, 1.0)
+    deciles = np.arange(1, n_deciles + 1)
+    fig, ax = plt.subplots(figsize=(7, 4))
+    ax.bar(deciles, risky_plot, color="0.35", label="Risky (capital)")
+    ax.bar(deciles, safe_plot, bottom=risky_plot, color="0.8", label="Safe (bonds)")
+    ax.set_xlabel("Wealth decile")
+    ax.set_ylabel(r"Share of own wealth ($\theta_k/x_k$)")
+    ax.set_ylim(0, 1)
+    ax.set_xticks(deciles)
+    ax.set_title("Portfolio: risky-asset share by wealth decile")
+    ax.legend(frameon=False, loc="upper left")
+    fig.tight_layout()
+    fig.savefig(os.path.join(out_dir, file_name))
+    plt.close(fig)
+
+    print("\n[portfolio] decile | mean wealth x_k | mean risky theta/x (raw)")
+    for i in range(n_deciles):
+        print(f"  {i + 1:>2d}   {dec_wealth[i]:.5f}    {dec_risky[i]:.4f}")
+    return dict(decile=deciles, wealth=dec_wealth, risky=dec_risky)
+
+
+# ---------------------------------------------------------------------------
 def build_numerical_economy(param_overrides=None, h=2e-4, max_iters=300_000,
                             tol=1e-7):
     """Solve the finite-difference Di Tella model (optionally with parameter
@@ -481,6 +562,8 @@ def main():
     parser.add_argument("--v0", type=float, default=0.1)
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--out", default=None)
+    parser.add_argument("--portfolio", action="store_true",
+                        help="plot risky-asset share (theta_k/x_k) by wealth decile")
     args = parser.parse_args()
 
     if args.float64:
@@ -516,6 +599,8 @@ def main():
     sim = simulate(economy, n_paths=args.paths, years=args.years, dt=args.dt,
                    x0=args.x0, v0=args.v0, seed=args.seed)
     analyze(economy, sim, out_dir)
+    if args.portfolio:
+        plot_portfolio_deciles(economy, sim, out_dir)
 
 
 if __name__ == "__main__":

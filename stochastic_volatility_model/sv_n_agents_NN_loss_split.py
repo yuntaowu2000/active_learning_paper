@@ -765,92 +765,15 @@ class PDEModelTimeStepNAgentsSV(_SVNAgentMixin, PDEModelTimeStep):
             for pg in opt.param_groups:
                 pg["lr"] = new_lr
 
-    # # -- parameter homotopy embedded in the backward time-march --------------
-    # def enable_homotopy(self, gamma_start=None, ramp_frac=0.6, delay=0):
-    #     """Ramp ``gamma`` from an easy regime to the target *along the existing
-    #     outer (backward time) iterations* -- so the whole continuation costs ONE
-    #     march, not one march per intermediate gamma value.
-
-    #     The TARGET gamma is whatever is already in ``self.statics`` (set from the
-    #     user's gamma_vec).  Only the start, the delay, the per-level hold and the
-    #     ramp length are configured:
-
-    #       * ``gamma_start`` : scalar (broadcast to all K agents) or length-K
-    #         vector; default = target (i.e. no gamma ramp).
-    #       * ``delay``       : hold ``gamma_start`` for this many outer iterations
-    #         BEFORE the ramp begins (let the easy-regime solution settle first).
-    #       * ``self.homotopy_steps`` (config["homotopy_step"]): advance the ramp by
-    #         one increment every this-many outer iterations (e.g. 5 -> hold each
-    #         intermediate gamma for 5 outer iterations).
-    #       * ``ramp_frac``   : fraction of the POST-DELAY outer iterations spent
-    #         ramping; the schedule reaches the target and then HOLDS it for the
-    #         rest so the false-transient converges to the target steady state.
-
-    #     So gamma reaches target at outer iteration
-    #     ``delay + ramp_frac*(num_outer - delay)`` and holds afterward.
-
-    #     Implemented via the per-outer-iteration ``OnInnerLoopStart`` hook (which
-    #     fires once before each outer loop's inner epochs); internal counters
-    #     track the outer index and the ramp step because the hook gets no args.
-    #     """
-    #     g_target = self.statics["gamma"].clone()                  # (1, K)
-    #     if gamma_start is None:
-    #         g_start = g_target.clone()
-    #     elif isinstance(gamma_start, (int, float)):
-    #         g_start = torch.full_like(g_target, float(gamma_start))
-    #     else:
-    #         g_start = torch.tensor(gamma_start, device=g_target.device, dtype=g_target.dtype).reshape(1, -1)
-
-    #     num_outer = int(self.config["num_outer_iterations"])
-    #     delay = max(0, int(delay))
-    #     steps = max(1, int(self.homotopy_steps))
-    #     # number of ramp increments (one every `steps` outer iterations) needed
-    #     # to reach the target within `ramp_frac` of the post-delay window.
-    #     n_ramp = max(1, int(float(ramp_frac) * max(1, num_outer - delay) / steps))
-
-    #     self._homotopy = dict(
-    #         g_start=g_start, g_target=g_target,
-    #         ramp_frac=float(ramp_frac), num_outer=num_outer,
-    #         homotopy_steps=steps, delay=delay, n_ramp=n_ramp,
-    #     )
-    #     self._outer_iter = 0
-    #     self._homotopy_iter = 0
-    #     self.OnInnerLoopStart += self._homotopy_start
-    #     self._apply_homotopy(0)                                   # pin gamma_start for the delay phase
-    #     print(f"[homotopy] gamma-only: start={g_start.reshape(-1).tolist()} -> "
-    #           f"target={g_target.reshape(-1).tolist()}; delay={delay}, "
-    #           f"step every {steps} outer iters, {n_ramp} ramp increments "
-    #           f"(target reached ~outer {delay + n_ramp * steps}/{num_outer})")
-    #     return self
-
-    # def _homotopy_start(self):
-    #     # fired once per outer iteration (no args) -> use our own counters.
-    #     H = self._homotopy
-    #     if H is not None:
-    #         # hold gamma_start during the delay, then advance one ramp increment
-    #         # every `homotopy_steps` outer iterations.
-    #         if self._outer_iter >= H["delay"] and (self._outer_iter - H["delay"]) % H["homotopy_steps"] == 0:
-    #             self._apply_homotopy(self._homotopy_iter)
-    #             self._homotopy_iter += 1
-    #     self._outer_iter += 1
-
-    # def _apply_homotopy(self, k):
-    #     H = self._homotopy
-    #     if H is None:
-    #         return
-    #     frac = min(1.0, k / H["n_ramp"])
-    #     self.statics["gamma"] = H["g_start"] + frac * (H["g_target"] - H["g_start"])
-    #     # only let target-gamma iterations win the final best checkpoint
-    #     self._block_best = frac < 1.0
-    #     g_now = [round(x, 3) for x in self.statics["gamma"].reshape(-1).tolist()]
-    #     print(f"[homotopy] outer {self._outer_iter} (ramp step {k}): frac={frac:.3f} gamma={g_now}  (block_best={self._block_best})")
-
     def sample_simplex_v_ts(self, epoch=0):
         """Simplex over shares + uniform v + uniform t in [min_t, max_t]."""
         base = self.sample_simplex_v(epoch)                   # (B, K) -> shares + v
         min_t = self.config.get("min_t", 0.0)
         max_t = self.config.get("max_t", 1.0)
-        t = min_t + (max_t - min_t) * torch.rand((base.shape[0], 1), device=self.device)
+        t0_frac = float(self.config.get("t0_frac", 0.4))
+        n_t0 = int(round(t0_frac * B))
+        t = min_t + (max_t - min_t) * torch.rand((B, 1), device=self.device)
+        t[:n_t0] = min_t
         return torch.cat([base, t], dim=1)
     
     def __sample_custom_boundary_cond(self, time_val: float):
@@ -1026,7 +949,8 @@ def get_model(model_path, K, expert_idx, household_idx, gamma_vec, caps_E,
               params=BASE_PARAMS, train=True, num_outer=70, num_inner=5000,
               min_inner=1000, loss_log_interval=50, max_t=1.0, init_guess=None,
               share_alpha_lo=SHARE_ALPHA_LO, share_alpha_hi=SHARE_ALPHA_HI,
-              lr_decay_every=20, lr_decay_gamma=0.5, loss_balancing_alpha=0.9, loss_balancing_temp=0.1, bernoulli_prob=0.99, foc=False):
+              lr_decay_every=20, lr_decay_gamma=0.5, loss_balancing_alpha=0.9, loss_balancing_temp=0.1, bernoulli_prob=0.99, foc=False,
+              t0_frac=0.4):
     """Assemble (and train if no checkpoint) the heterogeneous N-agent SV model.
 
     expert_idx / household_idx : 0-based agent indices (their union is 0..K-1).
@@ -1056,6 +980,8 @@ def get_model(model_path, K, expert_idx, household_idx, gamma_vec, caps_E,
                "share_alpha_lo": share_alpha_lo, "share_alpha_hi": share_alpha_hi,
                "lr_decay_every": lr_decay_every, "lr_decay_gamma": lr_decay_gamma,
                "foc": foc, "loss_balancing_alpha": loss_balancing_alpha, "loss_balancing_temp": loss_balancing_temp, "bernoulli_prob": bernoulli_prob,
+               # t0-mix training sampler: fraction of each batch pinned to t=min_t
+               "t0_frac": t0_frac,
         }
         model = PDEModelTimeStepNAgentsSV("sv_n_agents", cfg)
     else:
@@ -1149,7 +1075,8 @@ def get_model(model_path, K, expert_idx, household_idx, gamma_vec, caps_E,
         model.train_model(model_path, "model.pt", full_log=True,
                           variables_to_track=["chat", "r", "r_implied", "p", "mu_P"])
     if os.path.exists(f"{model_path}/model_best.pt"):
-        model.load_model(torch.load(f"{model_path}/model_best.pt", weights_only=False))
+        model.load_model(torch.load(f"{model_path}/model_best.pt", weights_only=False,
+                                    map_location=device))
         model.attach_stacks(xi_names, theta_names)
     return model
 
@@ -1316,6 +1243,50 @@ def compute_validation_losses(model, SV_val, chunk_size=2000):
     res["Total"] = sum(res.values())
     return res
 
+
+def _append_random_t(model, SV_val, seed=0):
+    """For a time-stepping model, append a per-point RANDOM ``t`` drawn uniformly
+    on ``[min_t, max_t]`` so the validation sample covers the whole horizon
+    rather than only the ``t = min_t`` slice (which ``_forward_states`` pads by
+    default).  For a stationary model (no ``t`` dimension) ``SV_val`` is returned
+    unchanged, so mixed tables stay consistent."""
+    SV_val = np.asarray(SV_val, dtype=np.float64)
+    if not model.statics.get("has_t", False):
+        return SV_val
+    D_state = len(model.state_variables)
+    if SV_val.shape[1] >= D_state:                     # already carries t
+        return SV_val
+    rng = np.random.default_rng(seed)
+    min_t = model.config.get("min_t", 0.0)
+    max_t = model.config.get("max_t", 1.0)
+    t = min_t + (max_t - min_t) * rng.random((SV_val.shape[0], 1))
+    return np.concatenate([SV_val, t], axis=1)
+
+
+def compute_validation_losses_random_t(model, SV_val, chunk_size=2000, seed=0):
+    """Random-``t`` counterpart of ``compute_validation_losses``.
+
+    For a time-stepping model the shared wealth-simplex+v validation states are
+    given a RANDOM time coordinate ``t ~ U[min_t, max_t]`` (rather than pinned to
+    ``t = min_t``), so the reported residuals reflect the solution over the full
+    time horizon it was trained on.  For a stationary model this is identical to
+    ``compute_validation_losses`` (no ``t`` dimension is appended).
+    """
+    SV_full = _append_random_t(model, SV_val, seed=seed)
+    with model_on(model):
+        out = _forward_states(model, SV_full, chunk_size)
+    res = {
+        "HJB expert": float(np.mean(np.abs(out["hjb_expert"]))),
+        "HJB household": float(np.mean(np.abs(out["hjb_household"]))),
+        "Goods clearing": float(np.mean(out["goods_resid"] ** 2)),
+        "Asset pricing": float(np.mean(out["asset_pricing_resid"] ** 2)),
+    }
+    if model.statics["K"] > 2:
+        res["Capital FOC"] = float(np.mean(out["vi_expert_resid"] ** 2))
+    res["Total"] = sum(res.values())
+    return res
+
+
 def compute_theta_chat_distributions(model, SV_val, chunk_size=2000):
     with model_on(model):
         out = _forward_states(model, SV_val, chunk_size)
@@ -1371,9 +1342,18 @@ METHOD_DISPLAY = {
     "timestep_rar_lb": "Time-stepping + RAR + LB",
 }
 
-def compare_loss_table(models, baseline_key="basic", n_samples=10000, chunk_size=2000, seed=0, cols=None):
+def compare_loss_table(models, baseline_key="basic", n_samples=10000, chunk_size=2000, seed=0, cols=None,
+                       compute_fn=compute_validation_losses):
+    """Per-component validation-loss comparison table over ``models``.
+
+    ``compute_fn`` selects how each model's validation loss is scored on the
+    shared wealth-simplex+v states: the default ``compute_validation_losses``
+    evaluates time-stepping models at ``t = min_t``; pass
+    ``compute_validation_losses_random_t`` to instead score them at a random
+    ``t ~ U[min_t, max_t]`` (stationary models are unaffected either way).
+    """
     SV_val = _validation_states(next(iter(models.values())), n_samples=n_samples, seed=seed)
-    rows = {name: compute_validation_losses(m, SV_val, chunk_size) for name, m in models.items()}
+    rows = {name: compute_fn(m, SV_val, chunk_size) for name, m in models.items()}
     base = rows[baseline_key]
     # default: every reported component (Total kept last), so the columns adapt
     # to the case (e.g. Capital FOC only appears for K > 2).
@@ -1424,7 +1404,8 @@ def compute_welfare_equivalent_losses(models, baseline_key="basic", n_samples=10
                 100.0 * (base[c] - row[c]) / (abs(base[c]) + 1e-30)
     abs_cols = ["HJB (c/W)", "Capital FOC (c/W)", "total (c/W)"]
     ordered = abs_cols + [f"{c} impr." for c in abs_cols]
-    return pd.DataFrame.from_dict(rows, orient="index")[ordered]
+    renamed_rows = {METHOD_DISPLAY[name]: row for name, row in rows.items()}
+    return pd.DataFrame.from_dict(renamed_rows, orient="index")[ordered]
 
 
 def df_to_latex(df, path):
@@ -1723,12 +1704,12 @@ def plot_theta_chat_histogram(model, out_dir, seed=0, chunk_size=2000):
 CONFIGS = {
     "basic":            (False, False, False),
     "basic_rar":        (False, True,  False),
-    "basic_lb":         (False, False, True),
-    "basic_rar_lb":     (False, True,  True),
+    # "basic_lb":         (False, False, True),
+    # "basic_rar_lb":     (False, True,  True),
     "timestep":         (True,  False, False),
     "timestep_rar":     (True,  True,  False),
-    "timestep_lb":      (True,  False, True),
-    "timestep_rar_lb":  (True,  True,  True),
+    # "timestep_lb":      (True,  False, True),
+    # "timestep_rar_lb":  (True,  True,  True),
 }
 
 
@@ -1801,19 +1782,9 @@ def main():
                         help="upper bound of the log-uniform Dirichlet-alpha mixture for wealth-share sampling")
     parser.add_argument("--foc", action="store_true",
                         help="interior-FOC mode: hard-wire expert theta from the FOC (no theta networks); requires all experts uncapped")
+    parser.add_argument("--t0-frac", type=float, default=0.4,
+                        help="fraction of each time-stepping training batch pinned to t=min_t (t0-mix sampler)")
     parser.add_argument("--float64", action="store_true")
-    # parameter homotopy (time-stepping configs only): ramp GAMMA from an easy
-    # start to the (--gamma) target ALONG the backward march.
-    # parser.add_argument("--homotopy", action="store_true",
-    #                     help="ramp gamma from an easy start to target along the march")
-    # parser.add_argument("--gamma-start", type=float, default=None,
-    #                     help="starting gamma for homotopy (default: target, no gamma ramp)")
-    # parser.add_argument("--ramp-frac", type=float, default=0.6,
-    #                     help="fraction of the POST-DELAY outer iterations spent ramping (rest holds target)")
-    # parser.add_argument("--homotopy-delay", type=int, default=0,
-    #                     help="hold gamma_start for this many outer iterations before ramping")
-    # parser.add_argument("--homotopy-steps", type=int, default=5,
-    #                     help="advance the gamma ramp by one increment every N outer iterations")
     args = parser.parse_args()
 
     gamma = args.gamma
@@ -1829,12 +1800,14 @@ def main():
     # free p AND free r (goods + asset-pricing residuals) -> "free_pr".  New dir
     # so we don't reload incompatible analytic-r checkpoints (no "r" endog).
     dir_tag = "_FOC" if args.foc else ""
+    if args.t0_frac > 0:
+        dir_tag += f"_t0frac{args.t0_frac}"
     if args.float64:
         torch.set_default_dtype(torch.float64)
-        base_dir = f"./models/SV_NAgents_64bit_improved{dir_tag}_{gamma}_{tau}_{sigma}_{a}/{args.case}"
+        base_dir = f"./models/SV_NAgents_64bit_260713{dir_tag}_{gamma}_{tau}_{sigma}_{a}/{args.case}"
     else:
         torch.set_default_dtype(torch.float32)
-        base_dir = f"./models/SV_NAgents_improved{dir_tag}_{gamma}_{tau}_{sigma}_{a}/{args.case}"
+        base_dir = f"./models/SV_NAgents_260713{dir_tag}_{gamma}_{tau}_{sigma}_{a}/{args.case}"
 
     K, eidx, hidx, gamma_vec, caps_E = make_case(args.case, gamma)
     print(f"[sv_n_agents] case={args.case} K={K} experts={eidx} households={hidx}")
@@ -1856,7 +1829,7 @@ def main():
             num_inner=args.num_inner, min_inner=args.min_inner,
             lr_decay_every=args.lr_decay_every, lr_decay_gamma=args.lr_decay_gamma,
             loss_balancing_alpha=args.loss_balancing_alpha, loss_balancing_temp=args.loss_balancing_temp, bernoulli_prob=args.bernoulli_prob,
-            foc=args.foc,
+            foc=args.foc, t0_frac=args.t0_frac,
             init_guess=ts_init_guess, params=BASE_PARAMS | {"tau": tau, "a": a, "sigma": sigma},
             share_alpha_lo=args.alpha_lo, share_alpha_hi=args.alpha_hi,
             # homotopy=homotopy, homotopy_step=args.homotopy_steps,
@@ -1886,6 +1859,13 @@ def main():
         print("\n[sv_n_agents] comparative loss table (vs basic):")
         print(loss_df.to_string(float_format=lambda x: f"{x:.3e}"))
 
+        loss_df_rt = compare_loss_table(models, baseline_key="basic", chunk_size=chunk_size,
+                                        compute_fn=compute_validation_losses_random_t)
+        loss_df_rt.to_csv(os.path.join(cmp_dir, "comparative_losses_random_t.csv"))
+        df_to_latex(loss_df_rt, os.path.join(cmp_dir, "comparative_losses_random_t.tex"))
+        print("\n[sv_n_agents] comparative loss table (random t, vs basic):")
+        print(loss_df_rt.to_string(float_format=lambda x: f"{x:.3e}"))
+
         welfare_df = compute_welfare_equivalent_losses(models, baseline_key="basic", chunk_size=chunk_size)
         welfare_df.to_csv(os.path.join(cmp_dir, "welfare_equivalent_losses.csv"))
         df_to_latex(welfare_df, os.path.join(cmp_dir, "welfare_equivalent_losses.tex"))
@@ -1898,6 +1878,13 @@ def main():
         df_to_latex(loss_df, os.path.join(cmp_dir, "comparative_losses_timestep.tex"))
         print("\n[sv_n_agents] comparative loss table (vs timestep):")
         print(loss_df.to_string(float_format=lambda x: f"{x:.3e}"))
+
+        loss_df_rt = compare_loss_table(models, baseline_key="timestep", chunk_size=chunk_size,
+                                        compute_fn=compute_validation_losses_random_t)
+        loss_df_rt.to_csv(os.path.join(cmp_dir, "comparative_losses_timestep_random_t.csv"))
+        df_to_latex(loss_df_rt, os.path.join(cmp_dir, "comparative_losses_timestep_random_t.tex"))
+        print("\n[sv_n_agents] comparative loss table (random t, vs timestep):")
+        print(loss_df_rt.to_string(float_format=lambda x: f"{x:.3e}"))
 
         welfare_df = compute_welfare_equivalent_losses(models, baseline_key="timestep", chunk_size=chunk_size)
         welfare_df.to_csv(os.path.join(cmp_dir, "welfare_equivalent_losses_timestep.csv"))
@@ -1970,3 +1957,4 @@ if __name__ == "__main__":
     # --case agents5 --float64 --a 0.1 --sigma 0.02 --tau 1.15 --gamma 5.0
     # --case agents20 --float64 --a 0.1 --sigma 0.06 --tau 1.15 --gamma 5.0
     # --case agents20 --float64 --a 0.1 --sigma 0.06 --tau 1.15 --gamma 5.0 --foc --loss_balancing_temp 1.0
+    # --case agents20 --float64 --a 0.1 --sigma 0.06 --tau 1.15 --gamma 5.0 --foc --min-inner 2000
