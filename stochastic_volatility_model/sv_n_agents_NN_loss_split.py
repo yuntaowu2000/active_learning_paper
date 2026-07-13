@@ -768,12 +768,24 @@ class PDEModelTimeStepNAgentsSV(_SVNAgentMixin, PDEModelTimeStep):
     def sample_simplex_v_ts(self, epoch=0):
         """Simplex over shares + uniform v + uniform t in [min_t, max_t]."""
         base = self.sample_simplex_v(epoch)                   # (B, K) -> shares + v
+        B = base.shape[0]
         min_t = self.config.get("min_t", 0.0)
         max_t = self.config.get("max_t", 1.0)
         t0_frac = float(self.config.get("t0_frac", 0.4))
         n_t0 = int(round(t0_frac * B))
         t = min_t + (max_t - min_t) * torch.rand((B, 1), device=self.device)
         t[:n_t0] = min_t
+        return torch.cat([base, t], dim=1)
+    
+    def sample_simplex_v_random_t(self, epoch=0):
+        """Wealth-simplex + v + one uniform-random ``t`` in ``[min_t, max_t]`` per
+        point.  Used to score the interior ``(x, v, t)`` domain in
+        ``sample_rar_greedy`` (distinct from the training sampler, which
+        over-weights ``t=0``)."""
+        base = self.sample_simplex_v(epoch)                   # (B, K) -> shares + v
+        min_t = self.config.get("min_t", 0.0)
+        max_t = self.config.get("max_t", 1.0)
+        t = min_t + (max_t - min_t) * torch.rand((base.shape[0], 1), device=self.device)
         return torch.cat([base, t], dim=1)
     
     def __sample_custom_boundary_cond(self, time_val: float):
@@ -859,7 +871,7 @@ class PDEModelTimeStepNAgentsSV(_SVNAgentMixin, PDEModelTimeStep):
         k_t0 = max(1, n_keep // 2)            # budget pinned to the t=min_t slice
         k_int = max(1, n_keep - k_t0)         # budget on the interior (x, t) domain
 
-        SV_int, l_int = self._score_pool(self.sample_simplex_v_ts, sample_times)
+        SV_int, l_int = self._score_pool(self.sample_simplex_v_random_t, sample_times)
         SV_t0, l_t0 = self._score_pool(self._sample_simplex_at_t0, sample_times)
 
         self.batch_size = saved_bs
@@ -1851,6 +1863,10 @@ def main():
         chunk_size = 2000
 
     # ---- 1) Loss tables (computed over ALL trained methods) -----------------
+    # Two flavours of validation sampling for the time-stepping rows: the
+    # default scores them at t=min_t (the stationary slice we extract); the
+    # "_random_t" variant scores them at a random t over [min_t, max_t] so the
+    # whole trained horizon is validated (see compute_validation_losses_random_t).
     loss_df = welfare_df = None
     if "basic" in models:
         loss_df = compare_loss_table(models, baseline_key="basic", chunk_size=chunk_size)
