@@ -113,21 +113,21 @@ class NNEconomy:
         self.share_lo, self.share_hi = 0.1 / self.K, 1.0 - 0.1 / self.K
 
     def portfolio(self, x_states, v):
-        """Per-agent wealth share ``x_k`` (P, K) and the risky-asset fraction of
-        each agent's OWN wealth ``theta_k / x_k`` (P, K) at (x_states, v).
+        """Per-agent wealth share ``x_k`` (P, K) and the value of risky capital
+        each agent holds AS A FRACTION OF TOTAL (aggregate) WEALTH ``theta_k``
+        (P, K) at (x_states, v).
 
-        ``theta_k`` is the share of aggregate capital held by expert ``k``; its
-        value is ``theta_k * p * kappa = theta_k * N`` (with ``N`` aggregate
-        wealth) while the agent's wealth is ``x_k * N``, so the fraction of the
-        agent's wealth held in risky capital is ``theta_k / x_k``.  Households
-        hold no capital (``theta = 0``) -> 0% risky.
+        Aggregate wealth is ``N = p * kappa`` and expert ``k`` holds capital
+        worth ``theta_k * N``, so the risky value as a fraction of total wealth
+        is simply ``theta_k`` (the share of aggregate capital held by ``k``).
+        Households hold no capital (``theta = 0``) -> 0%.  (The agent's OWN-wealth
+        portfolio weight would instead be ``theta_k / x_k``; we report the
+        total-wealth fraction here.)
         """
         vd = self._forward(x_states, v)
         x_full = vd["x_full"].detach().cpu().numpy()          # (P, K)
         theta_full = vd["theta_full"].detach().cpu().numpy()  # (P, K)
-        risky_frac = np.zeros_like(x_full)
-        np.divide(theta_full, x_full, out=risky_frac, where=x_full > 1e-12)
-        return x_full, risky_frac
+        return x_full, theta_full
 
     def _forward(self, x_states, v):
         model = self.model
@@ -174,6 +174,11 @@ class NNEconomy:
         # in the 2-agent case where the lone expert holds all capital (theta_0 = 1).
         idio = chi * theta_E0 / x_E0
         return dict(pi=pi, sig_agg=sig_agg, agg_rp=agg, idio_rp=idio, total_rp=agg + idio)
+
+    def price(self, x_states, v):
+        """Capital price ``p`` (P,) at (x_states, v)."""
+        vd = self._forward(x_states, v)
+        return vd["p"].detach().cpu().numpy().reshape(-1)
 
 
 class NumericalEconomy:
@@ -373,14 +378,13 @@ def analyze(economy, sim, out_dir, burn_in_frac=0.2):
 def plot_portfolio_deciles(economy, sim, out_dir, n_deciles=10, burn_in_frac=0.2,
                            max_states=20000, chunk=2000, seed=0,
                            file_name="portfolio_deciles.pdf"):
-    """Risky-asset share of own wealth (``theta_k / x_k``) by wealth decile.
+    """Risky-asset holdings as a share of TOTAL wealth (``theta_k``) by wealth decile.
 
     Pools every ``(path, time, agent-type)`` point of the ergodic simulation
-    (after burn-in) into ``(wealth x_k, risky fraction theta_k/x_k)`` pairs
-    (households contribute risky = 0), sorts by wealth, splits into ``n_deciles``
-    equal-count bins, and plots the mean risky fraction per decile as a stacked
-    Risky/Safe bar (Safe = 1 - risky, the bond position).  Returns the raw
-    (unclipped) per-decile means and prints them.
+    (after burn-in) into ``(wealth x_k, risky-share-of-total-wealth theta_k)``
+    pairs (households contribute theta = 0), sorts by wealth, splits into
+    ``n_deciles`` equal-count bins, and plots the mean ``theta_k`` per decile.
+    Returns the per-decile means and prints them.
     """
     os.makedirs(out_dir, exist_ok=True)
     x_hist, v_hist, t = sim["x_hist"], sim["v_hist"], sim["t"]
@@ -399,7 +403,7 @@ def plot_portfolio_deciles(economy, sim, out_dir, n_deciles=10, burn_in_frac=0.2
         wealth_list.append(xf)
         risky_list.append(rf)
     wealth = np.concatenate(wealth_list, 0).reshape(-1)        # (M*K,)
-    risky = np.concatenate(risky_list, 0).reshape(-1)         # (M*K,)
+    risky = np.concatenate(risky_list, 0).reshape(-1)         # (M*K,)  theta_k
 
     order = np.argsort(wealth)
     wealth_s, risky_s = wealth[order], risky[order]
@@ -407,26 +411,228 @@ def plot_portfolio_deciles(economy, sim, out_dir, n_deciles=10, burn_in_frac=0.2
     dec_risky = np.array([risky_s[edges[i]:edges[i + 1]].mean() for i in range(n_deciles)])
     dec_wealth = np.array([wealth_s[edges[i]:edges[i + 1]].mean() for i in range(n_deciles)])
 
-    risky_plot = np.clip(dec_risky, 0.0, 1.0)
-    safe_plot = np.clip(1.0 - dec_risky, 0.0, 1.0)
     deciles = np.arange(1, n_deciles + 1)
     fig, ax = plt.subplots(figsize=(7, 4))
-    ax.bar(deciles, risky_plot, color="0.35", label="Risky (capital)")
-    ax.bar(deciles, safe_plot, bottom=risky_plot, color="0.8", label="Safe (bonds)")
-    ax.set_xlabel("Wealth decile")
-    ax.set_ylabel(r"Share of own wealth ($\theta_k/x_k$)")
-    ax.set_ylim(0, 1)
+    ax.bar(deciles, dec_risky, color="0.35")
+    ax.set_xlabel("Wealth decile (1 = poorest, 10 = richest)")
+    ax.set_ylabel(r"Risky assets / total wealth ($\theta_k$)")
     ax.set_xticks(deciles)
-    ax.set_title("Portfolio: risky-asset share by wealth decile")
-    ax.legend(frameon=False, loc="upper left")
+    ax.set_ylim(bottom=0)
+    ax.set_title("Risky-asset holdings (share of total wealth) by wealth decile")
     fig.tight_layout()
     fig.savefig(os.path.join(out_dir, file_name))
     plt.close(fig)
 
-    print("\n[portfolio] decile | mean wealth x_k | mean risky theta/x (raw)")
+    print("\n[portfolio] decile | mean wealth x_k | mean risky theta_k (share of total wealth)")
     for i in range(n_deciles):
         print(f"  {i + 1:>2d}   {dec_wealth[i]:.5f}    {dec_risky[i]:.4f}")
     return dict(decile=deciles, wealth=dec_wealth, risky=dec_risky)
+
+
+# ---------------------------------------------------------------------------
+# Impulse response: deterministic -k*sigma shock on the aggregate (capital) shock
+# ---------------------------------------------------------------------------
+def _full_shares(economy, x_free):
+    """(T, K-1) free shares -> (T, K) full shares (anchor = 1 - sum)."""
+    anchor = 1.0 - x_free.sum(axis=-1, keepdims=True)
+    return np.concatenate([x_free, anchor], axis=-1)
+
+
+def _irf_paths(economy, x0_free, v0, n_steps, dt, shock_step, specs,
+               track_price=True):
+    """Step several deterministic paths TOGETHER (one batched forward per step).
+
+    All paths start at (x0_free, v0) and evolve drift-only.  ``specs`` is a list
+    of dicts (one per path); at ``shock_step`` each path adds Brownian increments
+    ``dW_x`` (to the wealth-share diffusion) and ``dW_v`` (to ``v``).  A path with
+    ``freeze_v=True`` holds ``v`` fixed at ``v0`` for the whole horizon (shutting
+    down the uncertainty channel).
+
+    Returns a list of dicts (one per spec), each with ``x_full`` (T, K),
+    ``X_E`` (T,), ``v`` (T,), ``p`` (T,).
+    """
+    K = economy.K
+    P = len(specs)
+    x = np.tile(np.asarray(x0_free, dtype=np.float64).reshape(1, K - 1), (P, 1))
+    v = np.full(P, float(v0))
+    x, v = _project(economy, x, v)
+    dWx = np.array([s.get("dW_x", 0.0) for s in specs])
+    dWv = np.array([s.get("dW_v", 0.0) for s in specs])
+    freeze_v = np.array([bool(s.get("freeze_v", False)) for s in specs])
+    T = n_steps + 1
+    x_hist = np.empty((P, T, K)); v_hist = np.empty((P, T)); p_hist = np.full((P, T), np.nan)
+
+    def _record(i):
+        x_hist[:, i, :] = _full_shares(economy, x)
+        v_hist[:, i] = v
+        if track_price and hasattr(economy, "price"):
+            p_hist[:, i] = economy.price(x, v)
+
+    _record(0)
+    for step in range(1, n_steps + 1):
+        mu_x, sig_x, mu_v, sig_v = economy.drift_diffusion(x, v)
+        ax = dWx if step == shock_step else np.zeros(P)
+        av = dWv if step == shock_step else np.zeros(P)
+        x = x + mu_x * dt + sig_x * ax[:, None]
+        v_new = v + mu_v * dt + sig_v * av
+        v = np.where(freeze_v, v, v_new)              # frozen paths keep v == v0
+        x, v = _project(economy, x, v)
+        _record(step)
+
+    out = []
+    for j in range(P):
+        xf = x_hist[j]
+        out.append(dict(x_full=xf, X_E=xf[:, economy.expert_idx].sum(axis=1),
+                        v=v_hist[j], p=p_hist[j]))
+    return out
+
+
+def impulse_response(economy, years_burn=250.0, years_irf=30.0, dt=0.02,
+                     shock_sd=2.0, t_shock=1.0, x0=0.2, v0=0.1, seed=0,
+                     n_paths_stat=40, burn_dt=0.1, shock_horizon=1.0,
+                     include_vfixed=False):
+    """Deterministic impulse response to a ``-shock_sd``-sigma aggregate shock.
+
+    (1) Runs a long stochastic simulation and takes the post-burn-in mean state
+    ``(x*, v*)`` as the stationary starting point.  (2) Evolves drift-only
+    (deterministic) paths from ``(x*, v*)``: a *baseline* with no shock and a
+    *shocked* path that injects a single Brownian increment at ``t = t_shock``,
+    then lets the system mean-revert.  The difference is the IRF.
+
+    The shock is a ``shock_sd``-standard-deviation ANNUAL innovation:
+    ``dW = -shock_sd * sqrt(shock_horizon)`` with ``shock_horizon = 1`` year, so
+    it injects a full year's worth of a 2-sigma negative capital shock at once
+    (log-capital drops ~ sigma * shock_sd).
+
+    If ``include_vfixed`` is True, a third counterfactual path is computed in
+    which the volatility state ``v`` is HELD CONSTANT at ``v*`` (the uncertainty
+    channel is shut down), isolating the pure capital/wealth-redistribution
+    response -- this removes the ``v``-driven overshoot.
+
+    Returns dict with ``t`` (T,), ``base``/``shock``/``vfix`` sub-dicts (``vfix``
+    is None unless ``include_vfixed``), and the stationary ``x_star``/``v_star``.
+    """
+    print(f"[irf] finding stationary state via {n_paths_stat}-path, {years_burn:.0f}y simulation ...")
+    sim = simulate(economy, n_paths=n_paths_stat, years=years_burn, dt=burn_dt,
+                   x0=x0, v0=v0, seed=seed)
+    burn = int(len(sim["t"]) * 0.5)
+    x_star = sim["x_hist"][burn:].reshape(-1, economy.K - 1).mean(axis=0)
+    v_star = float(sim["v_hist"][burn:].mean())
+    print(f"[irf] stationary v*={v_star:.4f}  X_E*={_expert_total_share(economy, x_star[None,:])[0]:.4f}")
+
+    n_steps = int(round(years_irf / dt))
+    shock_step = max(1, int(round(t_shock / dt)))
+    shock_dW = -float(shock_sd) * np.sqrt(shock_horizon)
+    print(f"[irf] injecting dW={shock_dW:.4f} (-{shock_sd:g} sd over {shock_horizon:g}y) at t={t_shock:g}y"
+          + ("  (+ v-held-constant counterfactual)" if include_vfixed else ""))
+
+    specs = [dict(dW_x=0.0, dW_v=0.0, freeze_v=False),          # baseline
+             dict(dW_x=shock_dW, dW_v=shock_dW, freeze_v=False)]  # full shock
+    if include_vfixed:
+        specs.append(dict(dW_x=shock_dW, dW_v=0.0, freeze_v=True))  # v held fixed
+
+    paths = _irf_paths(economy, x_star, v_star, n_steps, dt, shock_step, specs)
+    base, shock = paths[0], paths[1]
+    vfix = paths[2] if include_vfixed else None
+    t = np.arange(n_steps + 1) * dt - shock_step * dt      # 0 at the shock
+
+    i0 = shock_step
+    print("[irf] on-impact response (shock - baseline) at t=0+:")
+    print(f"      X_E: {base['X_E'][i0]:.4f} -> {shock['X_E'][i0]:.4f} "
+          f"(delta {shock['X_E'][i0]-base['X_E'][i0]:+.4f})")
+    print(f"      v  : {base['v'][i0]:.4f} -> {shock['v'][i0]:.4f} "
+          f"(delta {shock['v'][i0]-base['v'][i0]:+.4f})")
+    print(f"      p  : {base['p'][i0]:.4f} -> {shock['p'][i0]:.4f} "
+          f"(delta {shock['p'][i0]-base['p'][i0]:+.4f})")
+    dev0 = shock['x_full'][i0] - base['x_full'][i0]
+    for k in economy.household_idx:
+        verb = "GAINS" if dev0[k] > 0 else "loses"
+        print(f"      household {k}: wealth-share {verb} {dev0[k]:+.5f} on impact")
+
+    hdr = "[irf]  t(y) |   dX_E    |    dv     |    dp    "
+    hdr += "|  dp(v-fix)" if include_vfixed else ""
+    print(hdr)
+    for ty in [0.0, 0.25, 0.5, 1, 2, 3, 5, 8, 12, 20, float(t[-1])]:
+        j = int(np.clip(i0 + round(ty / dt), 0, len(t) - 1))
+        row = (f"      {t[j]:5.2f} | {shock['X_E'][j]-base['X_E'][j]:+.5f} | "
+               f"{shock['v'][j]-base['v'][j]:+.5f} | {shock['p'][j]-base['p'][j]:+.5f}")
+        if include_vfixed:
+            row += f" | {vfix['p'][j]-base['p'][j]:+.5f}"
+        print(row)
+    return dict(t=t, base=base, shock=shock, vfix=vfix, x_star=x_star,
+                v_star=v_star, shock_sd=shock_sd, shock_time_idx=shock_step)
+
+
+def plot_impulse_response(economy, irf, out_dir, file_name="impulse_response.pdf",
+                          xmax=10.0):
+    """Plot per-agent wealth-share IMPULSE RESPONSES and aggregates for the IRF.
+
+    Top-left: every agent's wealth-share response ``x_k(t) - baseline`` so the
+    reaction of each agent is visible on a comparable scale (levels are dominated
+    by the big saver household).  Experts are colour-graded by risk aversion;
+    each household gets its OWN distinct colour (red/magenta/brown/black) and a
+    legend entry so it's clear which household gains vs loses.  Others: aggregate
+    expert share ``X_E``, volatility state ``v``, price ``p``.
+
+    ``xmax`` caps the x-axis (years since shock) since the response has decayed
+    by then.  If ``irf['vfix']`` is present, its curves are overlaid (dashed) so
+    the full IRF can be compared against the ``v``-held-constant counterfactual.
+    """
+    os.makedirs(out_dir, exist_ok=True)
+    t = irf["t"]; base = irf["base"]; shock = irf["shock"]; vfix = irf.get("vfix")
+    K = economy.K
+    eidx = list(economy.expert_idx); hidx = list(economy.household_idx)
+    gam = np.asarray(economy.gamma_vec).reshape(-1)
+    dev = shock["x_full"] - base["x_full"]                 # (T, K) wealth-share IRF
+    dev_vf = (vfix["x_full"] - base["x_full"]) if vfix is not None else None
+    xlim = (float(t[0]), float(xmax))
+    hh_colors = ["tab:red", "tab:purple", "saddlebrown", "black", "deeppink", "olive"]
+
+    fig, axes = plt.subplots(2, 2, figsize=(12, 8))
+    ax = axes[0, 0]
+    ge = gam[eidx]
+    gmin, gmax = float(ge.min()), float(ge.max())
+    cmap = plt.get_cmap("viridis")
+    for k in eidx:
+        c = cmap((gam[k] - gmin) / (gmax - gmin + 1e-12))
+        ax.plot(t, dev[:, k], color=c, lw=1.3)
+        if dev_vf is not None:
+            ax.plot(t, dev_vf[:, k], color=c, lw=0.9, ls="--", alpha=0.7)
+    for j, k in enumerate(hidx):
+        col = hh_colors[j % len(hh_colors)]
+        ax.plot(t, dev[:, k], color=col, lw=2.0,
+                label=f"household {k} ($\\gamma$={gam[k]:g})")
+        if dev_vf is not None:
+            ax.plot(t, dev_vf[:, k], color=col, lw=1.1, ls="--", alpha=0.7)
+    ax.axhline(0.0, color="0.6", lw=0.6)
+    ax.axvline(0.0, color="red", lw=0.8, alpha=0.5)
+    ax.set_xlim(*xlim)
+    ax.set_xlabel("years since shock")
+    ax.set_ylabel(r"wealth-share response $x_k - x_k^{\rm base}$")
+    ax.set_title(f"Per-agent wealth-share response (-{irf['shock_sd']:g}$\\sigma$ shock)")
+    sm = plt.cm.ScalarMappable(cmap=cmap, norm=plt.Normalize(gmin, gmax))
+    cb = fig.colorbar(sm, ax=ax); cb.set_label(r"expert risk aversion $\gamma$")
+    if hidx:
+        ax.legend(frameon=False, fontsize=8, loc="best", title="households")
+
+    def _panel(ax, key, color, title, ylabel):
+        ax.plot(t, shock[key], color=color, lw=1.6, label="shocked (full)")
+        ax.plot(t, base[key], color=color, lw=0.9, ls=":", label="baseline")
+        if vfix is not None:
+            ax.plot(t, vfix[key], color="0.35", lw=1.4, ls="--", label="shocked (v-fixed)")
+        ax.axvline(0.0, color="red", lw=0.8, alpha=0.5)
+        ax.set_xlim(*xlim)
+        ax.set_xlabel("years since shock"); ax.set_ylabel(ylabel)
+        ax.set_title(title); ax.legend(frameon=False)
+
+    _panel(axes[0, 1], "X_E", "C0", "Aggregate expert wealth share", r"$X_E$")
+    _panel(axes[1, 0], "v", "C3", "Idiosyncratic-risk state $v$", r"$v$")
+    _panel(axes[1, 1], "p", "C2", "Capital price $p$", r"$p$")
+
+    fig.tight_layout()
+    fig.savefig(os.path.join(out_dir, file_name))
+    plt.close(fig)
+    print(f"[irf] wrote {os.path.join(out_dir, file_name)}")
 
 
 # ---------------------------------------------------------------------------
@@ -563,7 +769,20 @@ def main():
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--out", default=None)
     parser.add_argument("--portfolio", action="store_true",
-                        help="plot risky-asset share (theta_k/x_k) by wealth decile")
+                        help="plot risky-asset share (theta_k) of total wealth by wealth decile")
+    parser.add_argument("--irf", action="store_true",
+                        help="deterministic impulse response to a -N*sigma aggregate/capital shock")
+    parser.add_argument("--irf-sd", type=float, default=2.0,
+                        help="shock size in std devs (default 2)")
+    parser.add_argument("--irf-years", type=float, default=30.0,
+                        help="IRF horizon in years after the shock")
+    parser.add_argument("--irf-dt", type=float, default=0.05,
+                        help="IRF deterministic-path time step")
+    parser.add_argument("--irf-hold-v", action="store_true",
+                        help="also compute/overlay the v-held-constant counterfactual "
+                             "(shuts down the uncertainty channel; removes the overshoot)")
+    parser.add_argument("--irf-plot-years", type=float, default=7.0,
+                        help="cap the IRF plot x-axis at this many years since the shock")
     args = parser.parse_args()
 
     if args.float64:
@@ -601,6 +820,11 @@ def main():
     analyze(economy, sim, out_dir)
     if args.portfolio:
         plot_portfolio_deciles(economy, sim, out_dir)
+    if args.irf:
+        irf = impulse_response(economy, years_irf=args.irf_years, dt=args.irf_dt,
+                               shock_sd=args.irf_sd, x0=args.x0, v0=args.v0,
+                               seed=args.seed, include_vfixed=args.irf_hold_v)
+        plot_impulse_response(economy, irf, out_dir, xmax=args.irf_plot_years)
 
 
 if __name__ == "__main__":
