@@ -397,6 +397,15 @@ def add_boundary_conditions(model: Union[PDEModel, PDEModelTimeStep]):
                                 label="psi_max", weight=0.01)
     return model
 
+class PDEModelTimeStepCustom(PDEModelTimeStep):
+    def sample_rar_greedy(self):
+        refinement_loss_dict = self._PDEModelTimeStep__get_refinement_loss_dict()
+        SV = refinement_loss_dict["SV"]
+        all_losses = refinement_loss_dict["loss"]
+        X_ids = torch.topk(all_losses, self.batch_size//self.refinement_rounds, dim=0)[1].squeeze(-1)
+        self.anchor_points = torch.vstack((self.anchor_points, SV[X_ids]))
+        return self.anchor_points
+
 def setup_model(timestepping=False, rar=False) -> Dict[str, Union[PDEModel, PDEModelTimeStep]]:
     models = {}
     equations = get_equations(timestepping=timestepping)
@@ -405,7 +414,7 @@ def setup_model(timestepping=False, rar=False) -> Dict[str, Union[PDEModel, PDEM
         set_seeds(0)
         if timestepping:
             cfg_name = "timestep_rar" if rar else "timestep"
-            model = PDEModelTimeStep(k, TRAINING_CONFIGS[cfg_name], LATEX_VAR_MAPPING)
+            model = PDEModelTimeStepCustom(k, TRAINING_CONFIGS[cfg_name], LATEX_VAR_MAPPING)
         else:
             cfg_name = "basic_rar" if rar else "basic"
             model = PDEModel(k, TRAINING_CONFIGS[cfg_name], LATEX_VAR_MAPPING)
@@ -617,28 +626,48 @@ def compute_validation_loss(models_dict, n_samples=5000, seed=0):
     return res
 
 
-def write_validation_table(val_losses, plot_dir):
+def write_validation_table(val_losses, plot_dir, baseline="basic"):
     """Write the per-method validation-loss table (csv + LaTeX) for the 2-D free
-    boundary model (paper appendix)."""
-    def fmt(x):
+    boundary model (paper appendix).
+
+    Alongside each region/total loss column an ``... impr.`` column reports the
+    percentage reduction relative to the ``baseline`` method (default ``basic``):
+    ``100 * (basic - method) / |basic|`` (positive = lower loss than basic)."""
+    def fmt_sci(x):
         if not np.isfinite(x):
             return "--"
         base, exp = f"{x:.2e}".split("e")
         exp = int(exp)
         return base if exp == 0 else f"${base} \\times 10^{{{exp}}}$"
 
+    def fmt_pct(x):
+        return "--" if not np.isfinite(x) else f"{x:.2f}\\%"
+
+    val_cols = ["Region 1", "Region 2", "Region 3", "Total"]
     rows = {}
-    for k, disp in METHOD_DISPLAY.items():
+    for k in METHOD_DISPLAY:
         if k in val_losses:
             v = val_losses[k]
-            rows[disp] = {"Region 1": v["region1"], "Region 2": v["region2"],
-                          "Region 3": v["region3"], "Total": v["total"]}
-    df = pd.DataFrame.from_dict(rows, orient="index")[
-        ["Region 1", "Region 2", "Region 3", "Total"]]
+            rows[k] = {"Region 1": v["region1"], "Region 2": v["region2"],
+                       "Region 3": v["region3"], "Total": v["total"]}
+    base = rows[baseline]
+    data = {}
+    for k, r in rows.items():
+        row = dict(r)
+        for c in val_cols:
+            row[f"{c} impr."] = 0.0 if k == baseline else \
+                100.0 * (base[c] - r[c]) / (abs(base[c]) + 1e-30)
+        data[METHOD_DISPLAY[k]] = row
+    ordered = val_cols + [f"{c} impr." for c in val_cols]
+    df = pd.DataFrame.from_dict(data, orient="index")[ordered]
     df.to_csv(os.path.join(plot_dir, "validation_losses.csv"))
+
+    out = df.copy()
+    for c in ordered:
+        out[c] = out[c].map(fmt_pct if "impr" in c else fmt_sci)
     with open(os.path.join(plot_dir, "validation_losses.tex"), "w") as f:
-        f.write(df.applymap(fmt).style.to_latex(hrules=True))
-    print("\n[free_boundary_2d] validation-loss table:")
+        f.write(out.style.to_latex(hrules=True))
+    print("\n[free_boundary_2d] validation-loss table (impr. vs basic):")
     print(df.to_string(float_format=lambda x: f"{x:.3e}"))
 
 

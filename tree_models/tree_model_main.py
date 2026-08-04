@@ -31,7 +31,7 @@ class PDEModelTimeStepCustomSample(PDEModelTimeStep):
         samples = torch.distributions.Dirichlet(alpha).sample((self.batch_size,))
         return samples[:, :-1]
 
-    def sample_custom(self):
+    def sample_custom(self, epoch=None):
         simplex = self.sample_simplex()
         T = torch.rand((self.batch_size, 1), device=self.device)
         return torch.cat([simplex, T], dim=1)
@@ -103,6 +103,7 @@ class PDEModelTimeStepCustomSample(PDEModelTimeStep):
         all_losses = refinement_loss_dict["loss"]
         X_ids = torch.topk(all_losses, self.batch_size//self.refinement_rounds, dim=0)[1].squeeze(-1)
         self.anchor_points = torch.vstack((self.anchor_points, SV[X_ids]))
+        return self.anchor_points
 
 
 def compute_q(SV, compute_k):
@@ -233,48 +234,87 @@ def format_sci(x):
         return f"{base}"
     return f"${base} \\times 10^{{{exp}}}$"
 
-def compute_validation_loss(model: PDEModelTimeStep, n_tree, n_samples=5000, seed=0):
+def compute_validation_loss(model: PDEModelTimeStep, n_tree, n_samples=5000, seed=0, chunk=None):
     """Final validation loss on a fresh, seeded sample of the wealth simplex.
 
     Draws ``n_samples`` points on the (n_tree)-simplex (dropping the last share)
     plus a uniform pseudo-time ``t``, and returns the library's total training
     loss (weighted HJB + consistency + kappa-penalization residuals) evaluated on
     those held-out points.  Time-stepping validation is scored at the sampled t
-    (matching how the model is trained over the horizon)."""
+    (matching how the model is trained over the horizon).
+
+    The residual forward materialises the ``(B, n_tree, D, D)`` Hessian of kappa,
+    which is quadratic in the tree count, so scoring all points at once runs out
+    of memory for large problems (e.g. 50-D).  We therefore score the sample in
+    chunks of ``chunk`` points (default: the model's training batch size, which
+    is known to fit) and return the sample-size-weighted mean of the per-chunk
+    losses (equal to the loss over the whole sample when the reductions are
+    means)."""
     set_seeds(seed)
+    if chunk is None:
+        chunk = getattr(model, "batch_size", 200) or 200
     eps = 0.01
     alpha = torch.ones(n_tree, device=model.device)
     shares = torch.distributions.Dirichlet(alpha).sample((n_samples,))    # (n, n_tree)
     shares = eps + (1.0 - n_tree * eps) * shares
     z = shares[:, :-1]                                                    # (n, n_tree-1)
     t = torch.rand((n_samples, 1), device=model.device)
-    SV = torch.cat([z, t], dim=1)
-    loss_dict = model._PDEModelTimeStep__validation(SV)
-    return float(loss_dict["total_loss"].detach().cpu())
+    SV_all = torch.cat([z, t], dim=1)
+
+    total, count = 0.0, 0
+    for c in range(0, n_samples, chunk):
+        SV = SV_all[c:c + chunk]
+        bn = SV.shape[0]
+        loss_dict = model._PDEModelTimeStep__validation(SV)
+        total += float(loss_dict["total_loss"].detach().cpu()) * bn
+        count += bn
+        del SV, loss_dict
+        gc.collect()
+        torch.cuda.empty_cache()
+    return total / max(count, 1)
 
 
-def write_validation_table(val_losses, out_dir):
+def write_validation_table(val_losses, out_dir, baseline="timestep"):
     """Per-method final validation-loss table across tree counts (paper appendix).
 
     ``val_losses`` maps ``n_tree -> {config_name: loss}``.  Rows are the two
-    methods (Time-stepping / Our Method), columns are the tree counts."""
+    methods (Time-stepping / Our Method), columns are the tree counts, with a
+    parallel ``... impr.`` column per tree count reporting the percentage
+    reduction relative to the ``baseline`` method (default ``timestep``, the
+    non-RAR analogue of ``basic``): ``100 * (base - method) / |base|``."""
+    def fmt_pct(x):
+        return "--" if not np.isfinite(x) else f"{x:.2f}\\%"
+
     method_display = {"timestep": "Time-stepping", "timestep_rar": "Our Method"}
     n_trees = sorted(val_losses.keys())
-    cols = [f"{n}-Tree" for n in n_trees]
-    raw = pd.DataFrame(index=list(method_display.values()), columns=cols, dtype=float)
+    val_cols = [f"{n}-Tree" for n in n_trees]
+    impr_cols = [f"{n}-Tree impr." for n in n_trees]
+    raw = pd.DataFrame(index=list(method_display.values()),
+                       columns=val_cols + impr_cols, dtype=float)
     for n in n_trees:
+        base = val_losses[n].get(baseline, np.nan)
         for cfg, disp in method_display.items():
-            raw.loc[disp, f"{n}-Tree"] = val_losses[n].get(cfg, np.nan)
+            v = val_losses[n].get(cfg, np.nan)
+            raw.loc[disp, f"{n}-Tree"] = v
+            if cfg == baseline:
+                raw.loc[disp, f"{n}-Tree impr."] = 0.0
+            elif np.isfinite(base) and np.isfinite(v):
+                raw.loc[disp, f"{n}-Tree impr."] = 100.0 * (base - v) / (abs(base) + 1e-30)
+            else:
+                raw.loc[disp, f"{n}-Tree impr."] = np.nan
     raw.to_csv(os.path.join(out_dir, "tree_validation_losses.csv"))
 
     fmt = raw.copy().astype(object)
     for r in fmt.index:
         for c in fmt.columns:
             v = raw.loc[r, c]
-            fmt.loc[r, c] = format_sci(v) if np.isfinite(v) else ""
+            if "impr." in c:
+                fmt.loc[r, c] = fmt_pct(v)
+            else:
+                fmt.loc[r, c] = format_sci(v) if np.isfinite(v) else ""
     with open(os.path.join(out_dir, "tree_validation_losses.tex"), "w") as f:
-        f.write(fmt.style.to_latex(column_format="l" + "c" * len(cols), hrules=True))
-    print("\n[tree_models] validation-loss table:")
+        f.write(fmt.style.to_latex(column_format="l" + "c" * (len(val_cols) + len(impr_cols)), hrules=True))
+    print("\n[tree_models] validation-loss table (impr. vs time-stepping):")
     print(raw.to_string(float_format=lambda x: f"{x:.3e}"))
 
 
