@@ -449,7 +449,9 @@ def plot_slices(out_dict, out_fn, v_list: list[str]=[0.1, 0.25, 0.6]):
 if __name__ == "__main__":
     base_dir = "models/numerical"
     os.makedirs(base_dir, exist_ok=True)
-    for a, sigma, tau, gamma in [(0.2, 0.06, 1.15, 6.0)]:
+    # Calibrated 2-D validation point (paper section 4.1): a=0.1, sigma=0.06,
+    # tau=1.15, gamma=6.  main.py loads numerical_{gamma}_{tau}_{sigma}_{a}.npz.
+    for a, sigma, tau, gamma in [(0.1, 0.06, 1.15, 6.0)]:
         params = {"a": a, "sigma": sigma, "gamma": gamma, "tau": tau}
         print(f"solving {a, sigma, gamma, tau}")
         model = solve_ditella(params=params, h=2e-4, max_iters=300_000, tol=1e-7, loss_csv=f"{base_dir}/ditella_numerical_loss_{gamma}_{tau}_{sigma}_{a}.csv")

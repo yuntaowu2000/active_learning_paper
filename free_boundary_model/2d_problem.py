@@ -404,12 +404,11 @@ def setup_model(timestepping=False, rar=False) -> Dict[str, Union[PDEModel, PDEM
     for k in ["region1", "region2", "region3"]:
         set_seeds(0)
         if timestepping:
-            if rar:
-                model = PDEModelTimeStep(k, TRAINING_CONFIGS["timestep_rar"], LATEX_VAR_MAPPING)
-            else:
-                model = PDEModelTimeStep(k, TRAINING_CONFIGS["timestep"], LATEX_VAR_MAPPING)
+            cfg_name = "timestep_rar" if rar else "timestep"
+            model = PDEModelTimeStep(k, TRAINING_CONFIGS[cfg_name], LATEX_VAR_MAPPING)
         else:
-            model = PDEModel(k, TRAINING_CONFIGS["basic"], LATEX_VAR_MAPPING)
+            cfg_name = "basic_rar" if rar else "basic"
+            model = PDEModel(k, TRAINING_CONFIGS[cfg_name], LATEX_VAR_MAPPING)
         model.set_state(STATES.copy(), PROBLEM_DOMAIN)
         model.add_agents(list(MODEL_CONFIGS["Agents"].keys()), MODEL_CONFIGS["Agents"])
         model.add_endogs(list(MODEL_CONFIGS["Endogs"][k].keys()), MODEL_CONFIGS["Endogs"][k])
@@ -581,8 +580,71 @@ def plot_abs_changes(plot_dir):
         plt.savefig(os.path.join(plot_dir, f"{var}_change.pdf"))
         plt.close()
 
+METHOD_DISPLAY = {
+    "basic": "Basic",
+    "basic_rar": "Basic + RAR",
+    "timestep": "Time-stepping",
+    "timestep_rar": "Time-stepping + RAR",
+}
+
+
+def compute_validation_loss(models_dict, n_samples=5000, seed=0):
+    """Final validation loss (mean total residual) on fresh, uniformly sampled
+    ``(z, a_e)`` states, per region and summed across regions.
+
+    Each region model is trained on the whole domain, so we score every region
+    on the same held-out sample and report its total residual (the library's
+    weighted HJB + endogenous-equation + boundary-condition loss).  Time-stepping
+    models are evaluated on the stationary slice ``t = min_t``.
+    """
+    rng = np.random.default_rng(seed)
+    z = z_min + (z_max - z_min) * rng.random((n_samples,))
+    ae = a_min + (a_max - a_min) * rng.random((n_samples,))
+    res = {}
+    for region, model in models_dict.items():
+        n_state = len(model.state_variables)
+        SV = np.zeros((n_samples, n_state))
+        SV[:, 0] = z
+        SV[:, 1] = ae
+        # a trailing t column (time-stepping models) is left at min_t = 0.
+        SV_t = torch.tensor(SV, device=model.device, dtype=torch.get_default_dtype())
+        if isinstance(model, PDEModelTimeStep):
+            loss_dict = model._PDEModelTimeStep__validation(SV_t)
+        else:
+            loss_dict = model._PDEModel__validation(SV_t)
+        res[region] = float(loss_dict["total_loss"].detach().cpu())
+    res["total"] = sum(res.values())
+    return res
+
+
+def write_validation_table(val_losses, plot_dir):
+    """Write the per-method validation-loss table (csv + LaTeX) for the 2-D free
+    boundary model (paper appendix)."""
+    def fmt(x):
+        if not np.isfinite(x):
+            return "--"
+        base, exp = f"{x:.2e}".split("e")
+        exp = int(exp)
+        return base if exp == 0 else f"${base} \\times 10^{{{exp}}}$"
+
+    rows = {}
+    for k, disp in METHOD_DISPLAY.items():
+        if k in val_losses:
+            v = val_losses[k]
+            rows[disp] = {"Region 1": v["region1"], "Region 2": v["region2"],
+                          "Region 3": v["region3"], "Total": v["total"]}
+    df = pd.DataFrame.from_dict(rows, orient="index")[
+        ["Region 1", "Region 2", "Region 3", "Total"]]
+    df.to_csv(os.path.join(plot_dir, "validation_losses.csv"))
+    with open(os.path.join(plot_dir, "validation_losses.tex"), "w") as f:
+        f.write(df.applymap(fmt).style.to_latex(hrules=True))
+    print("\n[free_boundary_2d] validation-loss table:")
+    print(df.to_string(float_format=lambda x: f"{x:.3e}"))
+
+
 if __name__ == "__main__":
     final_plot_dicts = {}
+    val_losses = {}
     plot_dir = os.path.join(BASE_DIR, "plots")
     os.makedirs(plot_dir, exist_ok=True)
     for k in TRAINING_CONFIGS.keys():
@@ -598,6 +660,7 @@ if __name__ == "__main__":
             model[region].load_model(torch.load(os.path.join(curr_dir, f"{region}_best.pt"), weights_only=False))
             res_dict = compute_func(model[region], a_list, z_min, z_max, VARS_TO_PLOT)
             res_dicts[i] = res_dict
+        val_losses[k] = compute_validation_loss(model)
         final_plot_dict = compute_final_plot_dict(res_dicts[0], res_dicts[1], res_dicts[2], VARS_TO_PLOT, a_list)
         final_plot_dicts[k] = final_plot_dict
         gc.collect()
@@ -606,5 +669,6 @@ if __name__ == "__main__":
     plot_loss(plot_dir)
     plot_residual_points_single_image(plot_dir)
     plot_abs_changes(plot_dir)
+    write_validation_table(val_losses, plot_dir)
 
 

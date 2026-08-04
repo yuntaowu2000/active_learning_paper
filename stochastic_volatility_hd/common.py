@@ -52,13 +52,33 @@ SLICE_COLORS = ["red", "orange", "blue"]
 CONFIGS = {
     "basic":            (False, False, False),
     "basic_rar":        (False, True,  False),
-    # "basic_lb":         (False, False, True),
-    # "basic_rar_lb":     (False, True,  True),
+    "basic_lb":         (False, False, True),
+    "basic_rar_lb":     (False, True,  True),
     "timestep":         (True,  False, False),
     "timestep_rar":     (True,  True,  False),
-    # "timestep_lb":      (True,  False, True),
-    # "timestep_rar_lb":  (True,  True,  True),
+    "timestep_lb":      (True,  False, True),
+    "timestep_rar_lb":  (True,  True,  True),
 }
+
+# The four "core" methods (no loss-balancing) used for the high-dimensional
+# scaling study (paper section 4.2): basic, basic+RAR, timestepping,
+# timestepping+RAR.
+CORE_CONFIGS = ["basic", "basic_rar", "timestep", "timestep_rar"]
+
+
+def configs_for_case(case: str):
+    """Which training configs to run for a given case.
+
+    * ``agents2`` (2-D validation vs the Di Tella FD solution, section 4.1)
+      trains the FULL 8-method ladder, including the loss-balancing (LB)
+      variants, so the component ladder can be reported.
+    * every higher-dimensional case (``agents20``/``agents40``/... , the scaling
+      study of section 4.2) trains only the four core methods -- the LB variants
+      are omitted there to keep the compute budget tractable.
+    """
+    if case == "agents2":
+        return list(CONFIGS.keys())
+    return list(CORE_CONFIGS)
 
 
 # Per-method plot styling so basic vs. the best method are separable in B&W.

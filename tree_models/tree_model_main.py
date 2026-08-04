@@ -233,6 +233,51 @@ def format_sci(x):
         return f"{base}"
     return f"${base} \\times 10^{{{exp}}}$"
 
+def compute_validation_loss(model: PDEModelTimeStep, n_tree, n_samples=5000, seed=0):
+    """Final validation loss on a fresh, seeded sample of the wealth simplex.
+
+    Draws ``n_samples`` points on the (n_tree)-simplex (dropping the last share)
+    plus a uniform pseudo-time ``t``, and returns the library's total training
+    loss (weighted HJB + consistency + kappa-penalization residuals) evaluated on
+    those held-out points.  Time-stepping validation is scored at the sampled t
+    (matching how the model is trained over the horizon)."""
+    set_seeds(seed)
+    eps = 0.01
+    alpha = torch.ones(n_tree, device=model.device)
+    shares = torch.distributions.Dirichlet(alpha).sample((n_samples,))    # (n, n_tree)
+    shares = eps + (1.0 - n_tree * eps) * shares
+    z = shares[:, :-1]                                                    # (n, n_tree-1)
+    t = torch.rand((n_samples, 1), device=model.device)
+    SV = torch.cat([z, t], dim=1)
+    loss_dict = model._PDEModelTimeStep__validation(SV)
+    return float(loss_dict["total_loss"].detach().cpu())
+
+
+def write_validation_table(val_losses, out_dir):
+    """Per-method final validation-loss table across tree counts (paper appendix).
+
+    ``val_losses`` maps ``n_tree -> {config_name: loss}``.  Rows are the two
+    methods (Time-stepping / Our Method), columns are the tree counts."""
+    method_display = {"timestep": "Time-stepping", "timestep_rar": "Our Method"}
+    n_trees = sorted(val_losses.keys())
+    cols = [f"{n}-Tree" for n in n_trees]
+    raw = pd.DataFrame(index=list(method_display.values()), columns=cols, dtype=float)
+    for n in n_trees:
+        for cfg, disp in method_display.items():
+            raw.loc[disp, f"{n}-Tree"] = val_losses[n].get(cfg, np.nan)
+    raw.to_csv(os.path.join(out_dir, "tree_validation_losses.csv"))
+
+    fmt = raw.copy().astype(object)
+    for r in fmt.index:
+        for c in fmt.columns:
+            v = raw.loc[r, c]
+            fmt.loc[r, c] = format_sci(v) if np.isfinite(v) else ""
+    with open(os.path.join(out_dir, "tree_validation_losses.tex"), "w") as f:
+        f.write(fmt.style.to_latex(column_format="l" + "c" * len(cols), hrules=True))
+    print("\n[tree_models] validation-loss table:")
+    print(raw.to_string(float_format=lambda x: f"{x:.3e}"))
+
+
 def eval_1d(model: PDEModelTimeStep, model_rar: PDEModelTimeStep, out_dir: str):
     df = pd.read_csv("models/2trees_solution-raw.csv")
     x_plot_base = df["z"]
@@ -509,6 +554,7 @@ BASE_DIR = "./models/"
 
 if __name__ == "__main__":
     device = "cuda" if torch.cuda.is_available() else "cpu"
+    val_losses = {}
     for n_tree in MU_SIGS:
         curr_base_dir = os.path.join(BASE_DIR, f"tree_{n_tree}")
         plot_dir = os.path.join(curr_base_dir, "plots")
@@ -539,6 +585,11 @@ if __name__ == "__main__":
         gc.collect()
         torch.cuda.empty_cache()
 
+        val_losses[n_tree] = {
+            "timestep": compute_validation_loss(model, n_tree),
+            "timestep_rar": compute_validation_loss(model_rar, n_tree),
+        }
+
         fontsize = 20
         if n_tree == 2:
             plot_1d(model, model_rar, plot_dir)
@@ -549,3 +600,5 @@ if __name__ == "__main__":
             plot_2d(model_rar, plot_dir)
         plot_loss(curr_base_dir, plot_dir, fontsize)
         plot_hjb_error_distribution(model, model_rar, plot_dir)
+
+    write_validation_table(val_losses, BASE_DIR)

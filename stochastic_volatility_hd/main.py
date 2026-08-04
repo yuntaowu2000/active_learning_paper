@@ -1,10 +1,19 @@
-from .analysis import *
-from .model import get_model
+import argparse
+import gc
+import os
+
+import numpy as np
+import torch
+
+from analysis import *
+from common import (BASE_PARAMS, CONFIGS, CORE_CONFIGS, SHARE_ALPHA_LO,
+                    SHARE_ALPHA_HI, configs_for_case, df_to_latex, make_case,
+                    move_model)
+from model import get_model
+
 
 def main():
     """Train all configs for one case + emit the comparison artifacts."""
-    import argparse
-
     parser = argparse.ArgumentParser()
     parser.add_argument("--case", choices=["agents2", "agents5", "agents20", "agents40", "agents50"], default="agents2")
     parser.add_argument("--epochs", type=int, default=50000)
@@ -14,8 +23,8 @@ def main():
     parser.add_argument("--width", type=int, default=64)
     parser.add_argument("--lr", type=float, default=1e-3)
     parser.add_argument("--loss_balancing_temp", type=float, default=0.1)
-    parser.add_argument("--loss_balancing_alpha", type=float, default=0.9)
-    parser.add_argument("--bernoulli_prob", type=float, default=0.99)
+    parser.add_argument("--loss_balancing_alpha", type=float, default=0.999)
+    parser.add_argument("--bernoulli_prob", type=float, default=0.9999)
     parser.add_argument("--num-inner", type=int, default=5000,
                         help="num_inner_iterations at outer 0 (the library decays it ~1/sqrt(outer) down to --min-inner)")
     parser.add_argument("--min-inner", type=int, default=2000,
@@ -24,7 +33,11 @@ def main():
                         help="multiply the LR by --lr-decay-gamma every N outer (time-stepping) iterations")
     parser.add_argument("--lr-decay-gamma", type=float, default=0.5,
                         help="LR step-decay factor applied every --lr-decay-every outer iterations")
-    parser.add_argument("--gamma", type=float, default=5.0)
+    # Calibrated defaults for the 2-D validation case (paper section 4):
+    # a=0.1, sigma=0.06, tau=1.15, gamma=6.  For higher-dimensional cases the
+    # per-agent gamma vector is set inside make_case (common.py) and --gamma is
+    # ignored; a/sigma/tau stay at these defaults.
+    parser.add_argument("--gamma", type=float, default=6.0)
     parser.add_argument("--tau", type=float, default=1.15)
     parser.add_argument("--a", type=float, default=0.1)
     parser.add_argument("--sigma", type=float, default=0.06)
@@ -61,8 +74,12 @@ def main():
     ts_init_guess = {f"xi_{k}": BASE_PARAMS["rho"] for k in range(1, K + 1)}
     ts_init_guess["r"] = 0.01
 
+    # agents2 -> full 8-method ladder (validation); higher-D -> 4 core methods.
+    case_configs = configs_for_case(args.case)
+    print(f"[sv_n_agents] training configs: {case_configs}")
+
     models, model_paths, ts_map = {}, {}, {}
-    for name in list(CONFIGS.keys()):
+    for name in case_configs:
         ts, rar, lb = CONFIGS[name]
         mpath = os.path.join(base_dir, name)
         print(f"\n{('=== ' + name + ' ==='):=^80}")
@@ -195,13 +212,10 @@ def main():
 if __name__ == "__main__":
     main()
 
-    # --case agents2 --float64 --a 0.1 --sigma 0.06 --tau 1.15 --gamma 6.0
-    # --case agents2 --float64 --a 0.2 --sigma 0.06 --tau 1.15 --gamma 6.0
-    # --case agents5 --float64 --a 0.1 --sigma 0.06 --tau 1.15 --gamma 6.0
-    # --case agents20 --float64 --a 0.1 --sigma 0.06 --tau 1.15 --gamma 5.0
-    # --case agents20 --float64 --a 0.1 --sigma 0.02 --tau 1.15 --gamma 5.0
-    # --case agents50 --float64 --a 0.1 --sigma 0.02 --tau 1.15 --gamma 5.0
-    # --case agents5 --float64 --a 0.1 --sigma 0.02 --tau 1.15 --gamma 5.0
-    # --case agents20 --float64 --a 0.1 --sigma 0.06 --tau 1.15 --gamma 5.0
-    # --case agents20 --float64 --a 0.1 --sigma 0.06 --tau 1.15 --gamma 5.0 --loss_balancing_temp 1.0
-    # --case agents20 --float64 --a 0.1 --sigma 0.06 --tau 1.15 --gamma 5.0 --min-inner 2000
+    # Paper runs (all float64; a=0.1, sigma=0.06, tau=1.15 throughout):
+    #   2-D validation (section 4.1, full 8-method ladder, gamma=6):
+    #     --case agents2  --float64 --a 0.1 --sigma 0.06 --tau 1.15 --gamma 6.0
+    #   scaling study (section 4.2, 4 core methods; --gamma ignored, gamma_vec
+    #   is set in make_case):
+    #     --case agents20 --float64 --a 0.1 --sigma 0.06 --tau 1.15
+    #     --case agents40 --float64 --a 0.1 --sigma 0.06 --tau 1.15

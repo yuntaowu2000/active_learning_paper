@@ -68,14 +68,14 @@ def load_model(base_dir, case, config="timestep", width=64, layers=4,
     directory name; explicit arguments override the parsed values.
     """
     ts, rar, lb = CONFIGS[config]
-    K, eidx, hidx, gamma_vec, caps_E = make_case(case, gamma)
+    K, eidx, hidx, gamma_vec = make_case(case, gamma)
     mpath = os.path.join(base_dir, case, config)
     if not os.path.exists(os.path.join(mpath, "model_best.pt")):
         raise FileNotFoundError(f"no trained checkpoint at {mpath}/model_best.pt -- train first.")
     print(f"[load_model] params from '{os.path.basename(os.path.normpath(base_dir))}': "
           f"gamma={gamma} tau={tau} sigma={sigma} a={a}")
     model = get_model(
-        mpath, K, eidx, hidx, gamma_vec, caps_E,
+        mpath, K, eidx, hidx, gamma_vec,
         model_size=[width] * layers,
         timestepping=ts, rar=rar, loss_balancing=lb,
         params=BASE_PARAMS | {"tau": float(tau), "a": float(a), "sigma": float(sigma)},
@@ -792,7 +792,7 @@ def main():
     if args.source == "nn":
         model = load_model(args.base_dir, args.case, args.config, width=args.width,
                            layers=args.layers, gamma=args.gamma, tau=args.tau,
-                           sigma=args.sigma, a=args.a, foc=args.foc)
+                           sigma=args.sigma, a=args.a)
         economy = NNEconomy(model)
         out_dir = os.path.join(args.base_dir, args.case, args.config, "simulation")
     else:
@@ -816,8 +816,14 @@ if __name__ == "__main__":
     main()
 
 '''
-python sv_n_agents_simulate.py --sweep  --sigmas 0.0125,0.028,0.04 --gammas 5,10 --taus 0.5,1.15,2.0  --sweep-out ./ditella_rp_sweep.csv
-python sv_n_agents_simulate.py --float64 --base-dir ./models/SV_NAgents_64bit_6.0_1.15_0.06_0.1 --case agents2 --sigma 0.06 --a 0.1 --tau 1.15 --gamma 6.0 --config timestep_lb
-python sv_n_agents_simulate.py --float64 --base-dir ./models/SV_NAgents_64bit_improved2_FOC_5.0_1.15_0.06_0.1 --case agents20 --sigma 0.06 --a 0.1 --tau 1.15 --gamma 6.0 --config timestep
-python sv_n_agents_simulate.py --float64 --base-dir ./models/SV_NAgents_64bit_improved2_FOC_5.0_1.15_0.06_0.1 --case agents20 --sigma 0.06 --a 0.1 --tau 1.15 --gamma 6.0 --config timestep_rar --foc
+Example invocations (base-dir matches main.py's tagged output directory):
+
+# comparative-statics sweep via the finite-difference solver (section 4.4)
+python simulate.py --sweep --sigmas 0.0125,0.028,0.04 --gammas 5,10 --taus 0.5,1.15,2.0 --sweep-out ./ditella_rp_sweep.csv
+
+# simulate + portfolio deciles + impulse response for the best 2-D model
+python simulate.py --float64 --base-dir ./models/SV_NAgents_64bit_260713_t0frac0.4_6.0_1.15_0.06_0.1 --case agents2 --config timestep_rar --gamma 6.0 --a 0.1 --sigma 0.06 --tau 1.15 --portfolio --irf --irf-hold-v
+
+# high-dimensional portfolio choice (section 4.2/4.4)
+python simulate.py --float64 --base-dir ./models/SV_NAgents_64bit_260713_t0frac0.4_6.0_1.15_0.06_0.1 --case agents20 --config timestep_rar --gamma 6.0 --a 0.1 --sigma 0.06 --tau 1.15 --portfolio
 '''

@@ -5,7 +5,7 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "deep-macrofin>=0.5.1",
+    "deep-macrofin>=0.5.3",
     "statsmodels>=0.14.6",
     "torch>=2.3.0",
 ]
