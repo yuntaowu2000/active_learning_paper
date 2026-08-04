@@ -131,20 +131,20 @@ PLOT_ARGS = {
 
 MODEL_CONFIGS = {
     "Agents": {
-        "Je": {"positive": True, "activation_type": ActivationType.SiLU, "hidden_units": [64] * 4},
-        "Jh": {"positive": True, "activation_type": ActivationType.SiLU, "hidden_units": [64] * 4},
+        "Je": {"positive": True, "activation_type": ActivationType.SiLU, "hidden_units": [64] * 4, "batch_jac_hes": True},
+        "Jh": {"positive": True, "activation_type": ActivationType.SiLU, "hidden_units": [64] * 4, "batch_jac_hes": True},
     },
     "Endogs": {
         "region1": {
-            "q": {"positive": True, "activation_type": ActivationType.SiLU, "hidden_units": [64] * 4},
-            "psi": {"positive": True, "activation_type": ActivationType.SiLU, "hidden_units": [64] * 4},
+            "q": {"positive": True, "activation_type": ActivationType.SiLU, "hidden_units": [64] * 4, "batch_jac_hes": True},
+            "psi": {"positive": True, "activation_type": ActivationType.SiLU, "hidden_units": [64] * 4, "derivative_order": 0},
         },
         "region2": {
-            "q": {"positive": True, "activation_type": ActivationType.SiLU, "hidden_units": [64] * 4},
+            "q": {"positive": True, "activation_type": ActivationType.SiLU, "hidden_units": [64] * 4, "batch_jac_hes": True},
         },
         "region3": {
-            "q": {"positive": True, "activation_type": ActivationType.SiLU, "hidden_units": [64] * 4},
-            "chi": {"positive": True, "activation_type": ActivationType.SiLU, "hidden_units": [64] * 4}
+            "q": {"positive": True, "activation_type": ActivationType.SiLU, "hidden_units": [64] * 4, "batch_jac_hes": True},
+            "chi": {"positive": True, "activation_type": ActivationType.SiLU, "hidden_units": [64] * 4, "derivative_order": 0}
         }   
     }
 }
@@ -155,6 +155,14 @@ TRAINING_CONFIGS = {
         "batch_size": 500,
         "num_epochs": 20000,
         "optimizer_type": OptimizerType.Adam,
+        "stacked": True,
+    },
+    "basic_rar": {
+        "sampling_method": SamplingMethod.RARG, 
+        "batch_size": 500,
+        "num_epochs": 20000,
+        "optimizer_type": OptimizerType.Adam,
+        "stacked": True,
     },
     "timestep": {
         "batch_size": 500, 
@@ -162,6 +170,7 @@ TRAINING_CONFIGS = {
         "num_inner_iterations": 5000,
         "sampling_method": SamplingMethod.UniformRandom, 
         "time_batch_size": 1,
+        "stacked": True,
     },
     "timestep_rar": {
         "batch_size": 500, 
@@ -170,8 +179,28 @@ TRAINING_CONFIGS = {
         "sampling_method": SamplingMethod.RARG, 
         "time_batch_size": 1,
         "refinement_rounds": 5,
+        "stacked": True,
     }
 }
+
+def get_derivative_equations(timestepping=False):
+    eqs = []
+    for f in ["q", "Je", "Jh"]:
+        eqs += [
+            f"{f}_z = {f}_Jac[:, 0, 0:1]",
+            f"{f}_ae = {f}_Jac[:, 0, 1:2]",
+            f"{f}_zz = {f}_Hess[:, 0, 0, 0:1]",
+            f"{f}_aeae = {f}_Hess[:, 0, 1, 1:2]",
+            f"{f}_zae = {f}_Hess[:, 0, 0, 1:2]",
+            f"{f}_aez = {f}_Hess[:, 0, 1, 0:1]",
+        ]
+    if timestepping:
+        # only the value-function time derivatives enter the time-stepping HJBs
+        eqs += [
+            "Je_t = Je_Jac[:, 0, 2:3]",
+            "Jh_t = Jh_Jac[:, 0, 2:3]",
+        ]
+    return eqs
 
 def get_equations(timestepping=False):
     BASE_EQUATIONS = {
@@ -270,6 +299,11 @@ def get_equations(timestepping=False):
             ]
         }
     equations = deepcopy(BASE_EQUATIONS)
+    # slice the stacked Jacobian/Hessian into the named derivatives the equations
+    # reference (must come first, before anything uses q_z / Je_zz / ...).
+    deriv_eqs = get_derivative_equations(timestepping=timestepping)
+    for k in equations:
+        equations[k] = deriv_eqs + equations[k]
     if timestepping:
         for k in equations:
             equations[k] += [
