@@ -55,17 +55,8 @@ def main():
     a = args.a
     sigma = args.sigma
 
-    # free p AND free r (goods + asset-pricing residuals).  Model dir is tagged so
-    # we don't reload incompatible analytic-r checkpoints (no "r" endog).
-    dir_tag = ""
-    if args.t0_frac > 0:
-        dir_tag += f"_t0frac{args.t0_frac}"
-    if args.float64:
-        torch.set_default_dtype(torch.float64)
-        base_dir = f"./models/SV_NAgents_64bit_260713{dir_tag}_{gamma}_{tau}_{sigma}_{a}/{args.case}"
-    else:
-        torch.set_default_dtype(torch.float32)
-        base_dir = f"./models/SV_NAgents_260713{dir_tag}_{gamma}_{tau}_{sigma}_{a}/{args.case}"
+    torch.set_default_dtype(torch.float64)
+    base_dir = f"./models/{args.case}"
 
     K, eidx, hidx, gamma_vec = make_case(args.case, gamma)
     print(f"[sv_n_agents] case={args.case} K={K} experts={eidx} households={hidx}")

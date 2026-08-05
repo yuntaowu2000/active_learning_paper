@@ -8,7 +8,7 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-base="./models/SV_NAgents_64bit_260713_t0frac0.4_6.0_1.15_0.06_0.1"
+base="./models"
 
 # --- 0) Di Tella (2017) finite-difference reference for the 2-D validation ----
 python numerical.py
