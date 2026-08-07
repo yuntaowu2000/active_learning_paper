@@ -259,7 +259,7 @@ def compute_validation_loss(model: PDEModelTimeStep, n_tree, n_samples=5000, see
     shares = torch.distributions.Dirichlet(alpha).sample((n_samples,))    # (n, n_tree)
     shares = eps + (1.0 - n_tree * eps) * shares
     z = shares[:, :-1]                                                    # (n, n_tree-1)
-    t = torch.rand((n_samples, 1), device=model.device)
+    t = torch.zeros((n_samples, 1), device=model.device)
     SV_all = torch.cat([z, t], dim=1)
 
     total, count = 0.0, 0
