@@ -1,6 +1,7 @@
 import gc
 import glob
 import os
+import re
 import time
 
 import matplotlib
@@ -490,21 +491,36 @@ def plot_loss(curr_base_dir, plot_dir, fontsize=20):
         plt.savefig(f"{plot_dir}/{plot_name}")
         plt.close()
 
-def plot_residual_points(curr_base_dir, plot_dir):
+def plot_residual_points(curr_base_dir, plot_dir, max_loops=None):
     anchor_point_files = glob.glob(os.path.join(curr_base_dir, "timestep_rar", "anchor_points", "model_anchor_points_*.npy"))
-    curr_rar_sampled_points = []
-    for anchor_point_file in anchor_point_files:
-        curr_rar_sampled_points.append(np.load(anchor_point_file))
+
+    # glob order is arbitrary; sort by the trailing integer in the filename so
+    # the colour gradient really runs earliest -> latest outer loop.
+    def _loop_idx(f):
+        m = re.findall(r"(\d+)", os.path.basename(f))
+        return int(m[-1]) if m else -1
+    anchor_point_files = sorted(anchor_point_files, key=_loop_idx)
+    if max_loops is not None:
+        anchor_point_files = anchor_point_files[:max_loops]
+    n = len(anchor_point_files)
+
     fig, ax = plt.subplots(1, 1, figsize=(8, 8))
-    for i in range(4):
-        ax.scatter(curr_rar_sampled_points[i][:, 0], curr_rar_sampled_points[i][:, 1], label=f"Outer Loop {i+1}", s=40)
-    ax.legend(
-        loc="upper center",
-        bbox_to_anchor=(0.5, -0.15),
-        ncol=2,
-        frameon=False,
-        fontsize=20
-    )
+    cmap = plt.get_cmap("viridis")
+    # map outer-loop index (1..n) onto the colormap; earliest = dark, latest = bright
+    norm = matplotlib.colors.Normalize(vmin=1, vmax=max(n, 2))
+    for i, anchor_point_file in enumerate(anchor_point_files):
+        curr_rar_sampled_points = np.load(anchor_point_file)
+        ax.scatter(curr_rar_sampled_points[:, 0], curr_rar_sampled_points[:, 1],
+                   color=cmap(norm(i + 1)), s=40)
+
+    sm = matplotlib.cm.ScalarMappable(cmap=cmap, norm=norm)
+    sm.set_array([])
+    cbar = fig.colorbar(sm, ax=ax)
+    cbar.set_label("Outer Loop (earliest \u2192 latest)", fontsize=20)
+    cbar.locator = matplotlib.ticker.MaxNLocator(integer=True)
+    cbar.update_ticks()
+    cbar.ax.tick_params(labelsize=16)
+
     ax.set_xlabel("$z_1$", fontsize=20)
     ax.set_ylabel("$z_2$", fontsize=20)
     ax.tick_params(axis="both", which="major", labelsize=20)
