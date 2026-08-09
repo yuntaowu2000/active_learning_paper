@@ -1,6 +1,7 @@
 import os
 import torch
 
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -349,8 +350,10 @@ def plot_loss_decay(model_paths, out_dir, timestepping_map,
 
 def plot_loss_weights(model_path, out_dir, file_name="loss_weight.pdf", timestepping=False):
     mapping = {"endogeq_goods": "Goods clearing", "endogeq_capital": "Capital clearing",
-               "hjbeq_expert": "HJB experts",
-               "hjbeq_household": "HJB households"}
+               "hjbeq_expert": "HJB experts", "hjbeq_expert_0": "HJB experts", 
+               "hjbeq_household": "HJB households", "hjbeq_household_1": "HJB households",
+               "endogeq_asset_pricing": "Asset pricing",
+               "endogeq_sig_clearning": "Market Clearing",}
     if timestepping:
         wdir = os.path.join(model_path, "loss_weight_logs")
         if not os.path.isdir(wdir):
@@ -389,23 +392,46 @@ def plot_rar_anchors(model_path, K, out_dir, file_name="rar_anchors.pdf", timest
         files = sorted(f for f in os.listdir(adir) if f.endswith(".npy"))
         if not files:
             return
-        anchors = np.load(os.path.join(adir, files[-1]))
+        n = len(files)
+        
+        fig, ax = plt.subplots(1, 1, figsize=(8, 6))
+        cmap = plt.get_cmap("viridis")
+        # map outer-loop index (1..n) onto the colormap; earliest = dark, latest = bright
+        norm = mpl.colors.Normalize(vmin=1, vmax=max(n, 2))
+        for i, file in enumerate(files):
+            anchors = np.load(os.path.join(adir, file))
+            x_sum = np.sum(anchors[:, :K-1], axis=1)
+            sc = ax.scatter(x_sum, anchors[:, K-1], c=cmap(norm(i + 1)), cmap="viridis", s=12, alpha=0.7)
+        sm = mpl.cm.ScalarMappable(cmap=cmap, norm=norm)
+        sm.set_array([])
+        cbar = fig.colorbar(sm, ax=ax)
+        cbar.set_label("Outer Loop (earliest \u2192 latest)", fontsize=20)
+        cbar.locator = mpl.ticker.MaxNLocator(integer=True)
+        cbar.update_ticks()
+        cbar.ax.tick_params(labelsize=16)
+    
+        ax.set_xlabel("$x$ sum", fontsize=20)
+        ax.set_ylabel("$v$", fontsize=20)
+        ax.tick_params(axis="both", which="major", labelsize=20)
+        plt.tight_layout()
+        plt.savefig(os.path.join(out_dir, file_name))
+        plt.close()
     else:
         apath = os.path.join(model_path, "model_anchor_points.npy")
         if not os.path.exists(apath):
             return
         anchors = np.load(apath)
-    if anchors.ndim != 2 or anchors.shape[1] < 2:
-        return
-    x_sum = np.sum(anchors[:, :K-1], axis=1)
-    fig, ax = plt.subplots(figsize=(6, 5))
-    sc = ax.scatter(x_sum, anchors[:, K-1], c=np.arange(len(anchors)),
-                    cmap="viridis", s=12, alpha=0.7)
-    fig.colorbar(sc, ax=ax, label="anchor index (old -> new)")
-    ax.set_xlabel("$x_1$ (expert share)"); ax.set_ylabel("$v$")
-    plt.tight_layout()
-    plt.savefig(os.path.join(out_dir, file_name), bbox_inches="tight")
-    plt.close(fig)
+        if anchors.ndim != 2 or anchors.shape[1] < 2:
+            return
+        x_sum = np.sum(anchors[:, :K-1], axis=1)
+        fig, ax = plt.subplots(figsize=(6, 5))
+        sc = ax.scatter(x_sum, anchors[:, K-1], c=np.arange(len(anchors)),
+                        cmap="viridis", s=12, alpha=0.7)
+        fig.colorbar(sc, ax=ax, label="anchor index (old -> new)")
+        ax.set_xlabel("$x_1$ (expert share)"); ax.set_ylabel("$v$")
+        plt.tight_layout()
+        plt.savefig(os.path.join(out_dir, file_name), bbox_inches="tight")
+        plt.close(fig)
 
 
 def plot_aggregate_scatter(model, out_dir, file_name="aggregate_scatter.pdf", n_samples=4000, chunk_size=2000, v_fixed=0.25, seed=0):
