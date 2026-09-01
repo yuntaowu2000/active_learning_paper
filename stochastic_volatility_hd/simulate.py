@@ -419,6 +419,186 @@ def plot_portfolio_deciles(economy, sim, out_dir, n_deciles=10, burn_in_frac=0.2
     return dict(decile=deciles, wealth=dec_wealth, risky=dec_risky)
 
 
+def plot_portfolio_terciles(economy, sim, out_dir, n_bins=3, burn_in_frac=0.2,
+                            max_states=20000, chunk=2000, seed=0,
+                            file_prefix="portfolio_terciles"):
+    """Two tercile views of how capital-intensive each group's balance sheet is.
+
+    Pools every ``(path, time, agent)`` point (after burn-in) into
+    ``(wealth x_k, capital-share theta_k)`` pairs, then RANKS by the own-wealth
+    capital share ``theta_k / x_k`` and splits into ``n_bins`` equal-count bins.
+    Because households hold no capital (``theta = 0``) they fall in the lowest
+    bin, the least-levered ("poor") experts in the middle, and the most-levered
+    ("rich") experts at the top.
+
+    Writes TWO figures (user picks later):
+
+    * ``*_balance_sheet.pdf`` -- "proportion of the group's OWN wealth in
+      capital", i.e. the wealth-weighted ``Sum(theta)/Sum(x)`` per bin.  Net
+      worth is 1 (dashed line); the risk-free (bond) piece is ``1 - theta/x``.
+      For experts ``theta/x > 1`` (they borrow from households), so the capital
+      bar overshoots 1 -- the overshoot is drawn as a separate hatched
+      "levered / borrowed" segment.  Households: ~0 capital, ~all risk-free.
+    * ``*_capital_share.pdf`` -- bounded [0,1] alternative: each bin's share of
+      the economy's AGGREGATE capital, ``Sum(theta)/Sum_all(theta)`` (bars sum
+      to 1 across bins).
+    """
+    os.makedirs(out_dir, exist_ok=True)
+    x_hist, v_hist, t = sim["x_hist"], sim["v_hist"], sim["t"]
+    burn = int(len(t) * burn_in_frac)
+    x_pool = x_hist[burn:].reshape(-1, x_hist.shape[-1])       # (M, K-1)
+    v_pool = v_hist[burn:].reshape(-1)                         # (M,)
+    M = x_pool.shape[0]
+    if M > max_states:
+        rng = np.random.default_rng(seed)
+        sel = rng.choice(M, size=max_states, replace=False)
+        x_pool, v_pool = x_pool[sel], v_pool[sel]
+
+    wealth_list, theta_list = [], []
+    for c in range(0, x_pool.shape[0], chunk):
+        xf, tf = economy.portfolio(x_pool[c:c + chunk], v_pool[c:c + chunk])
+        wealth_list.append(xf)
+        theta_list.append(tf)
+    wealth = np.concatenate(wealth_list, 0).reshape(-1)        # (M*K,)  x_k
+    theta = np.concatenate(theta_list, 0).reshape(-1)          # (M*K,)  theta_k
+
+    eps = 1e-12
+    ratio = np.zeros_like(wealth)                              # theta_k / x_k
+    np.divide(theta, wealth, out=ratio, where=wealth > eps)
+
+    order = np.argsort(ratio)
+    w_s, th_s, r_s = wealth[order], theta[order], ratio[order]
+    edges = np.linspace(0, len(r_s), n_bins + 1).astype(int)
+    seg = list(zip(edges[:-1], edges[1:]))
+
+    cap_frac = np.array([th_s[a:b].sum() / max(w_s[a:b].sum(), eps) for a, b in seg])   # Sum(theta)/Sum(x)
+    cap_share = np.array([th_s[a:b].sum() / max(th_s.sum(), eps) for a, b in seg])      # share of aggregate capital
+    mean_ratio = np.array([r_s[a:b].mean() for a, b in seg])
+    mean_wealth = np.array([w_s[a:b].mean() for a, b in seg])
+
+    if n_bins == 3:
+        labels = ["Low\n(households)", "Mid\n(poorer experts)", "High\n(richer experts)"]
+    else:
+        labels = [f"T{i + 1}" for i in range(n_bins)]
+    xpos = np.arange(n_bins)
+
+    # ---- figure 1: balance-sheet composition (own wealth = 1) --------------
+    own = np.minimum(cap_frac, 1.0)                 # own-funded capital
+    lev = np.maximum(cap_frac - 1.0, 0.0)           # borrowed (levered) capital > 1
+    rf = np.maximum(1.0 - cap_frac, 0.0)            # positive risk-free (households)
+    fig, ax = plt.subplots(figsize=(7, 4.5))
+    ax.bar(xpos, own, color="#4C72B0", label="Capital, own-funded")
+    ax.bar(xpos, rf, bottom=own, color="#DD8452", label="Risk-free (bonds)")
+    ax.bar(xpos, lev, bottom=1.0, color="#C44E52", hatch="//",
+           label="Capital, levered (borrowed)")
+    ax.axhline(1.0, ls="--", color="k", lw=1.2)
+    ax.text(n_bins - 0.5, 1.02, "own wealth = 1", ha="right", va="bottom", fontsize=9)
+    for i in range(n_bins):
+        ax.text(xpos[i], cap_frac[i] + 0.03 * max(1.0, cap_frac.max()),
+                f"{cap_frac[i]:.2f}", ha="center", va="bottom", fontsize=9)
+    ax.set_xticks(xpos); ax.set_xticklabels(labels)
+    ax.set_ylabel(r"Portfolio as fraction of own wealth ($\theta_k/x_k$)")
+    ax.set_title("Balance sheet by tercile (net worth = 1)")
+    ax.set_ylim(bottom=0)
+    ax.legend(fontsize=8, loc="upper left")
+    fig.tight_layout()
+    fig.savefig(os.path.join(out_dir, f"{file_prefix}_balance_sheet.pdf"))
+    plt.close(fig)
+
+    # ---- figure 2: bounded share of aggregate capital ----------------------
+    fig, ax = plt.subplots(figsize=(7, 4.5))
+    ax.bar(xpos, cap_share, color="0.35")
+    for i in range(n_bins):
+        ax.text(xpos[i], cap_share[i] + 0.01, f"{cap_share[i]:.2f}",
+                ha="center", va="bottom", fontsize=9)
+    ax.set_xticks(xpos); ax.set_xticklabels(labels)
+    ax.set_ylabel("Share of aggregate capital held")
+    ax.set_title("Share of the economy's capital by tercile (sums to 1)")
+    ax.set_ylim(0, min(1.0, cap_share.max() * 1.2 + 0.05))
+    fig.tight_layout()
+    fig.savefig(os.path.join(out_dir, f"{file_prefix}_capital_share.pdf"))
+    plt.close(fig)
+
+    print("\n[portfolio-terciles] bin | mean x_k | mean theta/x | Sum(theta)/Sum(x) | capital share")
+    for i in range(n_bins):
+        lbl = labels[i].replace("\n", " ")
+        print(f"  {lbl:>22s}  {mean_wealth[i]:.5f}   {mean_ratio[i]:8.3f}   "
+              f"{cap_frac[i]:8.3f}   {cap_share[i]:.4f}")
+    return dict(labels=labels, cap_frac=cap_frac, cap_share=cap_share,
+                mean_ratio=mean_ratio, mean_wealth=mean_wealth)
+
+
+def plot_wealth_distribution(economy, sim, out_dir, burn_in_frac=0.2,
+                             file_name="wealth_distribution.pdf"):
+    """Cross-sectional distribution of individual wealth shares ``x_k``.
+
+    Pools every ``(path, time, agent)`` wealth share after burn-in (the residual
+    anchor agent is added back via ``_full_shares``) into one population, then
+    plots the distribution and reports the ratios discussed for the empirical
+    comparison -- headline is ``p95 / median``.
+
+    Two panels: a linear histogram and a log-x histogram (the mass piles up at
+    the share floor ``0.1/K`` with a long right tail, so the log axis is what
+    makes the shape legible).  Median (green) and p95 (red) are marked; the
+    ratio table is annotated, printed, and written to
+    ``wealth_distribution_summary.txt``.
+    """
+    os.makedirs(out_dir, exist_ok=True)
+    x_hist, t = sim["x_hist"], sim["t"]
+    burn = int(len(t) * burn_in_frac)
+    x_free = x_hist[burn:].reshape(-1, x_hist.shape[-1])       # (M, K-1)
+    x_full = _full_shares(economy, x_free)                     # (M, K)
+    x = x_full.reshape(-1)                                     # (M*K,)  one point per (agent, obs)
+    x = x[np.isfinite(x)]
+    x = x[x > 0]
+
+    qs = [1, 5, 10, 25, 50, 75, 90, 95, 99]
+    pv = {q: float(np.percentile(x, q)) for q in qs}
+    med = pv[50]
+    ratios = {
+        "p75/p25": pv[75] / pv[25],
+        "p90/median": pv[90] / med,
+        "p95/median": pv[95] / med,
+        "p99/median": pv[99] / med,
+    }
+
+    fig, axes = plt.subplots(1, 2, figsize=(13, 4.5))
+    for ax, logx in zip(axes, (False, True)):
+        if logx:
+            bins = np.logspace(np.log10(x.min()), np.log10(x.max()), 60)
+            ax.set_xscale("log")
+        else:
+            bins = 60
+        ax.hist(x, bins=bins, density=True, color="C0", alpha=0.8)
+        ax.axvline(med, color="green", ls="--", lw=1.5, label=f"median = {med:.4f}")
+        ax.axvline(pv[95], color="red", ls="--", lw=1.5, label=f"p95 = {pv[95]:.4f}")
+        ax.set_xlabel(r"wealth share $x_k$")
+        ax.set_ylabel("density")
+        ax.legend(fontsize=9)
+        ax.set_title(("log-x" if logx else "linear") + " scale")
+    axes[1].text(0.98, 0.95, f"p95/median = {ratios['p95/median']:.2f}",
+                 transform=axes[1].transAxes, ha="right", va="top", fontsize=11,
+                 bbox=dict(boxstyle="round", fc="white", ec="0.7"))
+    fig.suptitle("Cross-sectional wealth-share distribution (pooled agents x ergodic sim)")
+    fig.tight_layout()
+    fig.savefig(os.path.join(out_dir, file_name))
+    plt.close(fig)
+
+    lines = [f"n_obs: {x.size}", f"n_agents(K): {x_full.shape[1]}"]
+    lines += [f"p{q}: {pv[q]:.6f}" for q in qs]
+    lines += [f"{k}: {v:.4f}" for k, v in ratios.items()]
+    with open(os.path.join(out_dir, "wealth_distribution_summary.txt"), "w") as f:
+        f.write("\n".join(lines) + "\n")
+
+    print("\n[wealth-dist] percentiles of individual wealth share x_k:")
+    for q in qs:
+        print(f"  p{q:>2d} = {pv[q]:.6f}")
+    print("[wealth-dist] ratios:")
+    for k, v in ratios.items():
+        print(f"  {k:>12s} = {v:.3f}")
+    return dict(percentiles=pv, ratios=ratios)
+
+
 # ---------------------------------------------------------------------------
 # Impulse response: deterministic -k*sigma shock on the aggregate (capital) shock
 # ---------------------------------------------------------------------------
@@ -755,6 +935,12 @@ def main():
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--portfolio", action="store_true",
                         help="plot risky-asset share (theta_k) of total wealth by wealth decile")
+    parser.add_argument("--portfolio-terciles", action="store_true",
+                        help="plot BOTH tercile views (balance-sheet theta/x + bounded "
+                             "share-of-aggregate-capital), grouped by own-wealth capital share")
+    parser.add_argument("--wealth-dist", action="store_true",
+                        help="plot the cross-sectional wealth-share distribution and report "
+                             "p95/median (+ p75/p25, p90/median, p99/median)")
     parser.add_argument("--irf", action="store_true",
                         help="deterministic impulse response to a -N*sigma aggregate/capital shock")
     parser.add_argument("--irf-sd", type=float, default=2.0,
@@ -805,6 +991,10 @@ def main():
     analyze(economy, sim, out_dir)
     if args.portfolio:
         plot_portfolio_deciles(economy, sim, out_dir)
+    if args.portfolio_terciles:
+        plot_portfolio_terciles(economy, sim, out_dir)
+    if args.wealth_dist:
+        plot_wealth_distribution(economy, sim, out_dir)
     if args.irf:
         irf = impulse_response(economy, years_irf=args.irf_years, dt=args.irf_dt,
                                shock_sd=args.irf_sd, x0=args.x0, v0=args.v0,
