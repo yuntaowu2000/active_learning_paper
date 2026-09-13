@@ -437,6 +437,11 @@ def get_model(model_path, K, expert_idx, household_idx, gamma_vec,
     # TODO: set the initial batch size to be half for RAR as an experiment
     if rar:
         batch_size = batch_size // 2
+
+    if params["v_mean"] >= 0.4:
+        V_DOMAIN = (0.05, params["v_mean"] * 2)
+    else:
+        V_DOMAIN = (0.05, 0.5)
     
     if timestepping:
         cfg = {"batch_size": batch_size, "time_batch_size": 1,
@@ -471,7 +476,7 @@ def get_model(model_path, K, expert_idx, household_idx, gamma_vec,
     model.set_state(state_names, domain)
     model.add_params(params)
     model.statics = build_statics(K, expert_idx, household_idx, gamma_vec,
-                                  has_t=timestepping, params=params)
+                                  has_t=timestepping, params=params, v_domain=V_DOMAIN)
 
     # Stacked evaluation requires batch_jac_hes=True, so EVERY network uses it:
     # the stacked evaluator then produces name / name_Jac / name_Hess in a single

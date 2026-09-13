@@ -78,6 +78,8 @@ def configs_for_case(case: str):
     """
     if case == "agents2":
         return list(CONFIGS.keys())
+    if "cali" in case:
+        return ["timestep_rar"]
     return list(CORE_CONFIGS)
 
 
@@ -199,7 +201,7 @@ def mixture_shares_np(n, K, eps, rng, alpha_lo=SHARE_ALPHA_LO,
     return eps + (1.0 - K * eps) * shares
 
 
-def build_statics(K, expert_idx, household_idx, gamma_vec, has_t, params=BASE_PARAMS):
+def build_statics(K, expert_idx, household_idx, gamma_vec, has_t, params=BASE_PARAMS, v_domain=V_DOMAIN):
     n_E = len(expert_idx)
     D = K + 1 if has_t else K
     statics = {
@@ -207,7 +209,7 @@ def build_statics(K, expert_idx, household_idx, gamma_vec, has_t, params=BASE_PA
         "expert_idx": list(expert_idx), "household_idx": list(household_idx),
         "v_index": K - 1, "has_t": has_t,
         "gamma": torch.tensor(gamma_vec, device=device, dtype=torch.get_default_dtype()).reshape(1, K),
-        "v_domain": V_DOMAIN,
+        "v_domain": v_domain,
     }
     for k, val in params.items():
         statics[k] = val
@@ -248,6 +250,53 @@ def make_case(case: str, gamma):
         n_E = 18
         expert_idx = list(range(n_E)); household_idx = list(range(n_E, K))
         gamma_vec = [3.0 + 7.0 * i / (n_E - 1) for i in range(n_E)] + [12.0, 14.0]
+    elif case == "agents20_cali":
+            K = 20
+            n_E = 18
+            expert_idx = list(range(n_E)); household_idx = list(range(n_E, K))
+            gamma_vec = [5.0 + 10.0 * i / (n_E - 1) for i in range(n_E)] + [18.0, 20.0]
+    elif case == "agents20_cali2":
+        K = 20
+        n_E = 18
+        expert_idx = list(range(n_E)); household_idx = list(range(n_E, K))
+        gamma_vec = [5.0 + 2.0 * i / (n_E - 1) for i in range(n_E)] + [9.0, 10.0]
+    elif case == "agents20_cali3":
+        K = 20
+        n_E = 18
+        expert_idx = list(range(n_E)); household_idx = list(range(n_E, K))
+        gamma_vec = [10.0 + 2.0 * i / (n_E - 1) for i in range(n_E)] + [13.0, 14.0]
+    elif case == "agents20_cali4":
+        # SMOOTH-DECAY calibration.  Fewer experts / more graded households so
+        # the low-mid deciles fill continuously (households are the receiving
+        # side of retirement).  Tighter, higher expert band => weaker low-gamma
+        # runaway; small expert->household gap keeps the two groups contiguous.
+        # Intended to run with a MODERATE tau (~0.3) so the richest experts are
+        # drained and the poor tail is lifted (flatter top, fewer 8-9 pile-ups).
+        K = 20
+        n_E = 14
+        expert_idx = list(range(n_E)); household_idx = list(range(n_E, K))
+        n_H = K - n_E
+        gamma_vec = ([5.5 + 2.5 * i / (n_E - 1) for i in range(n_E)]
+                     + [8.5 + 2.5 * j / (n_H - 1) for j in range(n_H)])
+    elif case == "agents20_cali5":
+        # SMOOTH-DECAY variant: tighter/higher expert band, 5 graded households.
+        # Run with a lowish-moderate tau (~0.2).
+        K = 20
+        n_E = 15
+        expert_idx = list(range(n_E)); household_idx = list(range(n_E, K))
+        n_H = K - n_E
+        gamma_vec = ([6.0 + 2.5 * i / (n_E - 1) for i in range(n_E)]
+                     + [9.0 + 2.0 * j / (n_H - 1) for j in range(n_H)])
+    elif case == "agents20_cali6":
+        K = 20
+        n_E = 18
+        expert_idx = list(range(n_E)); household_idx = list(range(n_E, K))
+        gamma_vec = [5.0 + 1.0 * i / (n_E - 1) for i in range(n_E)] + [8.0, 9.0]
+    elif case == "agents20_cali7":
+        K = 20
+        n_E = 18
+        expert_idx = list(range(n_E)); household_idx = list(range(n_E, K))
+        gamma_vec = [5.0 + 1.0 * i / (n_E - 1) for i in range(n_E)] + [7.0, 8.0]
     elif case == "agents40":
         # 36 experts + 4 households.  Same HARD design as agents20/agents50:
         # wide expert spread [3, 10.5] (anchor index 0 = least averse, so capital

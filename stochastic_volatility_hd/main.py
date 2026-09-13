@@ -15,7 +15,7 @@ from model import get_model
 def main():
     """Train all configs for one case + emit the comparison artifacts."""
     parser = argparse.ArgumentParser()
-    parser.add_argument("--case", choices=["agents2", "agents5", "agents20", "agents40", "agents50"], default="agents2")
+    parser.add_argument("--case", choices=["agents2", "agents5", "agents20", "agents20_cali", "agents20_cali2", "agents20_cali3", "agents20_cali4", "agents20_cali5", "agents20_cali6", "agents20_cali7", "agents40", "agents50"], default="agents2")
     parser.add_argument("--epochs", type=int, default=50000)
     parser.add_argument("--outer", type=int, default=100, help="num_outer_iterations for time-stepping configs")
     parser.add_argument("--batch", type=int, default=500)
@@ -41,6 +41,7 @@ def main():
     parser.add_argument("--tau", type=float, default=1.15)
     parser.add_argument("--a", type=float, default=0.1)
     parser.add_argument("--sigma", type=float, default=0.06)
+    parser.add_argument("--vmean", type=float, default=0.25)
     parser.add_argument("--alpha-lo", type=float, default=SHARE_ALPHA_LO,
                         help="lower bound of the log-uniform Dirichlet-alpha mixture for wealth-share sampling (alpha<1 => concentrated draws)")
     parser.add_argument("--alpha-hi", type=float, default=SHARE_ALPHA_HI,
@@ -54,9 +55,10 @@ def main():
     tau = args.tau
     a = args.a
     sigma = args.sigma
+    v_mean = args.vmean
 
     torch.set_default_dtype(torch.float64)
-    base_dir = f"./models/{args.case}"
+    base_dir = f"./models/{args.case}_{tau}_{v_mean}"
 
     K, eidx, hidx, gamma_vec = make_case(args.case, gamma)
     print(f"[sv_n_agents] case={args.case} K={K} experts={eidx} households={hidx}")
@@ -67,6 +69,8 @@ def main():
 
     # agents2 -> full 8-method ladder (validation); higher-D -> 4 core methods.
     case_configs = configs_for_case(args.case)
+    if v_mean != 0.25:
+        case_configs = ["timestep_rar"]
     print(f"[sv_n_agents] training configs: {case_configs}")
 
     models, model_paths, ts_map = {}, {}, {}
@@ -83,7 +87,7 @@ def main():
             lr_decay_every=args.lr_decay_every, lr_decay_gamma=args.lr_decay_gamma,
             loss_balancing_alpha=args.loss_balancing_alpha, loss_balancing_temp=args.loss_balancing_temp, bernoulli_prob=args.bernoulli_prob,
             t0_frac=args.t0_frac,
-            init_guess=ts_init_guess, params=BASE_PARAMS | {"tau": tau, "a": a, "sigma": sigma},
+            init_guess=ts_init_guess, params=BASE_PARAMS | {"tau": tau, "a": a, "sigma": sigma, "v_mean": v_mean},
             share_alpha_lo=args.alpha_lo, share_alpha_hi=args.alpha_hi,
         )
         # park the trained model on CPU so the next config's training (and the

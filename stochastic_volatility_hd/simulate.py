@@ -56,7 +56,7 @@ matplotlib.use("Agg")
 # ---------------------------------------------------------------------------
 
 def load_model(base_dir, case, config="timestep", width=64, layers=4,
-               gamma=None, tau=None, sigma=None, a=None):
+               gamma=None, tau=None, sigma=None, a=None, vmean=0.25):
     """Load a trained checkpoint (``model_best.pt``) for ``case``/``config``.
 
     The economic parameters MUST match those used at training time -- the saved
@@ -69,7 +69,10 @@ def load_model(base_dir, case, config="timestep", width=64, layers=4,
     """
     ts, rar, lb = CONFIGS[config]
     K, eidx, hidx, gamma_vec = make_case(case, gamma)
-    mpath = os.path.join(base_dir, case, config)
+    subpath_name = case if tau == 1.15 else f"{case}_{tau}"
+    if vmean != 0.25:
+        subpath_name = f"{case}_{tau}_{vmean}"
+    mpath = os.path.join(base_dir, subpath_name, config)
     if not os.path.exists(os.path.join(mpath, "model_best.pt")):
         raise FileNotFoundError(f"no trained checkpoint at {mpath}/model_best.pt -- train first.")
     print(f"[load_model] params from '{os.path.basename(os.path.normpath(base_dir))}': "
@@ -78,7 +81,7 @@ def load_model(base_dir, case, config="timestep", width=64, layers=4,
         mpath, K, eidx, hidx, gamma_vec,
         model_size=[width] * layers,
         timestepping=ts, rar=rar, loss_balancing=lb,
-        params=BASE_PARAMS | {"tau": float(tau), "a": float(a), "sigma": float(sigma)},
+        params=BASE_PARAMS | {"tau": float(tau), "a": float(a), "sigma": float(sigma), "v_mean": vmean},
         train=False,
     )
     return model
@@ -419,29 +422,33 @@ def plot_portfolio_deciles(economy, sim, out_dir, n_deciles=10, burn_in_frac=0.2
     return dict(decile=deciles, wealth=dec_wealth, risky=dec_risky)
 
 
-def plot_portfolio_terciles(economy, sim, out_dir, n_bins=3, burn_in_frac=0.2,
+def plot_portfolio_terciles(economy, sim, out_dir, burn_in_frac=0.2,
                             max_states=20000, chunk=2000, seed=0,
                             file_prefix="portfolio_terciles"):
-    """Two tercile views of how capital-intensive each group's balance sheet is.
+    """Three IDENTITY-based groups of how capital-intensive each balance sheet is.
 
-    Pools every ``(path, time, agent)`` point (after burn-in) into
-    ``(wealth x_k, capital-share theta_k)`` pairs, then RANKS by the own-wealth
-    capital share ``theta_k / x_k`` and splits into ``n_bins`` equal-count bins.
-    Because households hold no capital (``theta = 0``) they fall in the lowest
-    bin, the least-levered ("poor") experts in the middle, and the most-levered
-    ("rich") experts at the top.
+    Groups are defined by agent identity (NOT by ranking pooled points), so a
+    household is always a household:
+
+    1. ``Households``            -- every household agent (hold no capital -> 0).
+    2. ``Poorer experts``        -- the lower-wealth half of the experts.
+    3. ``Richer experts``        -- the upper-wealth half of the experts.
+
+    Experts are split by their time-averaged wealth share ``mean_t x_k`` (the
+    split need not be even in count).  For each group we pool every
+    ``(path, time, agent-in-group)`` point (after burn-in) and aggregate.
 
     Writes TWO figures (user picks later):
 
     * ``*_balance_sheet.pdf`` -- "proportion of the group's OWN wealth in
-      capital", i.e. the wealth-weighted ``Sum(theta)/Sum(x)`` per bin.  Net
+      capital", i.e. the wealth-weighted ``Sum(theta)/Sum(x)`` per group.  Net
       worth is 1 (dashed line); the risk-free (bond) piece is ``1 - theta/x``.
       For experts ``theta/x > 1`` (they borrow from households), so the capital
       bar overshoots 1 -- the overshoot is drawn as a separate hatched
-      "levered / borrowed" segment.  Households: ~0 capital, ~all risk-free.
-    * ``*_capital_share.pdf`` -- bounded [0,1] alternative: each bin's share of
+      "levered / borrowed" segment.  Households: 0 capital, all risk-free.
+    * ``*_capital_share.pdf`` -- bounded [0,1] alternative: each group's share of
       the economy's AGGREGATE capital, ``Sum(theta)/Sum_all(theta)`` (bars sum
-      to 1 across bins).
+      to 1 across groups).
     """
     os.makedirs(out_dir, exist_ok=True)
     x_hist, v_hist, t = sim["x_hist"], sim["v_hist"], sim["t"]
@@ -459,27 +466,43 @@ def plot_portfolio_terciles(economy, sim, out_dir, n_bins=3, burn_in_frac=0.2,
         xf, tf = economy.portfolio(x_pool[c:c + chunk], v_pool[c:c + chunk])
         wealth_list.append(xf)
         theta_list.append(tf)
-    wealth = np.concatenate(wealth_list, 0).reshape(-1)        # (M*K,)  x_k
-    theta = np.concatenate(theta_list, 0).reshape(-1)          # (M*K,)  theta_k
+    wealth = np.concatenate(wealth_list, 0)                    # (M, K)  x_k
+    theta = np.concatenate(theta_list, 0)                      # (M, K)  theta_k
 
     eps = 1e-12
     ratio = np.zeros_like(wealth)                              # theta_k / x_k
     np.divide(theta, wealth, out=ratio, where=wealth > eps)
 
-    order = np.argsort(ratio)
-    w_s, th_s, r_s = wealth[order], theta[order], ratio[order]
-    edges = np.linspace(0, len(r_s), n_bins + 1).astype(int)
-    seg = list(zip(edges[:-1], edges[1:]))
+    # ---- identity-based groups (columns are agents) -----------------------
+    eidx = np.asarray(economy.expert_idx, dtype=int)
+    hidx = np.asarray(economy.household_idx, dtype=int)
+    expert_meanw = wealth[:, eidx].mean(0)                     # per-expert mean x_k
+    order_e = eidx[np.argsort(expert_meanw)]                   # ascending wealth
+    n_e = len(eidx)
+    split = n_e // 2                                           # lower half = poorer
+    poor_cols = order_e[:split]
+    rich_cols = order_e[split:]
+    groups = [("Households", hidx),
+              ("Poorer experts\n(lower half)", poor_cols),
+              ("Richer experts\n(upper half)", rich_cols)]
 
-    cap_frac = np.array([th_s[a:b].sum() / max(w_s[a:b].sum(), eps) for a, b in seg])   # Sum(theta)/Sum(x)
-    cap_share = np.array([th_s[a:b].sum() / max(th_s.sum(), eps) for a, b in seg])      # share of aggregate capital
-    mean_ratio = np.array([r_s[a:b].mean() for a, b in seg])
-    mean_wealth = np.array([w_s[a:b].mean() for a, b in seg])
+    total_theta = theta.sum()
+    cap_frac, cap_share, mean_ratio, mean_wealth = [], [], [], []
+    for _, cols in groups:
+        if len(cols) == 0:
+            cap_frac.append(0.0); cap_share.append(0.0)
+            mean_ratio.append(0.0); mean_wealth.append(0.0)
+            continue
+        sx = wealth[:, cols].sum(); st = theta[:, cols].sum()
+        cap_frac.append(st / max(sx, eps))                    # Sum(theta)/Sum(x)
+        cap_share.append(st / max(total_theta, eps))          # share of aggregate capital
+        mean_ratio.append(float(ratio[:, cols].mean()))
+        mean_wealth.append(float(wealth[:, cols].mean()))
+    cap_frac = np.array(cap_frac); cap_share = np.array(cap_share)
+    mean_ratio = np.array(mean_ratio); mean_wealth = np.array(mean_wealth)
 
-    if n_bins == 3:
-        labels = ["Low\n(households)", "Mid\n(poorer experts)", "High\n(richer experts)"]
-    else:
-        labels = [f"T{i + 1}" for i in range(n_bins)]
+    n_bins = len(groups)
+    labels = [g[0] for g in groups]
     xpos = np.arange(n_bins)
 
     # ---- figure 1: balance-sheet composition (own wealth = 1) --------------
@@ -498,7 +521,7 @@ def plot_portfolio_terciles(economy, sim, out_dir, n_bins=3, burn_in_frac=0.2,
                 f"{cap_frac[i]:.2f}", ha="center", va="bottom", fontsize=9)
     ax.set_xticks(xpos); ax.set_xticklabels(labels)
     ax.set_ylabel(r"Portfolio as fraction of own wealth ($\theta_k/x_k$)")
-    ax.set_title("Balance sheet by tercile (net worth = 1)")
+    ax.set_title("Balance sheet by group (net worth = 1)")
     ax.set_ylim(bottom=0)
     ax.legend(fontsize=8, loc="upper left")
     fig.tight_layout()
@@ -513,13 +536,13 @@ def plot_portfolio_terciles(economy, sim, out_dir, n_bins=3, burn_in_frac=0.2,
                 ha="center", va="bottom", fontsize=9)
     ax.set_xticks(xpos); ax.set_xticklabels(labels)
     ax.set_ylabel("Share of aggregate capital held")
-    ax.set_title("Share of the economy's capital by tercile (sums to 1)")
+    ax.set_title("Share of the economy's capital by group (sums to 1)")
     ax.set_ylim(0, min(1.0, cap_share.max() * 1.2 + 0.05))
     fig.tight_layout()
     fig.savefig(os.path.join(out_dir, f"{file_prefix}_capital_share.pdf"))
     plt.close(fig)
 
-    print("\n[portfolio-terciles] bin | mean x_k | mean theta/x | Sum(theta)/Sum(x) | capital share")
+    print("\n[portfolio-terciles] group | mean x_k | mean theta/x | Sum(theta)/Sum(x) | capital share")
     for i in range(n_bins):
         lbl = labels[i].replace("\n", " ")
         print(f"  {lbl:>22s}  {mean_wealth[i]:.5f}   {mean_ratio[i]:8.3f}   "
@@ -528,25 +551,61 @@ def plot_portfolio_terciles(economy, sim, out_dir, n_bins=3, burn_in_frac=0.2,
                 mean_ratio=mean_ratio, mean_wealth=mean_wealth)
 
 
+def _gini_rows(w):
+    """Row-wise Gini of a (M, K) array of NON-negative weights.
+
+    For each row, ``G = (2 * sum_i i * w_(i)) / (K * sum w) - (K + 1) / K`` on the
+    ascending-sorted row (``i = 1..K``).  Returns a length-M array; a row that
+    sums to <= 0 gets NaN.  With shares that sum to 1, this is the standard
+    cross-sectional wealth Gini for that snapshot.
+    """
+    w = np.sort(np.clip(w, 0.0, None), axis=1)                 # (M, K) ascending
+    M, K = w.shape
+    s = w.sum(axis=1)
+    idx = np.arange(1, K + 1)
+    g = (2.0 * (w * idx).sum(axis=1)) / (K * s) - (K + 1.0) / K
+    g[s <= 0] = np.nan
+    return g
+
+
+def _gini(w):
+    """Gini of a 1-D array of non-negative weights (pooled version)."""
+    return float(_gini_rows(np.asarray(w, float).reshape(1, -1))[0])
+
+
 def plot_wealth_distribution(economy, sim, out_dir, burn_in_frac=0.2,
-                             file_name="wealth_distribution.pdf"):
+                             last_steps=None, file_name="wealth_distribution.pdf"):
     """Cross-sectional distribution of individual wealth shares ``x_k``.
 
-    Pools every ``(path, time, agent)`` wealth share after burn-in (the residual
-    anchor agent is added back via ``_full_shares``) into one population, then
+    Pools every ``(path, time, agent)`` wealth share into one population, then
     plots the distribution and reports the ratios discussed for the empirical
     comparison -- headline is ``p95 / median``.
 
-    Two panels: a linear histogram and a log-x histogram (the mass piles up at
+    Sampling window:
+
+    * ``last_steps`` (int)  -- keep only the last ``last_steps`` simulation steps
+      of every path (a fixed ergodic window, e.g. 500).  Use a longer/denser sim
+      (``--years`` / ``--paths``) to pool more values.
+    * otherwise the first ``burn_in_frac`` of the horizon is dropped.
+
+    Two panels: a linear histogram and a ``log10 x_k`` histogram (mass piles up at
     the share floor ``0.1/K`` with a long right tail, so the log axis is what
-    makes the shape legible).  Median (green) and p95 (red) are marked; the
-    ratio table is annotated, printed, and written to
+    makes the shape legible).  Each panel overlays a Gaussian-KDE density curve
+    (fit in linear / log10 space respectively) so the shape is readable without
+    reading bar heights.  Median (green) and p95 (red) are marked; the ratio
+    table is annotated, printed, and written to
     ``wealth_distribution_summary.txt``.
     """
     os.makedirs(out_dir, exist_ok=True)
     x_hist, t = sim["x_hist"], sim["t"]
-    burn = int(len(t) * burn_in_frac)
-    x_free = x_hist[burn:].reshape(-1, x_hist.shape[-1])       # (M, K-1)
+    if last_steps is not None and last_steps > 0:
+        w = min(int(last_steps), x_hist.shape[0])
+        x_free = x_hist[-w:].reshape(-1, x_hist.shape[-1])     # (M, K-1)
+        window = f"last {w} steps"
+    else:
+        burn = int(len(t) * burn_in_frac)
+        x_free = x_hist[burn:].reshape(-1, x_hist.shape[-1])   # (M, K-1)
+        window = f"post burn-in ({int(burn_in_frac * 100)}%)"
     x_full = _full_shares(economy, x_free)                     # (M, K)
     x = x_full.reshape(-1)                                     # (M*K,)  one point per (agent, obs)
     x = x[np.isfinite(x)]
@@ -562,31 +621,62 @@ def plot_wealth_distribution(economy, sim, out_dir, burn_in_frac=0.2,
         "p99/median": pv[99] / med,
     }
 
+    # Gini: per-snapshot cross-sectional inequality (each row of x_full sums to
+    # 1 over the K agents), then averaged over snapshots -- this is the "typical"
+    # wealth Gini and does NOT mix in time variation.  The pooled Gini (over all
+    # (agent, obs) points at once) is reported for reference only.
+    gini_cs = _gini_rows(x_full)                               # (M,)
+    gini_cs = gini_cs[np.isfinite(gini_cs)]
+    gini = {
+        "gini_cross_section_mean": float(np.mean(gini_cs)),
+        "gini_cross_section_median": float(np.median(gini_cs)),
+        "gini_cross_section_p5": float(np.percentile(gini_cs, 5)),
+        "gini_cross_section_p95": float(np.percentile(gini_cs, 95)),
+        "gini_pooled": _gini(x),
+    }
+
+    try:
+        from scipy.stats import gaussian_kde
+    except Exception:                                          # scipy optional
+        gaussian_kde = None
+
     fig, axes = plt.subplots(1, 2, figsize=(13, 4.5))
     for ax, logx in zip(axes, (False, True)):
         if logx:
-            bins = np.logspace(np.log10(x.min()), np.log10(x.max()), 60)
-            ax.set_xscale("log")
+            data = np.log10(x)
+            bins = np.linspace(data.min(), data.max(), 60)
+            med_m, p95_m = np.log10(med), np.log10(pv[95])
+            xlabel = r"$\log_{10}$ wealth share $x_k$"
         else:
+            data = x
             bins = 60
-        ax.hist(x, bins=bins, density=True, color="C0", alpha=0.8)
-        ax.axvline(med, color="green", ls="--", lw=1.5, label=f"median = {med:.4f}")
-        ax.axvline(pv[95], color="red", ls="--", lw=1.5, label=f"p95 = {pv[95]:.4f}")
-        ax.set_xlabel(r"wealth share $x_k$")
+            med_m, p95_m = med, pv[95]
+            xlabel = r"wealth share $x_k$"
+        ax.hist(data, bins=bins, density=True, color="C0", alpha=0.55)
+        if gaussian_kde is not None and data.size > 2 and data.std() > 0:
+            kde = gaussian_kde(data)
+            grid = np.linspace(data.min(), data.max(), 400)
+            ax.plot(grid, kde(grid), color="navy", lw=1.8, label="KDE density")
+        ax.axvline(med_m, color="green", ls="--", lw=1.5, label=f"median = {med:.4f}")
+        ax.axvline(p95_m, color="red", ls="--", lw=1.5, label=f"p95 = {pv[95]:.4f}")
+        ax.set_xlabel(xlabel)
         ax.set_ylabel("density")
         ax.legend(fontsize=9)
-        ax.set_title(("log-x" if logx else "linear") + " scale")
-    axes[1].text(0.98, 0.95, f"p95/median = {ratios['p95/median']:.2f}",
+        ax.set_title(("log10 scale" if logx else "linear scale"))
+    axes[1].text(0.98, 0.95,
+                 f"p95/median = {ratios['p95/median']:.2f}\n"
+                 f"Gini = {gini['gini_cross_section_mean']:.3f}",
                  transform=axes[1].transAxes, ha="right", va="top", fontsize=11,
                  bbox=dict(boxstyle="round", fc="white", ec="0.7"))
-    fig.suptitle("Cross-sectional wealth-share distribution (pooled agents x ergodic sim)")
+    fig.suptitle(f"Cross-sectional wealth-share distribution (pooled agents x sim, {window})")
     fig.tight_layout()
     fig.savefig(os.path.join(out_dir, file_name))
     plt.close(fig)
 
-    lines = [f"n_obs: {x.size}", f"n_agents(K): {x_full.shape[1]}"]
+    lines = [f"window: {window}", f"n_obs: {x.size}", f"n_agents(K): {x_full.shape[1]}"]
     lines += [f"p{q}: {pv[q]:.6f}" for q in qs]
     lines += [f"{k}: {v:.4f}" for k, v in ratios.items()]
+    lines += [f"{k}: {v:.4f}" for k, v in gini.items()]
     with open(os.path.join(out_dir, "wealth_distribution_summary.txt"), "w") as f:
         f.write("\n".join(lines) + "\n")
 
@@ -596,7 +686,12 @@ def plot_wealth_distribution(economy, sim, out_dir, burn_in_frac=0.2,
     print("[wealth-dist] ratios:")
     for k, v in ratios.items():
         print(f"  {k:>12s} = {v:.3f}")
-    return dict(percentiles=pv, ratios=ratios)
+    print("[wealth-dist] Gini (cross-sectional, per-snapshot then averaged):")
+    print(f"  mean   = {gini['gini_cross_section_mean']:.4f}  "
+          f"(median {gini['gini_cross_section_median']:.4f}, "
+          f"p5-p95 {gini['gini_cross_section_p5']:.4f}-{gini['gini_cross_section_p95']:.4f})")
+    print(f"  pooled = {gini['gini_pooled']:.4f}  (reference, mixes time variation)")
+    return dict(percentiles=pv, ratios=ratios, gini=gini)
 
 
 # ---------------------------------------------------------------------------
@@ -660,7 +755,7 @@ def _irf_paths(economy, x0_free, v0, n_steps, dt, shock_step, specs,
 def impulse_response(economy, years_burn=250.0, years_irf=30.0, dt=0.02,
                      shock_sd=2.0, t_shock=1.0, x0=0.2, v0=0.1, seed=0,
                      n_paths_stat=40, burn_dt=0.1, shock_horizon=1.0,
-                     include_vfixed=False):
+                     include_vfixed=False, v_start=None):
     """Deterministic impulse response to a ``-shock_sd``-sigma aggregate shock.
 
     (1) Runs a long stochastic simulation and takes the post-burn-in mean state
@@ -668,6 +763,10 @@ def impulse_response(economy, years_burn=250.0, years_irf=30.0, dt=0.02,
     (deterministic) paths from ``(x*, v*)``: a *baseline* with no shock and a
     *shocked* path that injects a single Brownian increment at ``t = t_shock``,
     then lets the system mean-revert.  The difference is the IRF.
+
+    If ``v_start`` is given it OVERRIDES the ergodic ``v*`` as the initial (and
+    baseline) volatility level -- useful to start exactly at ``v_mean`` rather
+    than the clip-biased simulated mean (``x*`` is still the ergodic mean).
 
     The shock is a ``shock_sd``-standard-deviation ANNUAL innovation:
     ``dW = -shock_sd * sqrt(shock_horizon)`` with ``shock_horizon = 1`` year, so
@@ -687,8 +786,14 @@ def impulse_response(economy, years_burn=250.0, years_irf=30.0, dt=0.02,
                    x0=x0, v0=v0, seed=seed)
     burn = int(len(sim["t"]) * 0.5)
     x_star = sim["x_hist"][burn:].reshape(-1, economy.K - 1).mean(axis=0)
-    v_star = float(sim["v_hist"][burn:].mean())
-    print(f"[irf] stationary v*={v_star:.4f}  X_E*={_expert_total_share(economy, x_star[None,:])[0]:.4f}")
+    v_ergodic = float(sim["v_hist"][burn:].mean())
+    if v_start is not None:
+        v_star = float(np.clip(v_start, economy.v_lo, economy.v_hi))
+        print(f"[irf] stationary X_E*={_expert_total_share(economy, x_star[None,:])[0]:.4f}; "
+              f"v ergodic mean={v_ergodic:.4f}, overriding start v*={v_star:.4f}")
+    else:
+        v_star = v_ergodic
+        print(f"[irf] stationary v*={v_star:.4f}  X_E*={_expert_total_share(economy, x_star[None,:])[0]:.4f}")
 
     n_steps = int(round(years_irf / dt))
     shock_step = max(1, int(round(t_shock / dt)))
@@ -909,6 +1014,7 @@ def main():
     parser.add_argument("--tau", type=float, default=None,
                         help="Poisson expert-retirement rate override")
     parser.add_argument("--sigv-mean", type=float, default=None)
+    parser.add_argument("--vmean", type=float, default=0.25)
     parser.add_argument("--h", type=float, default=2e-4)
     parser.add_argument("--iters", type=int, default=300_000)
     # parameter-sweep mode (numerical solver): tabulate risk premium
@@ -941,6 +1047,9 @@ def main():
     parser.add_argument("--wealth-dist", action="store_true",
                         help="plot the cross-sectional wealth-share distribution and report "
                              "p95/median (+ p75/p25, p90/median, p99/median)")
+    parser.add_argument("--wealth-dist-last", type=int, default=0,
+                        help="pool only the last N simulation steps for --wealth-dist "
+                             "(0 = use burn-in fraction; e.g. 500)")
     parser.add_argument("--irf", action="store_true",
                         help="deterministic impulse response to a -N*sigma aggregate/capital shock")
     parser.add_argument("--irf-sd", type=float, default=2.0,
@@ -954,6 +1063,9 @@ def main():
                              "(shuts down the uncertainty channel; removes the overshoot)")
     parser.add_argument("--irf-plot-years", type=float, default=7.0,
                         help="cap the IRF plot x-axis at this many years since the shock")
+    parser.add_argument("--irf-v-start", type=float, default=None,
+                        help="override the ergodic v* as the IRF start/baseline v "
+                             "(e.g. set to v_mean; clipped into the v-domain)")
     args = parser.parse_args()
 
     if args.float64:
@@ -978,9 +1090,12 @@ def main():
     if args.source == "nn":
         model = load_model(args.base_dir, args.case, args.config, width=args.width,
                            layers=args.layers, gamma=args.gamma, tau=args.tau,
-                           sigma=args.sigma, a=args.a)
+                           sigma=args.sigma, a=args.a, vmean=args.vmean)
         economy = NNEconomy(model)
-        out_dir = os.path.join(args.base_dir, args.case, args.config, "simulation")
+        subpath_name = args.case if args.tau == 1.15 else f"{args.case}_{args.tau}"
+        if args.vmean != 0.25:
+            subpath_name = f"{args.case}_{args.tau}_{args.vmean}"
+        out_dir = os.path.join(args.base_dir, subpath_name, args.config, "simulation")
     else:
         overrides = {"sigma": args.sigma, "gamma": args.gamma, "phi": args.phi,
                      "tau": args.tau, "sigv_mean": args.sigv_mean}
@@ -994,11 +1109,13 @@ def main():
     if args.portfolio_terciles:
         plot_portfolio_terciles(economy, sim, out_dir)
     if args.wealth_dist:
-        plot_wealth_distribution(economy, sim, out_dir)
+        plot_wealth_distribution(economy, sim, out_dir,
+                                 last_steps=(args.wealth_dist_last or None))
     if args.irf:
         irf = impulse_response(economy, years_irf=args.irf_years, dt=args.irf_dt,
                                shock_sd=args.irf_sd, x0=args.x0, v0=args.v0,
-                               seed=args.seed, include_vfixed=args.irf_hold_v)
+                               seed=args.seed, include_vfixed=args.irf_hold_v,
+                               v_start=args.irf_v_start)
         plot_impulse_response(economy, irf, out_dir, xmax=args.irf_plot_years)
 
 
