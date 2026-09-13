@@ -9,6 +9,8 @@ import statsmodels.api as smi
 
 from common import *
 
+configure_paper_plots()
+
 
 # ===========================================================================
 # Evaluation helpers
@@ -295,22 +297,24 @@ def plot_slice_comparison(method_dicts, fd_dict, v_list, out_dir):
     """2-D slice overlay: each method vs the Di Tella finite-difference solution."""
     os.makedirs(out_dir, exist_ok=True)
     for var, parg in SLICE_PLOT_ARGS.items():
-        fig, ax = plt.subplots(figsize=(8, 6))
+        fig, ax = plt.subplots(figsize=PAPER_FIGSIZE)
         if fd_dict is not None:
             xfd = fd_dict["x_plot"]
             for i, v in enumerate(v_list):
                 key = f"{var}_{v}"
                 if key in fd_dict:
-                    ax.plot(xfd, fd_dict[key], ls="-.", color=SLICE_COLORS[i], marker="x", markevery=3, label=f"FD v={v}")
+                    ax.plot(xfd, fd_dict[key], ls="-.", color=PAPER_BLACK,
+                            marker="x", markevery=3, label=f"FD, $v={v}$")
         for mi, (name, md) in enumerate(method_dicts.items()):
             xp = md["x_plot"]
             ls, mk = METHOD_PLOT_STYLES[mi % len(METHOD_PLOT_STYLES)]
             for i, v in enumerate(v_list):
                 ax.plot(xp, md[f"{var}_{v}"], ls=ls, marker=mk, markevery=8,
-                        markersize=6, color=SLICE_COLORS[i],
-                        alpha=0.85, label=f"{name} v={v}")
+                        color=METHOD_COLORS.get(name, PAPER_BLUE),
+                        label=f"{METHOD_DISPLAY.get(name, name)}, $v={v}$")
         ax.set_xlabel("Expert wealth share x"); ax.set_ylabel(parg["ylabel"])
-        ax.legend(fontsize=9, ncol=2, frameon=False)
+        ax.tick_params(axis="both", which="major", labelsize=PAPER_FONT_SIZE)
+        ax.legend(frameon=False)
         plt.tight_layout()
         plt.savefig(os.path.join(out_dir, f"slice_{var}.pdf"))
         plt.close(fig)
@@ -321,31 +325,45 @@ def plot_loss_decay(model_paths, out_dir, timestepping_map,
                              ("hjbeq_household", "HJB (households)"),
                              ("total_loss", "Total"))):
     os.makedirs(out_dir, exist_ok=True)
-    fig, axes = plt.subplots(1, len(targets), figsize=(6.2 * len(targets), 4.8), squeeze=False)
-    axes = axes[0]
-    colors = plt.get_cmap("tab10")
-    for c, (name, path) in enumerate(model_paths.items()):
-        ts = timestepping_map.get(name, False)
-        fname = "model_global_min_loss.csv" if ts else "model_min_loss.csv"
+    histories = {}
+    for name, path in model_paths.items():
+        fname = ("model_global_min_loss.csv"
+                 if timestepping_map.get(name, False)
+                 else "model_min_loss.csv")
         fpath = os.path.join(path, fname)
-        if not os.path.exists(fpath):
-            continue
-        df = pd.read_csv(fpath)
-        df = df.iloc[1:] if len(df) > 1 else df
-        xcol = "epoch" if "epoch" in df.columns else df.columns[0]
-        if "hjbeq_expert" not in df.columns:
-            df["hjbeq_expert"] = df[[col for col in df.columns if col.startswith("hjbeq_expert_")]].sum(axis=1)
-            df["hjbeq_household"] = df[[col for col in df.columns if col.startswith("hjbeq_household_")]].sum(axis=1)
-        for j, (col, _) in enumerate(targets):
+        if os.path.exists(fpath):
+            df = pd.read_csv(fpath)
+            df = df.iloc[1:] if len(df) > 1 else df
+            if "hjbeq_expert" not in df.columns:
+                expert_cols = [c for c in df.columns
+                               if c.startswith("hjbeq_expert_")]
+                household_cols = [c for c in df.columns
+                                  if c.startswith("hjbeq_household_")]
+                if expert_cols:
+                    df["hjbeq_expert"] = df[expert_cols].sum(axis=1)
+                if household_cols:
+                    df["hjbeq_household"] = df[household_cols].sum(axis=1)
+            histories[name] = df
+
+    for col, label in targets:
+        fig, ax = plt.subplots(figsize=PAPER_FIGSIZE)
+        for name, df in histories.items():
             if col not in df.columns:
                 continue
-            axes[j].semilogy(df[xcol], df[col].cummin(), color=colors(c), lw=2, label=name)
-    for j, (_, label) in enumerate(targets):
-        axes[j].set_xlabel("epoch"); axes[j].set_ylabel(f"{label} loss")
-        axes[j].legend(fontsize=9, frameon=False)
-    plt.tight_layout()
-    plt.savefig(os.path.join(out_dir, "loss_decay.pdf"))
-    plt.close(fig)
+            xcol = "epoch" if "epoch" in df.columns else df.columns[0]
+            ax.semilogy(
+                df[xcol], df[col].cummin(),
+                color=METHOD_COLORS.get(name, PAPER_BLUE),
+                label=METHOD_DISPLAY.get(name, name),
+            )
+        ax.set_xlabel("Epoch")
+        ax.set_ylabel(f"{label} loss")
+        ax.tick_params(axis="both", which="major", labelsize=PAPER_FONT_SIZE)
+        ax.legend(frameon=False)
+        plt.tight_layout()
+        slug = col.replace("hjbeq_", "hjb_")
+        plt.savefig(os.path.join(out_dir, f"loss_decay_{slug}.pdf"))
+        plt.close(fig)
 
 
 def plot_loss_weights(model_path, out_dir, file_name="loss_weight.pdf", timestepping=False):
@@ -371,13 +389,14 @@ def plot_loss_weights(model_path, out_dir, file_name="loss_weight.pdf", timestep
     if len(expert_cols) >= 2:
         mapping[expert_cols[0]] = "HJB expert (low RA)"
         mapping[expert_cols[-1]] = "HJB expert (high RA)"
-    fig, ax = plt.subplots(figsize=(9, 6))
-    colors = plt.get_cmap("tab10")
+    fig, ax = plt.subplots(figsize=PAPER_FIGSIZE)
+    colors = [PAPER_BLUE, PAPER_GREEN, PAPER_ORANGE, PAPER_RED, PAPER_BLACK]
     for i, (col, lab) in enumerate(mapping.items()):
         if col in df.columns:
-            ax.plot(df["epoch"], df[col], color=colors(i), label=lab)
-    ax.set_xlabel("epoch"); ax.set_ylabel("loss weight")
-    ax.legend(loc="upper left", bbox_to_anchor=(1.02, 1.0), fontsize=12, frameon=False)
+            ax.plot(df["epoch"], df[col], color=colors[i % len(colors)], label=lab)
+    ax.set_xlabel("Epoch"); ax.set_ylabel("Loss weight")
+    ax.tick_params(axis="both", which="major", labelsize=PAPER_FONT_SIZE)
+    ax.legend(loc="upper left", bbox_to_anchor=(1.02, 1.0), frameon=False)
     plt.tight_layout()
     plt.savefig(os.path.join(out_dir, file_name), bbox_inches="tight")
     plt.close(fig)
@@ -424,17 +443,22 @@ def plot_rar_anchors(model_path, K, out_dir, file_name="rar_anchors.pdf", timest
         if anchors.ndim != 2 or anchors.shape[1] < 2:
             return
         x_sum = np.sum(anchors[:, :K-1], axis=1)
-        fig, ax = plt.subplots(figsize=(6, 5))
+        fig, ax = plt.subplots(figsize=PAPER_FIGSIZE)
         sc = ax.scatter(x_sum, anchors[:, K-1], c=np.arange(len(anchors)),
                         cmap="viridis", s=12, alpha=0.7)
-        fig.colorbar(sc, ax=ax, label="anchor index (old -> new)")
+        cbar = fig.colorbar(sc, ax=ax)
+        cbar.set_label("Anchor index (old to new)")
+        cbar.ax.tick_params(labelsize=PAPER_FONT_SIZE)
         ax.set_xlabel("$x_1$ (expert share)"); ax.set_ylabel("$v$")
+        ax.tick_params(axis="both", which="major", labelsize=PAPER_FONT_SIZE)
         plt.tight_layout()
         plt.savefig(os.path.join(out_dir, file_name), bbox_inches="tight")
         plt.close(fig)
 
 
-def plot_aggregate_scatter(model, out_dir, file_name="aggregate_scatter.pdf", n_samples=4000, chunk_size=2000, v_fixed=0.25, seed=0):
+def plot_aggregate_scatter(model, out_dir, file_prefix="aggregate_scatter",
+                           n_samples=4000, chunk_size=2000,
+                           v_fixed=0.25, seed=0):
     """For K>2 cases, scatter p / risk premium / omega against two summaries of
     the wealth distribution at fixed v:
 
@@ -474,25 +498,29 @@ def plot_aggregate_scatter(model, out_dir, file_name="aggregate_scatter.pdf", n_
               (herfindahl, "Wealth concentration $H=\\sum_k x_k^2$")]
 
     os.makedirs(out_dir, exist_ok=True)
-    fig, axes = plt.subplots(2, 3, figsize=(16, 9))
-    for row, (xv, xlabel) in enumerate(x_axes):
-        for col, (_, yv, ylabel) in enumerate(panels):
-            ax = axes[row, col]
-            ax.scatter(xv, yv, s=6, alpha=0.35, edgecolors="none")
+    for x_name, (xv, xlabel) in zip(("expert_share", "herfindahl"), x_axes):
+        for y_name, yv, ylabel in panels:
+            fig, ax = plt.subplots(figsize=PAPER_FIGSIZE)
+            ax.scatter(xv, yv, s=14, alpha=0.4,
+                       color=PAPER_BLUE, edgecolors="none")
             ax.set_xlabel(xlabel)
             ax.set_ylabel(ylabel)
-    fig.suptitle(f"v={v_fixed}")
-    plt.tight_layout()
-    plt.savefig(os.path.join(out_dir, file_name))
-    plt.close(fig)
+            ax.tick_params(axis="both", which="major",
+                           labelsize=PAPER_FONT_SIZE)
+            plt.tight_layout()
+            plt.savefig(os.path.join(
+                out_dir, f"{file_prefix}_{y_name}_vs_{x_name}.pdf"
+            ))
+            plt.close(fig)
 
 
-def plot_theta_chat_histogram(model, out_dir, seed=0, chunk_size=2000):
+def plot_theta_chat_histogram(model, out_dir, file_suffix="",
+                              seed=0, chunk_size=2000):
     SV_val = _validation_states(model, n_samples=10000, seed=seed)
     generated_df = compute_theta_chat_distributions(model, SV_val, chunk_size=chunk_size)
     os.makedirs(out_dir, exist_ok=True)
     for var in ["theta", "chat"]:
-        fig, ax = plt.subplots(1, 1, figsize=(6.2, 4.8))
+        fig, ax = plt.subplots(1, 1, figsize=PAPER_FIGSIZE)
         yerr = [
             generated_df[f"{var}_mean"] - generated_df[f"{var}_low"],    # lower
             generated_df[f"{var}_high"] - generated_df[f"{var}_mean"]    # upper
@@ -504,10 +532,15 @@ def plot_theta_chat_histogram(model, out_dir, seed=0, chunk_size=2000):
             capsize=6,
             width=0.6,
             linewidth=1.5,
-            edgecolor="black",
+            color=PAPER_BLUE,
+            edgecolor=PAPER_BLACK,
         )
+        ax.set_xlabel("Agent")
+        ax.set_ylabel(r"$\theta_k$" if var == "theta" else r"$\hat c_k$")
+        ax.tick_params(axis="both", which="major", labelsize=PAPER_FONT_SIZE)
         plt.tight_layout()
-        plt.savefig(os.path.join(out_dir, f"{var}_histogram.pdf"))
+        suffix = f"_{file_suffix}" if file_suffix else ""
+        plt.savefig(os.path.join(out_dir, f"{var}_histogram{suffix}.pdf"))
         plt.close(fig)
 
 
@@ -524,7 +557,8 @@ def select_plot_methods(models, loss_df=None, welfare_df=None,
                     (welfare_df, welfare_improvement_col)]:
         if df is None or col not in df.columns:
             continue
-        cand = df.drop(index=baseline_key, errors="ignore")[col].dropna()
+        baseline_label = METHOD_DISPLAY.get(baseline_key, baseline_key)
+        cand = df.drop(index=baseline_label, errors="ignore")[col].dropna()
         cand = cand[np.isfinite(cand)]
         if len(cand) == 0:
             continue

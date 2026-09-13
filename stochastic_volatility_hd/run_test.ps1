@@ -1,7 +1,7 @@
 $ErrorActionPreference = "Stop"
 Set-Location $PSScriptRoot
 
-# Full paper experiment pipeline.
+# Windows launcher for the full paper experiment pipeline.
 python numerical.py
 python main.py
 python main_calibrated.py

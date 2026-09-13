@@ -3,7 +3,7 @@
 The default comparison is
 
     low-Gini economy:   tau=0.20, v_mean=0.70
-    high-Gini economy:  tau=1.15, v_mean=0.40
+    high-Gini economy:  tau=1.15, v_mean=0.50
 
 Both economies are simulated with the same seed, so path p in one economy uses
 the same Gaussian innovations as path p in the other.  Inference is performed
@@ -14,7 +14,6 @@ checkpoints.  It does not include neural-network training uncertainty; repeat
 training with multiple training seeds to measure that component.
 """
 
-import argparse
 import gc
 import json
 import math
@@ -23,8 +22,25 @@ import os
 import numpy as np
 import torch
 
-from common import move_model
+from common import (BASE_TAU, MODEL_ROOT, PAPER_A, PAPER_GAMMA, PAPER_SIGMA,
+                    SIMULATION_SEED, move_model)
 from simulate import NNEconomy, _gini_rows, load_model, simulate
+
+CASE = "agents20"
+CONFIG = "timestep_rar"
+HIGH_TAU, HIGH_V_MEAN = BASE_TAU, 0.5
+LOW_TAU, LOW_V_MEAN = 0.2, 0.7
+PATHS = 100
+YEARS = 500.0
+DT = 0.08
+X0 = 0.2
+V0 = None
+BURN_IN_FRAC = 0.2
+BOOTSTRAP_SAMPLES = 20_000
+BOOTSTRAP_SEED = 12_345
+OUTPUT_PREFIX = os.path.join(
+    MODEL_ROOT, "gini_significance_tau1.15_v0.5_vs_tau0.2_v0.7"
+)
 
 
 def path_mean_ginis(economy, sim_result, burn_in_frac=0.2):
@@ -183,86 +199,54 @@ def write_report(output_prefix, report, high_path_ginis, low_path_ginis):
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Paired-path test of the agents20 Gini contrast."
-    )
-    parser.add_argument("--base-dir", default="./models")
-    parser.add_argument("--case", default="agents20")
-    parser.add_argument("--config", default="timestep_rar")
-    parser.add_argument("--high-tau", type=float, default=1.15)
-    parser.add_argument("--high-vmean", type=float, default=0.4)
-    parser.add_argument("--low-tau", type=float, default=0.2)
-    parser.add_argument("--low-vmean", type=float, default=0.7)
-    parser.add_argument("--a", type=float, default=0.1)
-    parser.add_argument("--sigma", type=float, default=0.06)
-    parser.add_argument("--gamma", type=float, default=6.0)
-    parser.add_argument("--paths", type=int, default=100)
-    parser.add_argument("--years", type=float, default=500.0)
-    parser.add_argument("--dt", type=float, default=0.08)
-    parser.add_argument("--x0", type=float, default=0.2)
-    parser.add_argument(
-        "--v0",
-        type=float,
-        default=None,
-        help="initial v; default is each economy's own v_mean",
-    )
-    parser.add_argument("--burn-in-frac", type=float, default=0.2)
-    parser.add_argument("--sim-seed", type=int, default=0)
-    parser.add_argument("--bootstrap-samples", type=int, default=20_000)
-    parser.add_argument("--bootstrap-seed", type=int, default=12_345)
-    parser.add_argument(
-        "--output-prefix",
-        default="./models/gini_significance_tau1.15_v0.4_vs_tau0.2_v0.7",
-    )
-    args = parser.parse_args()
-
     torch.set_default_dtype(torch.float64)
 
     common = dict(
-        base_dir=args.base_dir,
-        case=args.case,
-        config=args.config,
-        a=args.a,
-        sigma=args.sigma,
-        gamma=args.gamma,
-        paths=args.paths,
-        years=args.years,
-        dt=args.dt,
-        x0=args.x0,
-        v0=args.v0,
-        sim_seed=args.sim_seed,
-        burn_in_frac=args.burn_in_frac,
+        base_dir=MODEL_ROOT,
+        case=CASE,
+        config=CONFIG,
+        a=PAPER_A,
+        sigma=PAPER_SIGMA,
+        gamma=PAPER_GAMMA,
+        paths=PATHS,
+        years=YEARS,
+        dt=DT,
+        x0=X0,
+        v0=V0,
+        sim_seed=SIMULATION_SEED,
+        burn_in_frac=BURN_IN_FRAC,
     )
     high = simulate_path_ginis(
-        tau=args.high_tau, vmean=args.high_vmean, **common
+        tau=HIGH_TAU, vmean=HIGH_V_MEAN, **common
     )
     low = simulate_path_ginis(
-        tau=args.low_tau, vmean=args.low_vmean, **common
+        tau=LOW_TAU, vmean=LOW_V_MEAN, **common
     )
     inference = paired_inference(
         high,
         low,
-        bootstrap_samples=args.bootstrap_samples,
-        seed=args.bootstrap_seed,
+        bootstrap_samples=BOOTSTRAP_SAMPLES,
+        seed=BOOTSTRAP_SEED,
     )
     report = {
-        "high_parameters": {"tau": args.high_tau, "vmean": args.high_vmean},
-        "low_parameters": {"tau": args.low_tau, "vmean": args.low_vmean},
+        "high_parameters": {"tau": HIGH_TAU, "vmean": HIGH_V_MEAN},
+        "low_parameters": {"tau": LOW_TAU, "vmean": LOW_V_MEAN},
         "shared_parameters": {
-            "case": args.case,
-            "config": args.config,
-            "a": args.a,
-            "sigma": args.sigma,
-            "gamma_cli_note": (
-                "ignored by make_case for agents20; retained for loader compatibility"
+            "case": CASE,
+            "config": CONFIG,
+            "a": PAPER_A,
+            "sigma": PAPER_SIGMA,
+            "gamma_case_note": (
+                "PAPER_GAMMA is ignored by make_case for agents20; retained "
+                "for loader compatibility"
             ),
-            "paths": args.paths,
-            "years": args.years,
-            "dt": args.dt,
-            "x0": args.x0,
-            "v0": args.v0,
-            "burn_in_frac": args.burn_in_frac,
-            "sim_seed": args.sim_seed,
+            "paths": PATHS,
+            "years": YEARS,
+            "dt": DT,
+            "x0": X0,
+            "v0": V0,
+            "burn_in_frac": BURN_IN_FRAC,
+            "sim_seed": SIMULATION_SEED,
         },
         "inference": inference,
         "scope": (
@@ -270,9 +254,9 @@ def main():
             "training uncertainty excluded."
         ),
     }
-    write_report(args.output_prefix, report, high, low)
+    write_report(OUTPUT_PREFIX, report, high, low)
     print(json.dumps(report, indent=2))
-    print(f"\nSaved {args.output_prefix}.txt/.json and path-level .npz")
+    print(f"\nSaved {OUTPUT_PREFIX}.txt/.json and path-level .npz")
 
 
 if __name__ == "__main__":

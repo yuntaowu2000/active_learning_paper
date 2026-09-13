@@ -424,7 +424,7 @@ def get_model(model_path, K, expert_idx, household_idx, gamma_vec,
               min_inner=1000, loss_log_interval=50, max_t=1.0, init_guess=None,
               share_alpha_lo=SHARE_ALPHA_LO, share_alpha_hi=SHARE_ALPHA_HI,
               lr_decay_every=20, lr_decay_gamma=0.5, loss_balancing_alpha=0.9, loss_balancing_temp=0.1, bernoulli_prob=0.99,
-              t0_frac=0.4):
+              t0_frac=0.4, seed=TRAINING_SEED):
     """Assemble (and train if no checkpoint) the heterogeneous N-agent SV model.
 
     expert_idx / household_idx : 0-based agent indices (their union is 0..K-1).
@@ -432,7 +432,7 @@ def get_model(model_path, K, expert_idx, household_idx, gamma_vec,
     init_guess                 : optional {name: value} seed for the time-boundary in
                                  time-stepping.
     """
-    set_seeds(0)
+    set_seeds(seed)
 
     # TODO: set the initial batch size to be half for RAR as an experiment
     if rar:

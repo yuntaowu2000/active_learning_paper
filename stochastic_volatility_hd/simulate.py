@@ -35,8 +35,8 @@ Usage (examples)::
     python sv_n_agents_simulate.py --source numerical --sigma 0.04 --gamma 10
 """
 
-import argparse
 import os
+import json
 from typing import Union
 from itertools import product
 
@@ -45,38 +45,67 @@ import torch
 import matplotlib
 import matplotlib.pyplot as plt
 
-from common import BASE_PARAMS, CONFIGS, V_DOMAIN, make_case
+from common import *
 from model import get_model, PDEModelNAgentsSV, PDEModelTimeStepNAgentsSV
 from numerical import DITELLA_PARAMS, solve_ditella
 
 
 matplotlib.use("Agg")
+configure_paper_plots()
 # ---------------------------------------------------------------------------
 # Model loading
 # ---------------------------------------------------------------------------
 
-def load_model(base_dir, case, config="timestep", width=64, layers=4,
-               gamma=None, tau=None, sigma=None, a=None, vmean=0.25):
-    """Load a trained checkpoint (``model_best.pt``) for ``case``/``config``.
+def load_model(base_dir=MODEL_ROOT, case="agents2", config="timestep_rar",
+               width=64, layers=4, gamma=PAPER_GAMMA,
+               tau=BASE_TAU, sigma=PAPER_SIGMA, a=PAPER_A,
+               vmean=BASE_V_MEAN):
+    """Load a trained checkpoint for ``case``/``config``.
 
-    The economic parameters MUST match those used at training time -- the saved
-    weights only encode the *functions* xi/zeta/p, while every equilibrium
-    object (pi, sigma+sigma_p, the idiosyncratic term, mu_x, ...) is recomputed
-    from ``a``, ``sigma``, ``gamma``, ``tau`` at evaluation time.  Loading with
-    the wrong constants silently produces a different economy on the same
-    weights.  Params are parsed from the ``free_pr_{gamma}_{tau}_{sigma}_{a}``
-    directory name; explicit arguments override the parsed values.
+    New runs contain ``experiment.json``; its economic parameters are validated
+    before model construction so a checkpoint cannot silently be evaluated as a
+    different economy.
     """
     ts, rar, lb = CONFIGS[config]
     K, eidx, hidx, gamma_vec = make_case(case, gamma)
-    subpath_name = case if tau == 1.15 else f"{case}_{tau}"
-    if vmean != 0.25:
-        subpath_name = f"{case}_{tau}_{vmean}"
-    mpath = os.path.join(base_dir, subpath_name, config)
-    if not os.path.exists(os.path.join(mpath, "model_best.pt")):
-        raise FileNotFoundError(f"no trained checkpoint at {mpath}/model_best.pt -- train first.")
-    print(f"[load_model] params from '{os.path.basename(os.path.normpath(base_dir))}': "
-          f"gamma={gamma} tau={tau} sigma={sigma} a={a}")
+    mpath = model_dir(case, config, tau, vmean, base_dir)
+    checkpoint_paths = [
+        os.path.join(mpath, "model_best.pt"),
+        os.path.join(mpath, "model.pt"),
+    ]
+    if not any(os.path.exists(path) for path in checkpoint_paths):
+        raise FileNotFoundError(
+            f"no trained checkpoint under {mpath} -- train first"
+        )
+    metadata_path = os.path.join(os.path.dirname(mpath), "experiment.json")
+    expected = {
+        "tau": float(tau), "v_mean": float(vmean),
+        "a": float(a), "sigma": float(sigma),
+    }
+    if os.path.exists(metadata_path):
+        with open(metadata_path, encoding="utf-8") as file:
+            metadata = json.load(file)
+        trained = metadata["parameters"]
+        mismatches = {
+            key: (trained.get(key), value)
+            for key, value in expected.items()
+            if not np.isclose(trained.get(key, np.nan), value)
+        }
+        trained_gamma = np.asarray(metadata.get("gamma", []), dtype=float)
+        if (
+            trained_gamma.shape != np.asarray(gamma_vec).shape
+            or not np.allclose(trained_gamma, gamma_vec)
+        ):
+            mismatches["gamma"] = (trained_gamma.tolist(), gamma_vec)
+        if mismatches:
+            raise ValueError(
+                f"checkpoint parameter mismatch at {metadata_path}: "
+                f"{mismatches}"
+            )
+    print(
+        f"[load_model] {case}/{config}: gamma={gamma} tau={tau} "
+        f"v_mean={vmean} sigma={sigma} a={a}"
+    )
     model = get_model(
         mpath, K, eidx, hidx, gamma_vec,
         model_size=[width] * layers,
@@ -305,32 +334,52 @@ def analyze(economy, sim, out_dir, burn_in_frac=0.2):
     v_pool = v_hist[burn:].reshape(-1)              # (Tb*P,)
     XE_pool = _expert_total_share(economy, x_pool).reshape(-1)  # (Tb*P,)
 
-    # ---- marginal + joint distributions -----------------------------------
-    fig, ax = plt.subplots(1, 3, figsize=(18, 5))
-    ax[0].hist(XE_pool, bins=60, density=True, color="C0", alpha=0.8)
-    ax[0].set_title("Marginal: aggregate expert share $X_E$")
-    ax[0].set_xlabel("$X_E$")
-    ax[1].hist(v_pool, bins=60, density=True, color="C1", alpha=0.8)
-    ax[1].set_title("Marginal: volatility state $v$")
-    ax[1].set_xlabel("$v$")
-    h = ax[2].hist2d(XE_pool, v_pool, bins=60, density=True, cmap="viridis")
-    fig.colorbar(h[3], ax=ax[2])
-    ax[2].set_title("Joint distribution $(X_E, v)$")
-    ax[2].set_xlabel("$X_E$"); ax[2].set_ylabel("$v$")
+    # ---- marginal + joint distributions: one panel per PDF ----------------
+    fig, ax = plt.subplots(figsize=PAPER_FIGSIZE)
+    ax.hist(XE_pool, bins=60, density=True, color=PAPER_BLUE, alpha=0.8)
+    ax.set_xlabel("$X_E$"); ax.set_ylabel("Density")
+    ax.tick_params(axis="both", which="major", labelsize=PAPER_FONT_SIZE)
     fig.tight_layout()
-    fig.savefig(os.path.join(out_dir, "distribution.pdf"))
+    fig.savefig(os.path.join(out_dir, "distribution_expert_share.pdf"))
     plt.close(fig)
 
-    # ---- a few sample paths of X_E and v ----------------------------------
-    fig, ax = plt.subplots(1, 2, figsize=(14, 5))
-    XE_path = _expert_total_share(economy, x_hist)    # (T, P)
-    for pth in range(min(10, XE_path.shape[1])):
-        ax[0].plot(t, XE_path[:, pth], lw=0.6, alpha=0.7)
-        ax[1].plot(t, v_hist[:, pth], lw=0.6, alpha=0.7)
-    ax[0].set_title("$X_E$ sample paths"); ax[0].set_xlabel("years")
-    ax[1].set_title("$v$ sample paths"); ax[1].set_xlabel("years")
+    fig, ax = plt.subplots(figsize=PAPER_FIGSIZE)
+    ax.hist(v_pool, bins=60, density=True, color=PAPER_GREEN, alpha=0.8)
+    ax.set_xlabel("$v$"); ax.set_ylabel("Density")
+    ax.tick_params(axis="both", which="major", labelsize=PAPER_FONT_SIZE)
     fig.tight_layout()
-    fig.savefig(os.path.join(out_dir, "sample_paths.pdf"))
+    fig.savefig(os.path.join(out_dir, "distribution_v.pdf"))
+    plt.close(fig)
+
+    fig, ax = plt.subplots(figsize=PAPER_FIGSIZE)
+    h = ax.hist2d(XE_pool, v_pool, bins=60, density=True, cmap="viridis")
+    cbar = fig.colorbar(h[3], ax=ax)
+    cbar.set_label("Density")
+    cbar.ax.tick_params(labelsize=PAPER_FONT_SIZE)
+    ax.set_xlabel("$X_E$"); ax.set_ylabel("$v$")
+    ax.tick_params(axis="both", which="major", labelsize=PAPER_FONT_SIZE)
+    fig.tight_layout()
+    fig.savefig(os.path.join(out_dir, "distribution_joint.pdf"))
+    plt.close(fig)
+
+    # ---- a few sample paths: one state per PDF -----------------------------
+    XE_path = _expert_total_share(economy, x_hist)    # (T, P)
+    fig, ax = plt.subplots(figsize=PAPER_FIGSIZE)
+    for pth in range(min(10, XE_path.shape[1])):
+        ax.plot(t, XE_path[:, pth], lw=1.5, alpha=0.7)
+    ax.set_xlabel("Years"); ax.set_ylabel("$X_E$")
+    ax.tick_params(axis="both", which="major", labelsize=PAPER_FONT_SIZE)
+    fig.tight_layout()
+    fig.savefig(os.path.join(out_dir, "sample_paths_expert_share.pdf"))
+    plt.close(fig)
+
+    fig, ax = plt.subplots(figsize=PAPER_FIGSIZE)
+    for pth in range(min(10, XE_path.shape[1])):
+        ax.plot(t, v_hist[:, pth], lw=1.5, alpha=0.7)
+    ax.set_xlabel("Years"); ax.set_ylabel("$v$")
+    ax.tick_params(axis="both", which="major", labelsize=PAPER_FONT_SIZE)
+    fig.tight_layout()
+    fig.savefig(os.path.join(out_dir, "sample_paths_v.pdf"))
     plt.close(fig)
 
     # ---- risk premia at the simulated mean state --------------------------
@@ -405,13 +454,13 @@ def plot_portfolio_deciles(economy, sim, out_dir, n_deciles=10, burn_in_frac=0.2
     dec_wealth = np.array([wealth_s[edges[i]:edges[i + 1]].mean() for i in range(n_deciles)])
 
     deciles = np.arange(1, n_deciles + 1)
-    fig, ax = plt.subplots(figsize=(7, 4))
-    ax.bar(deciles, dec_risky, color="0.35")
+    fig, ax = plt.subplots(figsize=PAPER_FIGSIZE)
+    ax.bar(deciles, dec_risky, color=PAPER_BLUE)
     ax.set_xlabel("Wealth decile (1 = poorest, 10 = richest)")
     ax.set_ylabel(r"Risky assets / total wealth ($\theta_k$)")
     ax.set_xticks(deciles)
     ax.set_ylim(bottom=0)
-    ax.set_title("Risky-asset holdings (share of total wealth) by wealth decile")
+    ax.tick_params(axis="both", which="major", labelsize=PAPER_FONT_SIZE)
     fig.tight_layout()
     fig.savefig(os.path.join(out_dir, file_name))
     plt.close(fig)
@@ -509,10 +558,10 @@ def plot_portfolio_terciles(economy, sim, out_dir, burn_in_frac=0.2,
     own = np.minimum(cap_frac, 1.0)                 # own-funded capital
     lev = np.maximum(cap_frac - 1.0, 0.0)           # borrowed (levered) capital > 1
     rf = np.maximum(1.0 - cap_frac, 0.0)            # positive risk-free (households)
-    fig, ax = plt.subplots(figsize=(7, 4.5))
-    ax.bar(xpos, own, color="#4C72B0", label="Capital, own-funded")
-    ax.bar(xpos, rf, bottom=own, color="#DD8452", label="Risk-free (bonds)")
-    ax.bar(xpos, lev, bottom=1.0, color="#C44E52", hatch="//",
+    fig, ax = plt.subplots(figsize=PAPER_FIGSIZE)
+    ax.bar(xpos, own, color=PAPER_BLUE, label="Capital, own-funded")
+    ax.bar(xpos, rf, bottom=own, color=PAPER_GRAY, label="Risk-free (bonds)")
+    ax.bar(xpos, lev, bottom=1.0, color=PAPER_RED, hatch="//",
            label="Capital, levered (borrowed)")
     ax.axhline(1.0, ls="--", color="k", lw=1.2)
     ax.text(n_bins - 0.5, 1.02, "own wealth = 1", ha="right", va="bottom", fontsize=9)
@@ -521,23 +570,23 @@ def plot_portfolio_terciles(economy, sim, out_dir, burn_in_frac=0.2,
                 f"{cap_frac[i]:.2f}", ha="center", va="bottom", fontsize=9)
     ax.set_xticks(xpos); ax.set_xticklabels(labels)
     ax.set_ylabel(r"Portfolio as fraction of own wealth ($\theta_k/x_k$)")
-    ax.set_title("Balance sheet by group (net worth = 1)")
     ax.set_ylim(bottom=0)
-    ax.legend(fontsize=8, loc="upper left")
+    ax.tick_params(axis="both", which="major", labelsize=PAPER_FONT_SIZE)
+    ax.legend(frameon=False, loc="upper left")
     fig.tight_layout()
     fig.savefig(os.path.join(out_dir, f"{file_prefix}_balance_sheet.pdf"))
     plt.close(fig)
 
     # ---- figure 2: bounded share of aggregate capital ----------------------
-    fig, ax = plt.subplots(figsize=(7, 4.5))
-    ax.bar(xpos, cap_share, color="0.35")
+    fig, ax = plt.subplots(figsize=PAPER_FIGSIZE)
+    ax.bar(xpos, cap_share, color=PAPER_BLUE)
     for i in range(n_bins):
         ax.text(xpos[i], cap_share[i] + 0.01, f"{cap_share[i]:.2f}",
                 ha="center", va="bottom", fontsize=9)
     ax.set_xticks(xpos); ax.set_xticklabels(labels)
     ax.set_ylabel("Share of aggregate capital held")
-    ax.set_title("Share of the economy's capital by group (sums to 1)")
     ax.set_ylim(0, min(1.0, cap_share.max() * 1.2 + 0.05))
+    ax.tick_params(axis="both", which="major", labelsize=PAPER_FONT_SIZE)
     fig.tight_layout()
     fig.savefig(os.path.join(out_dir, f"{file_prefix}_capital_share.pdf"))
     plt.close(fig)
@@ -640,8 +689,8 @@ def plot_wealth_distribution(economy, sim, out_dir, burn_in_frac=0.2,
     except Exception:                                          # scipy optional
         gaussian_kde = None
 
-    fig, axes = plt.subplots(1, 2, figsize=(13, 4.5))
-    for ax, logx in zip(axes, (False, True)):
+    for logx, suffix in ((False, "linear"), (True, "log10")):
+        fig, ax = plt.subplots(figsize=PAPER_FIGSIZE)
         if logx:
             data = np.log10(x)
             bins = np.linspace(data.min(), data.max(), 60)
@@ -652,26 +701,31 @@ def plot_wealth_distribution(economy, sim, out_dir, burn_in_frac=0.2,
             bins = 60
             med_m, p95_m = med, pv[95]
             xlabel = r"wealth share $x_k$"
-        ax.hist(data, bins=bins, density=True, color="C0", alpha=0.55)
+        ax.hist(data, bins=bins, density=True, color=PAPER_BLUE, alpha=0.55)
         if gaussian_kde is not None and data.size > 2 and data.std() > 0:
             kde = gaussian_kde(data)
             grid = np.linspace(data.min(), data.max(), 400)
-            ax.plot(grid, kde(grid), color="navy", lw=1.8, label="KDE density")
-        ax.axvline(med_m, color="green", ls="--", lw=1.5, label=f"median = {med:.4f}")
-        ax.axvline(p95_m, color="red", ls="--", lw=1.5, label=f"p95 = {pv[95]:.4f}")
+            ax.plot(grid, kde(grid), color=PAPER_BLACK, label="KDE density")
+        ax.axvline(med_m, color=PAPER_GREEN, ls="--",
+                   label=f"median = {med:.4f}")
+        ax.axvline(p95_m, color=PAPER_RED, ls="-.",
+                   label=f"p95 = {pv[95]:.4f}")
         ax.set_xlabel(xlabel)
-        ax.set_ylabel("density")
-        ax.legend(fontsize=9)
-        ax.set_title(("log10 scale" if logx else "linear scale"))
-    axes[1].text(0.98, 0.95,
-                 f"p95/median = {ratios['p95/median']:.2f}\n"
-                 f"Gini = {gini['gini_cross_section_mean']:.3f}",
-                 transform=axes[1].transAxes, ha="right", va="top", fontsize=11,
-                 bbox=dict(boxstyle="round", fc="white", ec="0.7"))
-    fig.suptitle(f"Cross-sectional wealth-share distribution (pooled agents x sim, {window})")
-    fig.tight_layout()
-    fig.savefig(os.path.join(out_dir, file_name))
-    plt.close(fig)
+        ax.set_ylabel("Density")
+        ax.legend(frameon=False)
+        ax.tick_params(axis="both", which="major", labelsize=PAPER_FONT_SIZE)
+        if logx:
+            ax.text(
+                0.98, 0.95,
+                f"p95/median = {ratios['p95/median']:.2f}\n"
+                f"Gini = {gini['gini_cross_section_mean']:.3f}",
+                transform=ax.transAxes, ha="right", va="top",
+                fontsize=14,
+            )
+        fig.tight_layout()
+        stem, ext = os.path.splitext(file_name)
+        fig.savefig(os.path.join(out_dir, f"{stem}_{suffix}{ext or '.pdf'}"))
+        plt.close(fig)
 
     lines = [f"window: {window}", f"n_obs: {x.size}", f"n_agents(K): {x_full.shape[1]}"]
     lines += [f"p{q}: {pv[q]:.6f}" for q in qs]
@@ -840,19 +894,7 @@ def impulse_response(economy, years_burn=250.0, years_irf=30.0, dt=0.02,
 
 def plot_impulse_response(economy, irf, out_dir, file_name="impulse_response.pdf",
                           xmax=10.0):
-    """Plot per-agent wealth-share IMPULSE RESPONSES and aggregates for the IRF.
-
-    Top-left: every agent's wealth-share response ``x_k(t) - baseline`` so the
-    reaction of each agent is visible on a comparable scale (levels are dominated
-    by the big saver household).  Experts are colour-graded by risk aversion;
-    each household gets its OWN distinct colour (red/magenta/brown/black) and a
-    legend entry so it's clear which household gains vs loses.  Others: aggregate
-    expert share ``X_E``, volatility state ``v``, price ``p``.
-
-    ``xmax`` caps the x-axis (years since shock) since the response has decayed
-    by then.  If ``irf['vfix']`` is present, its curves are overlaid (dashed) so
-    the full IRF can be compared against the ``v``-held-constant counterfactual.
-    """
+    """Write one paper-ready PDF for each IRF outcome."""
     os.makedirs(out_dir, exist_ok=True)
     t = irf["t"]; base = irf["base"]; shock = irf["shock"]; vfix = irf.get("vfix")
     K = economy.K
@@ -861,53 +903,60 @@ def plot_impulse_response(economy, irf, out_dir, file_name="impulse_response.pdf
     dev = shock["x_full"] - base["x_full"]                 # (T, K) wealth-share IRF
     dev_vf = (vfix["x_full"] - base["x_full"]) if vfix is not None else None
     xlim = (float(t[0]), float(xmax))
-    hh_colors = ["tab:red", "tab:purple", "saddlebrown", "black", "deeppink", "olive"]
+    hh_colors = [PAPER_RED, PAPER_ORANGE, PAPER_BLACK, PAPER_GREEN]
+    stem, ext = os.path.splitext(file_name)
+    ext = ext or ".pdf"
 
-    fig, axes = plt.subplots(2, 2, figsize=(12, 8))
-    ax = axes[0, 0]
+    fig, ax = plt.subplots(figsize=PAPER_FIGSIZE)
     ge = gam[eidx]
     gmin, gmax = float(ge.min()), float(ge.max())
     cmap = plt.get_cmap("viridis")
     for k in eidx:
         c = cmap((gam[k] - gmin) / (gmax - gmin + 1e-12))
-        ax.plot(t, dev[:, k], color=c, lw=1.3)
+        ax.plot(t, dev[:, k], color=c, lw=1.5)
         if dev_vf is not None:
-            ax.plot(t, dev_vf[:, k], color=c, lw=0.9, ls="--", alpha=0.7)
+            ax.plot(t, dev_vf[:, k], color=c, lw=1.0, ls="--", alpha=0.7)
     for j, k in enumerate(hidx):
         col = hh_colors[j % len(hh_colors)]
         ax.plot(t, dev[:, k], color=col, lw=2.0,
                 label=f"household {k} ($\\gamma$={gam[k]:g})")
         if dev_vf is not None:
             ax.plot(t, dev_vf[:, k], color=col, lw=1.1, ls="--", alpha=0.7)
-    ax.axhline(0.0, color="0.6", lw=0.6)
-    ax.axvline(0.0, color="red", lw=0.8, alpha=0.5)
+    ax.axhline(0.0, color=PAPER_GRAY, lw=1)
+    ax.axvline(0.0, color=PAPER_RED, lw=1)
     ax.set_xlim(*xlim)
-    ax.set_xlabel("years since shock")
+    ax.set_xlabel("Years since shock")
     ax.set_ylabel(r"wealth-share response $x_k - x_k^{\rm base}$")
-    ax.set_title(f"Per-agent wealth-share response (-{irf['shock_sd']:g}$\\sigma$ shock)")
     sm = plt.cm.ScalarMappable(cmap=cmap, norm=plt.Normalize(gmin, gmax))
     cb = fig.colorbar(sm, ax=ax); cb.set_label(r"expert risk aversion $\gamma$")
+    cb.ax.tick_params(labelsize=PAPER_FONT_SIZE)
     if hidx:
-        ax.legend(frameon=False, fontsize=8, loc="best", title="households")
-
-    def _panel(ax, key, color, title, ylabel):
-        ax.plot(t, shock[key], color=color, lw=1.6, label="shocked (full)")
-        ax.plot(t, base[key], color=color, lw=0.9, ls=":", label="baseline")
-        if vfix is not None:
-            ax.plot(t, vfix[key], color="0.35", lw=1.4, ls="--", label="shocked (v-fixed)")
-        ax.axvline(0.0, color="red", lw=0.8, alpha=0.5)
-        ax.set_xlim(*xlim)
-        ax.set_xlabel("years since shock"); ax.set_ylabel(ylabel)
-        ax.set_title(title); ax.legend(frameon=False)
-
-    _panel(axes[0, 1], "X_E", "C0", "Aggregate expert wealth share", r"$X_E$")
-    _panel(axes[1, 0], "v", "C3", "Idiosyncratic-risk state $v$", r"$v$")
-    _panel(axes[1, 1], "p", "C2", "Capital price $p$", r"$p$")
-
+        ax.legend(frameon=False, loc="best")
+    ax.tick_params(axis="both", which="major", labelsize=PAPER_FONT_SIZE)
     fig.tight_layout()
-    fig.savefig(os.path.join(out_dir, file_name))
+    fig.savefig(os.path.join(out_dir, f"{stem}_agents{ext}"))
     plt.close(fig)
-    print(f"[irf] wrote {os.path.join(out_dir, file_name)}")
+
+    def _single_panel(key, color, ylabel, suffix):
+        fig, ax = plt.subplots(figsize=PAPER_FIGSIZE)
+        ax.plot(t, shock[key], color=color, label="Shocked")
+        ax.plot(t, base[key], color=PAPER_BLACK, ls=":", label="Baseline")
+        if vfix is not None:
+            ax.plot(t, vfix[key], color=PAPER_GRAY, ls="--",
+                    label="$v$ held fixed")
+        ax.axvline(0.0, color=PAPER_RED, lw=1)
+        ax.set_xlim(*xlim)
+        ax.set_xlabel("Years since shock"); ax.set_ylabel(ylabel)
+        ax.tick_params(axis="both", which="major", labelsize=PAPER_FONT_SIZE)
+        ax.legend(frameon=False)
+        fig.tight_layout()
+        fig.savefig(os.path.join(out_dir, f"{stem}_{suffix}{ext}"))
+        plt.close(fig)
+
+    _single_panel("X_E", PAPER_BLUE, r"$X_E$", "expert_share")
+    _single_panel("v", PAPER_RED, r"$v$", "v")
+    _single_panel("p", PAPER_GREEN, r"$p$", "price")
+    print(f"[irf] wrote split IRF PDFs under {out_dir}")
 
 
 # ---------------------------------------------------------------------------
@@ -997,140 +1046,50 @@ def sweep_risk_premium(a_list, sigmas, gammas, taus=None, base_overrides=None, h
     return df
 
 
+def run_simulation(case, tau=BASE_TAU, vmean=BASE_V_MEAN,
+                   config="timestep_rar", base_dir=MODEL_ROOT,
+                   gamma=PAPER_GAMMA, a=PAPER_A, sigma=PAPER_SIGMA,
+                   paths=100, years=500.0, dt=0.08,
+                   x0=0.2, v0=0.1, seed=SIMULATION_SEED,
+                   include_irf=True):
+    """Run the complete paper simulation suite for one trained checkpoint."""
+    torch.set_default_dtype(torch.float64)
+    model = load_model(
+        base_dir, case, config, gamma=gamma, tau=tau,
+        sigma=sigma, a=a, vmean=vmean,
+    )
+    economy = NNEconomy(model)
+    out_dir = simulation_dir(case, config, tau, vmean, base_dir)
+    sim_result = simulate(
+        economy, n_paths=paths, years=years, dt=dt,
+        x0=x0, v0=v0, seed=seed,
+    )
+    summary = analyze(economy, sim_result, out_dir)
+    portfolio = plot_portfolio_deciles(economy, sim_result, out_dir, seed=seed)
+    terciles = plot_portfolio_terciles(economy, sim_result, out_dir, seed=seed)
+    wealth = plot_wealth_distribution(economy, sim_result, out_dir)
+    if include_irf:
+        irf = impulse_response(
+            economy, x0=x0, v0=v0, seed=seed, include_vfixed=True,
+        )
+        plot_impulse_response(economy, irf, out_dir, xmax=7.0)
+    return {
+        "model": model,
+        "economy": economy,
+        "simulation": sim_result,
+        "summary": summary,
+        "portfolio": portfolio,
+        "terciles": terciles,
+        "wealth": wealth,
+        "output_dir": out_dir,
+    }
+
+
 def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--source", default="nn", choices=["nn", "numerical"])
-    # NN options
-    parser.add_argument("--case", default="agents2")
-    parser.add_argument("--config", default="timestep", choices=list(CONFIGS))
-    parser.add_argument("--base-dir", default="./models/SV_NAgents_64bit_baseline_6.0_1.15_0.06_0.1")
-    parser.add_argument("--float64", action="store_true")
-    parser.add_argument("--width", type=int, default=64)
-    parser.add_argument("--layers", type=int, default=4)
-    # numerical-solver parameter overrides (for risk-premium exploration)
-    parser.add_argument("--sigma", type=float, default=None)
-    parser.add_argument("--gamma", type=float, default=None)
-    parser.add_argument("--phi", type=float, default=None)
-    parser.add_argument("--tau", type=float, default=None,
-                        help="Poisson expert-retirement rate override")
-    parser.add_argument("--sigv-mean", type=float, default=None)
-    parser.add_argument("--vmean", type=float, default=0.25)
-    parser.add_argument("--h", type=float, default=2e-4)
-    parser.add_argument("--iters", type=int, default=300_000)
-    # parameter-sweep mode (numerical solver): tabulate risk premium
-    parser.add_argument("--sweep", action="store_true",
-                        help="sweep sigma x gamma x tau and tabulate the risk premium")
-    parser.add_argument("--a", default="0.1,0.2,0.5,1")
-    parser.add_argument("--sigmas", default="0.0125,0.02,0.025,0.028,0.04,0.06")
-    parser.add_argument("--gammas", default="5,6,8,10,15")
-    parser.add_argument("--taus", default="1.15,1.5,2.0", help="comma list of tau values to sweep (default: baseline tau only)")
-    parser.add_argument("--sweep-fixed", action="store_true",
-                        help="evaluate the sweep at a fixed representative state "
-                             "(x=0.5, v=mean) instead of the simulated stationary mean")
-    parser.add_argument("--sweep-paths", type=int, default=50,
-                        help="paths for the per-combination sweep simulation")
-    parser.add_argument("--sweep-years", type=float, default=300.0,
-                        help="horizon (years) for the per-combination sweep simulation")
-    parser.add_argument("--sweep-out", default="./ditella_rp_sweep.csv")
-    # simulation options
-    parser.add_argument("--paths", type=int, default=100)
-    parser.add_argument("--years", type=float, default=500.0)
-    parser.add_argument("--dt", type=float, default=0.08)
-    parser.add_argument("--x0", type=float, default=0.2)
-    parser.add_argument("--v0", type=float, default=0.1)
-    parser.add_argument("--seed", type=int, default=0)
-    parser.add_argument("--portfolio", action="store_true",
-                        help="plot risky-asset share (theta_k) of total wealth by wealth decile")
-    parser.add_argument("--portfolio-terciles", action="store_true",
-                        help="plot BOTH tercile views (balance-sheet theta/x + bounded "
-                             "share-of-aggregate-capital), grouped by own-wealth capital share")
-    parser.add_argument("--wealth-dist", action="store_true",
-                        help="plot the cross-sectional wealth-share distribution and report "
-                             "p95/median (+ p75/p25, p90/median, p99/median)")
-    parser.add_argument("--wealth-dist-last", type=int, default=0,
-                        help="pool only the last N simulation steps for --wealth-dist "
-                             "(0 = use burn-in fraction; e.g. 500)")
-    parser.add_argument("--irf", action="store_true",
-                        help="deterministic impulse response to a -N*sigma aggregate/capital shock")
-    parser.add_argument("--irf-sd", type=float, default=2.0,
-                        help="shock size in std devs (default 2)")
-    parser.add_argument("--irf-years", type=float, default=30.0,
-                        help="IRF horizon in years after the shock")
-    parser.add_argument("--irf-dt", type=float, default=0.05,
-                        help="IRF deterministic-path time step")
-    parser.add_argument("--irf-hold-v", action="store_true",
-                        help="also compute/overlay the v-held-constant counterfactual "
-                             "(shuts down the uncertainty channel; removes the overshoot)")
-    parser.add_argument("--irf-plot-years", type=float, default=7.0,
-                        help="cap the IRF plot x-axis at this many years since the shock")
-    parser.add_argument("--irf-v-start", type=float, default=None,
-                        help="override the ergodic v* as the IRF start/baseline v "
-                             "(e.g. set to v_mean; clipped into the v-domain)")
-    args = parser.parse_args()
-
-    if args.float64:
-        torch.set_default_dtype(torch.float64)
-
-    if args.sweep:
-        print("Computing sweeps")
-        a_list = [float(a) for a in args.a.split(",")]
-        sigmas = [float(s) for s in args.sigmas.split(",")]
-        gammas = [float(g) for g in args.gammas.split(",")]
-        taus = [float(t) for t in args.taus.split(",")] if args.taus else None
-        df = sweep_risk_premium(
-            a_list, sigmas, gammas, taus=taus, h=args.h, max_iters=args.iters,
-            use_simulation=True,
-            sim_kwargs=dict(n_paths=args.sweep_paths, years=args.sweep_years,
-                            dt=args.dt, x0=args.x0, v0=args.v0, seed=args.seed),
-            csv_path=args.sweep_out)
-        print("\n[sweep] risk-premium table:")
-        print(df.to_string(index=False))
-        return
-
-    if args.source == "nn":
-        model = load_model(args.base_dir, args.case, args.config, width=args.width,
-                           layers=args.layers, gamma=args.gamma, tau=args.tau,
-                           sigma=args.sigma, a=args.a, vmean=args.vmean)
-        economy = NNEconomy(model)
-        subpath_name = args.case if args.tau == 1.15 else f"{args.case}_{args.tau}"
-        if args.vmean != 0.25:
-            subpath_name = f"{args.case}_{args.tau}_{args.vmean}"
-        out_dir = os.path.join(args.base_dir, subpath_name, args.config, "simulation")
-    else:
-        overrides = {"sigma": args.sigma, "gamma": args.gamma, "phi": args.phi,
-                     "tau": args.tau, "sigv_mean": args.sigv_mean}
-        economy = build_numerical_economy(overrides, h=args.h, max_iters=args.iters)
-        out_dir = "./ditella_numerical_simulation"
-    sim = simulate(economy, n_paths=args.paths, years=args.years, dt=args.dt,
-                   x0=args.x0, v0=args.v0, seed=args.seed)
-    analyze(economy, sim, out_dir)
-    if args.portfolio:
-        plot_portfolio_deciles(economy, sim, out_dir)
-    if args.portfolio_terciles:
-        plot_portfolio_terciles(economy, sim, out_dir)
-    if args.wealth_dist:
-        plot_wealth_distribution(economy, sim, out_dir,
-                                 last_steps=(args.wealth_dist_last or None))
-    if args.irf:
-        irf = impulse_response(economy, years_irf=args.irf_years, dt=args.irf_dt,
-                               shock_sd=args.irf_sd, x0=args.x0, v0=args.v0,
-                               seed=args.seed, include_vfixed=args.irf_hold_v,
-                               v_start=args.irf_v_start)
-        plot_impulse_response(economy, irf, out_dir, xmax=args.irf_plot_years)
+    """Reproduce simulations for the three baseline paper cases."""
+    for case in BASE_CASES:
+        run_simulation(case)
 
 
 if __name__ == "__main__":
     main()
-
-'''
-Example invocations (base-dir matches main.py's tagged output directory):
-
-# comparative-statics sweep via the finite-difference solver (section 4.4)
-python simulate.py --sweep --sigmas 0.0125,0.028,0.04 --gammas 5,10 --taus 0.5,1.15,2.0 --sweep-out ./ditella_rp_sweep.csv
-
-# simulate + portfolio deciles + impulse response for the best 2-D model
-python simulate.py --float64 --base-dir ./models/SV_NAgents_64bit_260713_t0frac0.4_6.0_1.15_0.06_0.1 --case agents2 --config timestep_rar --gamma 6.0 --a 0.1 --sigma 0.06 --tau 1.15 --portfolio --irf --irf-hold-v
-
-# high-dimensional portfolio choice (section 4.2/4.4)
-python simulate.py --float64 --base-dir ./models/SV_NAgents_64bit_260713_t0frac0.4_6.0_1.15_0.06_0.1 --case agents20 --config timestep_rar --gamma 6.0 --a 0.1 --sigma 0.06 --tau 1.15 --portfolio
-'''

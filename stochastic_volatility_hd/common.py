@@ -1,6 +1,7 @@
 import contextlib
 import gc
 import math
+import os
 
 import numpy as np
 import torch
@@ -12,6 +13,87 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 # pin every network's VRAM at once; each model is moved to EVAL_DEVICE only for
 # the duration of its own forward pass.
 EVAL_DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+
+# Reproducible paper presets.  Entry points intentionally use these constants
+# instead of command-line argument matrices.
+MODEL_ROOT = "./models"
+PAPER_A = 0.1
+PAPER_SIGMA = 0.06
+PAPER_GAMMA = 6.0
+BASE_TAU = 1.15
+BASE_V_MEAN = 0.25
+TRAINING_SEED = 0
+SIMULATION_SEED = 0
+
+BASE_CASES = ("agents2", "agents20", "agents40")
+CALIBRATED_CASES = (
+    "agents20", "agents20_cali", "agents20_cali7",
+    "agents40", "agents40_cali", "agents40_cali7",
+)
+CALIBRATED_TAUS = (0.2, 0.5, 1.15)
+CALIBRATED_V_MEANS = (0.25, 0.5, 0.7)
+
+# Match the paper style used by free_boundary_model.
+PAPER_BLUE = "#5492ab"
+PAPER_GRAY = "#D9D9D9"
+PAPER_GREEN = "#317e46"
+PAPER_BLACK = "#000000"
+PAPER_ORANGE = "#D07A28"
+PAPER_RED = "#A63D40"
+PAPER_FIGSIZE = (8, 6)
+PAPER_FONT_SIZE = 20
+
+
+def configure_paper_plots():
+    """Apply the common paper figure style to the active Matplotlib backend."""
+    import matplotlib.pyplot as plt
+
+    plt.rcParams.update({
+        "font.size": PAPER_FONT_SIZE,
+        "axes.labelsize": PAPER_FONT_SIZE,
+        "xtick.labelsize": PAPER_FONT_SIZE,
+        "ytick.labelsize": PAPER_FONT_SIZE,
+        "legend.fontsize": PAPER_FONT_SIZE,
+        "lines.linewidth": 3,
+        "lines.markersize": 10,
+        "pdf.fonttype": 42,
+        "ps.fonttype": 42,
+    })
+
+
+def format_parameter(value):
+    """Stable compact float representation for folder names."""
+    return f"{float(value):g}"
+
+
+def run_name(case, tau=BASE_TAU, v_mean=BASE_V_MEAN):
+    """Canonical experiment folder name.
+
+    The baseline calibration has no parameter suffix.  Every comparative-static
+    run includes explicit named suffixes, avoiding the old positional naming
+    ambiguity.
+    """
+    if math.isclose(tau, BASE_TAU) and math.isclose(v_mean, BASE_V_MEAN):
+        return case
+    return (
+        f"{case}_tau{format_parameter(tau)}"
+        f"_vmean{format_parameter(v_mean)}"
+    )
+
+
+def run_dir(case, tau=BASE_TAU, v_mean=BASE_V_MEAN, root=MODEL_ROOT):
+    return os.path.join(root, run_name(case, tau, v_mean))
+
+
+def model_dir(case, config, tau=BASE_TAU, v_mean=BASE_V_MEAN,
+              root=MODEL_ROOT):
+    return os.path.join(run_dir(case, tau, v_mean, root), config)
+
+
+def simulation_dir(case, config="timestep_rar", tau=BASE_TAU,
+                   v_mean=BASE_V_MEAN, root=MODEL_ROOT):
+    return os.path.join(model_dir(case, config, tau, v_mean, root),
+                        "simulation")
 
 
 # Display names for the 8 training configs (rows of the FD-error table) and the
@@ -43,7 +125,7 @@ SLICE_PLOT_ARGS = {
     "r": {"ylabel": r"$r$"},
     "risk_premium": {"ylabel": r"$\pi(\sigma+\sigma_p)$"}
 }
-SLICE_COLORS = ["red", "orange", "blue"]
+SLICE_COLORS = [PAPER_BLACK, PAPER_GREEN, PAPER_BLUE]
 
 # ===========================================================================
 # The 8 training configurations
@@ -85,11 +167,22 @@ def configs_for_case(case: str):
 
 # Per-method plot styling so basic vs. the best method are separable in B&W.
 METHOD_PLOT_STYLES = [
-    ("-",  ""),
     ("--", "o"),
-    ("-.", "s"),
     (":",  "^"),
+    ("-.", "s"),
+    ("-",  ""),
 ]
+METHOD_COLORS = {
+    "basic": PAPER_GRAY,
+    "basic_rar": PAPER_ORANGE,
+    "basic_lb": "#8F8F8F",
+    "basic_rar_lb": PAPER_RED,
+    "timestep": PAPER_GREEN,
+    "timestep_rar": PAPER_BLUE,
+    "timestep_lb": "#6A8F72",
+    "timestep_rar_lb": PAPER_BLACK,
+    "fd": PAPER_BLACK,
+}
 
 # ===========================================================================
 # Default economic parameters (original Di Tella calibration).
@@ -306,6 +399,28 @@ def make_case(case: str, gamma):
         n_E = 36
         expert_idx = list(range(n_E)); household_idx = list(range(n_E, K))
         gamma_vec = [3.0 + 7.5 * i / (n_E - 1) for i in range(n_E)] + [12.0, 13.5, 15.0, 16.5]
+    elif case == "agents40_cali":
+        # Forty-agent analogue of agents20_cali: a broad, higher risk-aversion
+        # calibration with the same 90/10 expert-household composition.
+        K = 40
+        n_E = 36
+        n_H = K - n_E
+        expert_idx = list(range(n_E)); household_idx = list(range(n_E, K))
+        gamma_vec = (
+            [5.0 + 10.0 * i / (n_E - 1) for i in range(n_E)]
+            + [18.0 + 2.0 * j / (n_H - 1) for j in range(n_H)]
+        )
+    elif case == "agents40_cali7":
+        # Forty-agent analogue of agents20_cali7: tightly spaced experts and a
+        # small, graded household gap, preserving the 90/10 composition.
+        K = 40
+        n_E = 36
+        n_H = K - n_E
+        expert_idx = list(range(n_E)); household_idx = list(range(n_E, K))
+        gamma_vec = (
+            [5.0 + 1.0 * i / (n_E - 1) for i in range(n_E)]
+            + [7.0 + 1.0 * j / (n_H - 1) for j in range(n_H)]
+        )
     elif case == "agents50":
         # 45 experts + 5 households.  Same HARD design as agents20: wide expert
         # spread [3, 11] (anchor = least averse -> capital concentrates there),

@@ -10,7 +10,6 @@ is therefore a fixed-function channel counterfactual, not a newly solved
 sigv_mean=0 equilibrium.
 """
 
-import argparse
 import gc
 import json
 import os
@@ -18,9 +17,23 @@ import os
 import numpy as np
 import torch
 
-from common import move_model
+from common import (BASE_TAU, MODEL_ROOT, PAPER_A, PAPER_GAMMA, PAPER_SIGMA,
+                    SIMULATION_SEED, move_model, simulation_dir)
 from gini_significance import paired_inference, path_mean_ginis
 from simulate import NNEconomy, load_model, simulate
+
+CASE = "agents20"
+CONFIG = "timestep_rar"
+ECONOMIES = ((0.2, 0.7), (BASE_TAU, 0.5))
+PATHS = 100
+YEARS = 500.0
+DT = 0.08
+X0 = 0.2
+V0 = None
+BURN_IN_FRAC = 0.2
+BOOTSTRAP_SAMPLES = 20_000
+BOOTSTRAP_SEED = 54_321
+OUTPUT_NAME = "gini_zero_v_volatility"
 
 
 def compare_one_economy(
@@ -123,66 +136,26 @@ def compare_one_economy(
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Compare Gini under stochastic v and sigma_v=0."
-    )
-    parser.add_argument("--base-dir", default="./models")
-    parser.add_argument("--case", default="agents20")
-    parser.add_argument("--config", default="timestep_rar")
-    parser.add_argument(
-        "--economies",
-        default="0.2:0.7,1.15:0.4",
-        help="comma-separated tau:vmean pairs",
-    )
-    parser.add_argument("--a", type=float, default=0.1)
-    parser.add_argument("--sigma", type=float, default=0.06)
-    parser.add_argument("--gamma", type=float, default=6.0)
-    parser.add_argument("--paths", type=int, default=100)
-    parser.add_argument("--years", type=float, default=500.0)
-    parser.add_argument("--dt", type=float, default=0.08)
-    parser.add_argument("--x0", type=float, default=0.2)
-    parser.add_argument(
-        "--v0",
-        type=float,
-        default=None,
-        help="initial v; default v_mean makes v constant when sigma_v=0",
-    )
-    parser.add_argument("--burn-in-frac", type=float, default=0.2)
-    parser.add_argument("--sim-seed", type=int, default=0)
-    parser.add_argument("--bootstrap-samples", type=int, default=20_000)
-    parser.add_argument("--bootstrap-seed", type=int, default=54_321)
-    parser.add_argument(
-        "--output-name",
-        default="gini_zero_v_volatility",
-        help="file basename within each model's config/simulation directory",
-    )
-    args = parser.parse_args()
-
     torch.set_default_dtype(torch.float64)
-    specifications = []
-    for item in args.economies.split(","):
-        tau_text, vmean_text = item.split(":")
-        specifications.append((float(tau_text), float(vmean_text)))
-
-    for index, (tau, vmean) in enumerate(specifications):
+    for index, (tau, vmean) in enumerate(ECONOMIES):
         result, baseline_gini, zero_gini = compare_one_economy(
-            base_dir=args.base_dir,
-            case=args.case,
-            config=args.config,
+            base_dir=MODEL_ROOT,
+            case=CASE,
+            config=CONFIG,
             tau=tau,
             vmean=vmean,
-            a=args.a,
-            sigma=args.sigma,
-            gamma=args.gamma,
-            paths=args.paths,
-            years=args.years,
-            dt=args.dt,
-            x0=args.x0,
-            v0=args.v0,
-            sim_seed=args.sim_seed,
-            burn_in_frac=args.burn_in_frac,
-            bootstrap_samples=args.bootstrap_samples,
-            bootstrap_seed=args.bootstrap_seed + index,
+            a=PAPER_A,
+            sigma=PAPER_SIGMA,
+            gamma=PAPER_GAMMA,
+            paths=PATHS,
+            years=YEARS,
+            dt=DT,
+            x0=X0,
+            v0=V0,
+            sim_seed=SIMULATION_SEED,
+            burn_in_frac=BURN_IN_FRAC,
+            bootstrap_samples=BOOTSTRAP_SAMPLES,
+            bootstrap_seed=BOOTSTRAP_SEED + index,
         )
         report = {
             "counterfactual": (
@@ -191,17 +164,17 @@ def main():
                 "the checkpoint functions."
             ),
             "shared_parameters": {
-                "case": args.case,
-                "config": args.config,
-                "a": args.a,
-                "sigma": args.sigma,
-                "paths": args.paths,
-                "years": args.years,
-                "dt": args.dt,
-                "x0": args.x0,
-                "v0": args.v0,
-                "burn_in_frac": args.burn_in_frac,
-                "sim_seed": args.sim_seed,
+                "case": CASE,
+                "config": CONFIG,
+                "a": PAPER_A,
+                "sigma": PAPER_SIGMA,
+                "paths": PATHS,
+                "years": YEARS,
+                "dt": DT,
+                "x0": X0,
+                "v0": V0,
+                "burn_in_frac": BURN_IN_FRAC,
+                "sim_seed": SIMULATION_SEED,
             },
             "economy": result,
             "scope": (
@@ -210,16 +183,11 @@ def main():
             ),
         }
 
-        subpath_name = (
-            args.case if tau == 1.15 else f"{args.case}_{tau}"
-        )
-        if vmean != 0.25:
-            subpath_name = f"{args.case}_{tau}_{vmean}"
-        output_dir = os.path.join(
-            args.base_dir, subpath_name, args.config, "simulation"
+        output_dir = simulation_dir(
+            CASE, CONFIG, tau, vmean, MODEL_ROOT
         )
         os.makedirs(output_dir, exist_ok=True)
-        output_prefix = os.path.join(output_dir, args.output_name)
+        output_prefix = os.path.join(output_dir, OUTPUT_NAME)
 
         with open(output_prefix + ".json", "w", encoding="utf-8") as file:
             json.dump(report, file, indent=2)

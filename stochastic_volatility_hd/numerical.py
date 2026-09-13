@@ -36,6 +36,11 @@ import pandas as pd
 from scipy.interpolate import RegularGridInterpolator
 import matplotlib.pyplot as plt
 
+from common import (PAPER_A, PAPER_BLACK, PAPER_FIGSIZE, PAPER_FONT_SIZE,
+                    PAPER_GAMMA, PAPER_GREEN, PAPER_SIGMA, BASE_TAU,
+                    configure_paper_plots)
+
+configure_paper_plots()
 
 # ---------------------------------------------------------------------------
 # Parameters (identical to di_tella.md / CE.nb)
@@ -429,29 +434,33 @@ def solve_ditella(params: dict = None, **kwargs) -> DiTellaNumerical:
     solver.solve(**kwargs)
     return solver
 
-SLICE_COLORS = ["red", "orange", "blue"]
+SLICE_COLORS = [PAPER_BLACK, PAPER_GREEN, "#5492ab"]
 
-def plot_slices(out_dict, out_fn, v_list: list[str]=[0.1, 0.25, 0.6]):
-    fig, ax = plt.subplots(1, 5, figsize=(32, 6))
-    ax = ax.flatten()
-    for i, var in enumerate(["p", "r", "omega", "sigx", "risk_premium"]):
+def plot_slices(out_dict, out_prefix, v_list: list[str]=[0.1, 0.25, 0.6]):
+    """Write one finite-difference slice per PDF."""
+    for var in ["p", "r", "omega", "sigx", "risk_premium"]:
+        fig, ax = plt.subplots(figsize=PAPER_FIGSIZE)
         for j, v in enumerate(v_list):
             key = f"{var}_{v}"
-            ax[i].plot(out_dict["x_plot"], out_dict[key], ls="-.", color=SLICE_COLORS[j], marker="x", markevery=3, label=f"FD v={v}")
-        ax[i].set_xlabel("x", fontsize=14)
-        ax[i].set_ylabel(var, fontsize=14)
-        ax[i].legend(fontsize=16, frameon=False)
-        ax[i].tick_params(axis="both", labelsize=12)
-    plt.tight_layout()
-    plt.savefig(out_fn)
-    plt.close()
+            ax.plot(out_dict["x_plot"], out_dict[key], ls="-.",
+                    color=SLICE_COLORS[j], marker="x", markevery=3,
+                    label=f"$v={v}$")
+        ax.set_xlabel("$x$")
+        ax.set_ylabel(var)
+        ax.legend(frameon=False)
+        ax.tick_params(axis="both", labelsize=PAPER_FONT_SIZE)
+        plt.tight_layout()
+        plt.savefig(f"{out_prefix}_{var}.pdf")
+        plt.close(fig)
 
 if __name__ == "__main__":
     base_dir = "models/numerical"
     os.makedirs(base_dir, exist_ok=True)
     # Calibrated 2-D validation point (paper section 4.1): a=0.1, sigma=0.06,
     # tau=1.15, gamma=6.  main.py loads numerical_{gamma}_{tau}_{sigma}_{a}.npz.
-    for a, sigma, tau, gamma in [(0.1, 0.06, 1.15, 6.0)]:
+    for a, sigma, tau, gamma in [
+        (PAPER_A, PAPER_SIGMA, BASE_TAU, PAPER_GAMMA)
+    ]:
         params = {"a": a, "sigma": sigma, "gamma": gamma, "tau": tau}
         print(f"solving {a, sigma, gamma, tau}")
         model = solve_ditella(params=params, h=2e-4, max_iters=300_000, tol=1e-7, loss_csv=f"{base_dir}/ditella_numerical_loss_{gamma}_{tau}_{sigma}_{a}.csv")
@@ -461,5 +470,5 @@ if __name__ == "__main__":
         for i in range(0, len(x), 10):
             print(f"{x[i]:5.3f}  {out['p_0.25'][i]:9.4f}  {out['r_0.25'][i]:9.4f}  "
                 f"{out['signxi_0.25'][i]:9.4f}  {out['omega_0.25'][i]:9.4f}")
-        plot_slices(out, f"{base_dir}/numerical_{gamma}_{tau}_{sigma}_{a}.png")
+        plot_slices(out, f"{base_dir}/numerical_{gamma}_{tau}_{sigma}_{a}")
         np.savez(f"{base_dir}/numerical_{gamma}_{tau}_{sigma}_{a}.npz", **out)

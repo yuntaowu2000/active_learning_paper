@@ -24,29 +24,38 @@ training step and the refinement pass.  Without this, ``model.sample(0)`` at
 epoch 0 samples a HALF-size batch with no anchors and never scores a pool, which
 is why the naive table reports RAR as *cheaper* than the dense method.
 
-Outputs (under ``--out-dir``, default ``./models/diagnostics``):
+Outputs (under ``./models/diagnostics``):
   * ``compute_memory.csv`` -- raw measurements, one row per (case, config);
     includes ``n_train_points``/``n_anchor`` and the separate refinement-pass
     cost (``refine_mem_mb``/``refine_gflops``) for transparency;
   * ``compute_memory.tex`` -- a formatted LaTeX table (cases x methods).
 
-Usage::
-
-    python diagnostics.py --cases agents2,agents20,agents40 --float64
+Run with ``uv run python diagnostics.py``.
 """
 
-import argparse
 import gc
 import os
+from itertools import product
 import time
 
 import numpy as np
 import pandas as pd
 import torch
 
-from common import (BASE_PARAMS, CONFIGS, CORE_CONFIGS, _module_of,
+from common import (BASE_PARAMS, BASE_TAU, BASE_V_MEAN, CONFIGS, CORE_CONFIGS,
+                    MODEL_ROOT, PAPER_A, PAPER_GAMMA, PAPER_SIGMA, _module_of,
                     make_case, move_model)
 from model import (PDEModelNAgentsSV, PDEModelTimeStepNAgentsSV, get_model)
+
+DIAGNOSTIC_CASES = ("agents2", "agents20", "agents40")
+DIAGNOSTIC_CONFIGS = tuple(CORE_CONFIGS)
+DIAGNOSTIC_BATCH = 500
+DIAGNOSTIC_LAYERS = 4
+DIAGNOSTIC_WIDTH = 64
+DIAGNOSTIC_LR = 1e-3
+DIAGNOSTIC_WARMUP = 3
+DIAGNOSTIC_STEPS = 10
+DIAGNOSTIC_OUT_DIR = os.path.join(MODEL_ROOT, "diagnostics")
 
 
 def _iter_param_modules(model):
@@ -148,23 +157,26 @@ def _refinement_step(model):
         model._refinement_loss_dict(0)           # scores the dense pool
 
 
-def measure_config(case, config, args):
+def measure_config(case, config):
     """Build + measure a single (case, config).  Returns a dict of metrics."""
     ts, rar, lb = CONFIGS[config]
-    gamma = args.gamma
+    gamma = PAPER_GAMMA
     K, eidx, hidx, gamma_vec = make_case(case, gamma)
-    params = BASE_PARAMS | {"tau": args.tau, "a": args.a, "sigma": args.sigma}
+    params = BASE_PARAMS | {
+        "tau": BASE_TAU, "a": PAPER_A, "sigma": PAPER_SIGMA,
+        "v_mean": BASE_V_MEAN,
+    }
 
     # A throwaway path: train=False means get_model just assembles the (untrained)
     # networks; nothing is written and no checkpoint is required.
-    mpath = os.path.join(args.out_dir, "_scratch", case, config)
+    mpath = os.path.join(DIAGNOSTIC_OUT_DIR, "_scratch", case, config)
     ts_init_guess = {f"xi_{k}": BASE_PARAMS["rho"] for k in range(1, K + 1)}
     ts_init_guess["r"] = 0.01
 
     model = get_model(
         mpath, K, eidx, hidx, gamma_vec,
-        model_size=[args.width] * args.layers,
-        batch_size=args.batch, lr=args.lr,
+        model_size=[DIAGNOSTIC_WIDTH] * DIAGNOSTIC_LAYERS,
+        batch_size=DIAGNOSTIC_BATCH, lr=DIAGNOSTIC_LR,
         timestepping=ts, rar=rar, loss_balancing=lb,
         num_outer=1, num_inner=2, min_inner=2,
         init_guess=ts_init_guess, params=params,
@@ -177,7 +189,7 @@ def measure_config(case, config, args):
     move_model(model, move_dev)
 
     n_params = _count_params(model)
-    model.optimizer = _make_optimizer(model, args.lr)
+    model.optimizer = _make_optimizer(model, DIAGNOSTIC_LR)
 
     # --- make the RAR measurement representative -----------------------------
     # A real RAR run trains on ``base_batch + accumulated anchors`` and pays a
@@ -196,13 +208,13 @@ def measure_config(case, config, args):
         torch.cuda.reset_peak_memory_stats()
 
     # warmup (build kernels / autograd graph shapes) then timed steps
-    for _ in range(args.warmup):
+    for _ in range(DIAGNOSTIC_WARMUP):
         _training_step(model, append_anchors)
     if cuda:
         torch.cuda.synchronize()
 
     times = []
-    for _ in range(args.steps):
+    for _ in range(DIAGNOSTIC_STEPS):
         t0 = time.perf_counter()
         _training_step(model, append_anchors)
         if cuda:
@@ -272,21 +284,19 @@ def format_table(df, out_dir):
         [(disp, m) for _, disp in metrics for m in method_order])
     res = pd.DataFrame(index=[case_label[c] for c in cases], columns=cols)
 
-    for c in cases:
-        for cfg, disp_m in method_map.items():
-            r = sub[(sub["case"] == c) & (sub["config"] == cfg)]
-            if r.empty:
-                continue
-            r = r.iloc[0]
-            for key, disp in metrics:
-                val = r[key]
-                if key == "n_params":
-                    txt = f"{int(val):,}" if np.isfinite(val) else ""
-                elif np.isfinite(val):
-                    txt = f"{val:.2f}"
-                else:
-                    txt = ""
-                res.loc[case_label[c], (disp, disp_m)] = txt
+    table_cells = product(cases, method_map.items(), metrics)
+    for c, (cfg, disp_m), (key, disp) in table_cells:
+        r = sub[(sub["case"] == c) & (sub["config"] == cfg)]
+        if r.empty:
+            continue
+        val = r.iloc[0][key]
+        if key == "n_params":
+            txt = f"{int(val):,}" if np.isfinite(val) else ""
+        elif np.isfinite(val):
+            txt = f"{val:.2f}"
+        else:
+            txt = ""
+        res.loc[case_label[c], (disp, disp_m)] = txt
 
     ltx = res.style.to_latex(column_format="l" + "c" * len(cols),
                              hrules=True, multicol_align="c")
@@ -295,40 +305,16 @@ def format_table(df, out_dir):
 
 
 def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--cases", default="agents2,agents20,agents40",
-                        help="comma-separated cases to profile")
-    parser.add_argument("--configs", default=",".join(CORE_CONFIGS),
-                        help="comma-separated configs to profile (subset of CONFIGS)")
-    parser.add_argument("--batch", type=int, default=500)
-    parser.add_argument("--layers", type=int, default=4)
-    parser.add_argument("--width", type=int, default=64)
-    parser.add_argument("--lr", type=float, default=1e-3)
-    parser.add_argument("--gamma", type=float, default=6.0)
-    parser.add_argument("--tau", type=float, default=1.15)
-    parser.add_argument("--a", type=float, default=0.1)
-    parser.add_argument("--sigma", type=float, default=0.06)
-    parser.add_argument("--warmup", type=int, default=3, help="untimed warmup steps")
-    parser.add_argument("--steps", type=int, default=10, help="timed steps (median reported)")
-    parser.add_argument("--out-dir", default="./models/diagnostics")
-    parser.add_argument("--float64", action="store_true")
-    args = parser.parse_args()
-
-    if args.float64:
-        torch.set_default_dtype(torch.float64)
-    else:
-        torch.set_default_dtype(torch.float32)
-
-    os.makedirs(args.out_dir, exist_ok=True)
-    cases = [c.strip() for c in args.cases.split(",") if c.strip()]
-    configs = [c.strip() for c in args.configs.split(",") if c.strip()]
+    """Generate the fixed 2/20/40-agent compute and memory table."""
+    torch.set_default_dtype(torch.float64)
+    os.makedirs(DIAGNOSTIC_OUT_DIR, exist_ok=True)
 
     rows = []
-    for case in cases:
-        for config in configs:
+    for case in DIAGNOSTIC_CASES:
+        for config in DIAGNOSTIC_CONFIGS:
             print("{0:=^80}".format(f" {case} / {config} "))
             try:
-                res = measure_config(case, config, args)
+                res = measure_config(case, config)
                 rows.append(res)
                 print(f"  params={res['n_params']:,}  peak_mem={res['peak_mem_mb']:.1f} MB  "
                       f"{res['ms_per_step']:.2f} ms/step  {res['gflops']:.2f} GFLOPs  "
@@ -345,12 +331,13 @@ def main():
         return
 
     df = pd.DataFrame(rows)
-    csv_path = os.path.join(args.out_dir, "compute_memory.csv")
+    csv_path = os.path.join(DIAGNOSTIC_OUT_DIR, "compute_memory.csv")
     df.to_csv(csv_path, index=False)
     print(f"\n[diagnostics] raw measurements -> {csv_path}")
     print(df.to_string(index=False))
-    format_table(df, args.out_dir)
-    print(f"[diagnostics] LaTeX table -> {os.path.join(args.out_dir, 'compute_memory.tex')}")
+    format_table(df, DIAGNOSTIC_OUT_DIR)
+    print(f"[diagnostics] LaTeX table -> "
+          f"{os.path.join(DIAGNOSTIC_OUT_DIR, 'compute_memory.tex')}")
 
 
 if __name__ == "__main__":
