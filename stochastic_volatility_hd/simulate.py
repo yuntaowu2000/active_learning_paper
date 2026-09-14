@@ -439,19 +439,28 @@ def plot_portfolio_deciles(economy, sim, out_dir, n_deciles=10, burn_in_frac=0.2
         sel = rng.choice(M, size=max_states, replace=False)
         x_pool, v_pool = x_pool[sel], v_pool[sel]
 
+    if economy.K >= 40:
+        chunk = min(chunk, 500)
+
     wealth_list, risky_list = [], []
     for c in range(0, x_pool.shape[0], chunk):
         xf, rf = economy.portfolio(x_pool[c:c + chunk], v_pool[c:c + chunk])
         wealth_list.append(xf)
         risky_list.append(rf)
-    wealth = np.concatenate(wealth_list, 0).reshape(-1)        # (M*K,)
-    risky = np.concatenate(risky_list, 0).reshape(-1)         # (M*K,)  theta_k
+    wealth = np.concatenate(wealth_list, 0).reshape(-1)
+    risky = np.concatenate(risky_list, 0).reshape(-1)
 
     order = np.argsort(wealth)
     wealth_s, risky_s = wealth[order], risky[order]
     edges = np.linspace(0, len(wealth_s), n_deciles + 1).astype(int)
-    dec_risky = np.array([risky_s[edges[i]:edges[i + 1]].mean() for i in range(n_deciles)])
-    dec_wealth = np.array([wealth_s[edges[i]:edges[i + 1]].mean() for i in range(n_deciles)])
+    dec_risky = np.array([
+        risky_s[edges[i]:edges[i + 1]].mean()
+        for i in range(n_deciles)
+    ])
+    dec_wealth = np.array([
+        wealth_s[edges[i]:edges[i + 1]].mean()
+        for i in range(n_deciles)
+    ])
 
     deciles = np.arange(1, n_deciles + 1)
     fig, ax = plt.subplots(figsize=PAPER_FIGSIZE)
