@@ -12,7 +12,8 @@ from itertools import product
 import torch
 
 from common import (
-    CALIBRATED_CASES,
+    CALIBRATED_CASES_20,
+    CALIBRATED_CASES_40,
     CALIBRATED_TAUS,
     CALIBRATED_V_MEANS,
     MODEL_ROOT,
@@ -27,20 +28,20 @@ from main import train_case
 from simulate import run_simulation
 
 
-TABLE_PATH = os.path.join(MODEL_ROOT, "calibrated_parameter_outcomes.tex")
-
-
-def main():
+def main(
+    cases,
+    table_path,
+):
     torch.set_default_dtype(torch.float64)
     rows = []
     total = (
-        len(CALIBRATED_CASES)
+        len(cases)
         * len(CALIBRATED_TAUS)
         * len(CALIBRATED_V_MEANS)
     )
     run_number = 0
 
-    for case, tau, v_mean in product(CALIBRATED_CASES, CALIBRATED_TAUS, CALIBRATED_V_MEANS):
+    for case, tau, v_mean in product(cases, CALIBRATED_TAUS, CALIBRATED_V_MEANS):
         run_number += 1
         print(
             f"\n{'=' * 80}\n"
@@ -83,18 +84,12 @@ def main():
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
 
-    latex = render_latex(
-        rows,
-        (
-            "Wealth distribution, portfolios, and risk prices across "
-            "calibrated 20- and 40-agent economies."
-        ),
-        "tab:calibrated_parameter_outcomes",
-    )
-    with open(TABLE_PATH, "w", encoding="utf-8") as file:
+    latex = render_latex(rows)
+    with open(table_path, "w", encoding="utf-8") as file:
         file.write(latex)
-    print(f"\nCalibrated table written to {TABLE_PATH}")
+    print(f"\nCalibrated table written to {table_path}")
 
 
 if __name__ == "__main__":
-    main()
+    main(CALIBRATED_CASES_20, os.path.join(MODEL_ROOT, "agents20_calibrated_parameter_outcomes.tex"))
+    # main(CALIBRATED_CASES_40, os.path.join(MODEL_ROOT, "agents40_calibrated_parameter_outcomes.tex"))

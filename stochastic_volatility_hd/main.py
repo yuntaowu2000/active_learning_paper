@@ -246,10 +246,16 @@ def create_case_artifacts(case, models, paths, timestepping):
                 file_name=f"loss_weight_{name}.pdf",
                 timestepping=ts,
             )
-    decay_names = [
-        name for name in ("basic", "timestep", "timestep_rar")
-        if name in paths
-    ]
+    if case == "agents2":
+        decay_names = [
+            name for name in ("basic", "timestep")
+            if name in paths
+        ]
+    else:
+        decay_names = [
+            name for name in ("basic", "timestep_rar")
+            if name in paths
+        ]
     plot_loss_decay(
         {name: paths[name] for name in decay_names},
         comparison_dir,

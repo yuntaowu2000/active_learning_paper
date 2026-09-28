@@ -26,9 +26,11 @@ TRAINING_SEED = 0
 SIMULATION_SEED = 0
 
 BASE_CASES = ("agents2", "agents20", "agents40")
-CALIBRATED_CASES = (
-    "agents20", "agents20_cali", "agents20_cali7",
-    "agents40", "agents40_cali", "agents40_cali7",
+CALIBRATED_CASES_20 = (
+    "agents20", "agents20_cali7",
+)
+CALIBRATED_CASES_40 = (
+    "agents40", "agents40_cali7",
 )
 CALIBRATED_TAUS = (0.2, 0.5, 1.15)
 CALIBRATED_V_MEANS = (0.25, 0.5, 0.7)

@@ -22,7 +22,7 @@ from itertools import product
 import numpy as np
 import torch
 
-from common import (CALIBRATED_CASES, CALIBRATED_TAUS, CALIBRATED_V_MEANS,
+from common import (CALIBRATED_CASES_20, CALIBRATED_CASES_40, CALIBRATED_TAUS, CALIBRATED_V_MEANS,
                     MODEL_ROOT, PAPER_A, PAPER_GAMMA, PAPER_SIGMA,
                     SIMULATION_SEED, move_model)
 from simulate import NNEconomy, _gini_rows, _project, load_model, simulate
@@ -40,12 +40,6 @@ V0 = 0.1
 BURN_IN_FRAC = 0.2
 MAX_THETA_STATES = 20_000
 THETA_CHUNK = 2_000
-OUTPUT_PATH = os.path.join(MODEL_ROOT, "calibrated_parameter_outcomes.tex")
-TABLE_CAPTION = (
-    "Wealth distribution, portfolios, and risk prices across calibrated "
-    "20- and 40-agent economies."
-)
-TABLE_LABEL = "tab:calibrated_parameter_outcomes"
 
 
 def collect_simulation_row(
@@ -131,6 +125,8 @@ def collect_simulation_row(
         "tau": tau,
         "vmean": vmean,
         "gini": float(np.nanmean(snapshot_gini)),
+        "gini_p5": float(np.nanpercentile(snapshot_gini, 5)),
+        "gini_p95": float(np.nanpercentile(snapshot_gini, 95)),
         "theta_households": group_mean(
             theta_for_buckets, household_idx
         ),
@@ -217,7 +213,13 @@ def format_number(value, digits=4):
     return f"{value:.{digits}f}"
 
 
-def render_latex(rows, caption, label):
+def format_gini(row):
+    return (
+        f"{format_number(row['gini'])} [{format_number(row['gini_p5'])}, {format_number(row['gini_p95'])}]"
+    )
+
+
+def render_latex(rows):
     percentile_headers = [rf"$p_{{{p}}}$" for p in PERCENTILES]
     headers = [
         r"$\gamma$ case",
@@ -236,13 +238,6 @@ def render_latex(rows, caption, label):
     ]
     column_spec = "l" + "r" * (len(headers) - 1)
     lines = [
-        r"\begin{table}[!htbp]",
-        r"\centering",
-        r"\scriptsize",
-        r"\setlength{\tabcolsep}{2.5pt}",
-        rf"\caption{{{caption}}}",
-        rf"\label{{{label}}}",
-        r"\resizebox{\textwidth}{!}{%",
         rf"\begin{{tabular}}{{{column_spec}}}",
         r"\toprule",
         " & ".join(headers) + r" \\",
@@ -253,7 +248,7 @@ def render_latex(rows, caption, label):
             latex_escape(row["case"]),
             format_number(row["tau"], 2),
             format_number(row["vmean"], 2),
-            format_number(row["gini"]),
+            format_gini(row),
             format_number(row["theta_households"]),
             format_number(row["theta_poor_experts"]),
             format_number(row["theta_rich_experts"]),
@@ -271,35 +266,20 @@ def render_latex(rows, caption, label):
     lines.extend(
         [
             r"\bottomrule",
-            r"\end{tabular}%",
-            r"}",
-            r"\begin{minipage}{\textwidth}",
-            r"\vspace{2pt}\footnotesize",
-            (
-                r"\textit{Notes:} Gini and wealth-share percentiles are computed "
-                r"from post-burn-in simulation snapshots. All remaining outcomes "
-                r"except $\bar\theta$ are evaluated at the same simulation's "
-                r"ergodic mean state. "
-                r"$\bar\theta_H$, $\bar\theta_{E^-}$, and "
-                r"$\bar\theta_{E^+}$ are simulated mean per-agent capital shares "
-                r"for households, poorer experts, and richer experts. "
-                r"$\lambda^{agg}=\pi$ and "
-                r"$\lambda^{idio}_0=\gamma_0\widetilde{\sigma}_0$; "
-                r"idiosyncratic quantities refer to the anchor expert."
-            ),
-            r"\end{minipage}",
-            r"\end{table}",
-            "",
+            r"\end{tabular}",
         ]
     )
     return "\n".join(lines)
 
 
-def main():
+def main(
+    cases,
+    table_path,
+):
     """Regenerate the fixed calibrated-grid table from fresh simulations."""
     torch.set_default_dtype(torch.float64)
     rows = []
-    for case, tau, vmean in product(CALIBRATED_CASES, CALIBRATED_TAUS, CALIBRATED_V_MEANS):
+    for case, tau, vmean in product(cases, CALIBRATED_TAUS, CALIBRATED_V_MEANS):
         row = collect_row(
             MODEL_ROOT,
             case,
@@ -328,12 +308,12 @@ def main():
     if not rows:
         raise RuntimeError("no requested checkpoints were found")
 
-    latex = render_latex(rows, TABLE_CAPTION, TABLE_LABEL)
-    os.makedirs(os.path.dirname(OUTPUT_PATH) or ".", exist_ok=True)
-    with open(OUTPUT_PATH, "w", encoding="utf-8") as file:
+    latex = render_latex(rows)
+    with open(table_path, "w", encoding="utf-8") as file:
         file.write(latex)
-    print(f"\nSaved {len(rows)} rows to {OUTPUT_PATH}")
+    print(f"\nSaved {len(rows)} rows to {table_path}")
 
 
 if __name__ == "__main__":
-    main()
+    main(CALIBRATED_CASES_20, os.path.join(MODEL_ROOT, "agents20_calibrated_parameter_outcomes.tex"))
+    # main(CALIBRATED_CASES_40, os.path.join(MODEL_ROOT, "agents40_calibrated_parameter_outcomes.tex"))
