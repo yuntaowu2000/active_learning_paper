@@ -394,9 +394,9 @@ def plot_loss_weights(model_path, out_dir, file_name="loss_weight.pdf", timestep
     for i, (col, lab) in enumerate(mapping.items()):
         if col in df.columns:
             ax.plot(df["epoch"], df[col], color=colors[i % len(colors)], label=lab)
-    ax.set_xlabel("Epoch"); ax.set_ylabel("Loss weight")
+    ax.set_ylabel("Loss weight")
     ax.tick_params(axis="both", which="major", labelsize=PAPER_FONT_SIZE)
-    ax.legend(loc="upper left", bbox_to_anchor=(1.02, 1.0), frameon=False)
+    ax.legend(loc="lower center", bbox_to_anchor=(0.5, -0.25), frameon=False, fontsize=14, ncols=3)
     plt.tight_layout()
     plt.savefig(os.path.join(out_dir, file_name), bbox_inches="tight")
     plt.close(fig)
