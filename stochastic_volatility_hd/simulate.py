@@ -382,7 +382,7 @@ def analyze(economy, sim, out_dir, burn_in_frac=0.2):
     fig.savefig(os.path.join(out_dir, "sample_paths_v.pdf"))
     plt.close(fig)
 
-    # ---- risk premia at the simulated mean state --------------------------
+    # ---- moments at the simulated mean state + path correlations ----------
     x_mean = x_pool.reshape(-1, x_pool.shape[-1]).mean(axis=0)[None, :]  # (1, K-1)
     v_mean = np.array([v_pool.mean()])
     x_mean, v_mean = _project(economy, x_mean, v_mean)
@@ -391,14 +391,59 @@ def analyze(economy, sim, out_dir, burn_in_frac=0.2):
     agg_rp = float(prem["agg_rp"][0])
     idio_rp = float(prem["idio_rp"][0])
     total_rp = float(prem["total_rp"][0])
+    sharpe = pi  # aggregate risk premium / return volatility
+
+    # Assets-equity = 1/X_E (experts hold all capital).  Output-growth vol is
+    # the exogenous capital shock sigma.  g and iota need an NN forward.
+    mean_X_E = float(XE_pool.mean())
+    assets_equity = 1.0 / mean_X_E if mean_X_E > 0 else float("nan")
+    assets_equity_path = 1.0 / np.clip(XE_pool, 1e-12, None)
+
+    if economy.source == "nn":
+        vd = economy._forward(x_mean, v_mean)
+        r = float(vd["r"].detach().cpu().numpy().reshape(-1)[0])
+        g = float(vd["g"].detach().cpu().numpy().reshape(-1)[0])
+        iota = float(vd["iota"].detach().cpu().numpy().reshape(-1)[0])
+        sigma = float(economy.model.statics["sigma"])
+        # Path correlation: evaluate g on a subsample of ergodic states.
+        rng = np.random.default_rng(0)
+        flat_x = x_pool.reshape(-1, x_pool.shape[-1])
+        n_corr = min(2_000, flat_x.shape[0])
+        sel = rng.choice(flat_x.shape[0], size=n_corr, replace=False)
+        xs, vs = _project(economy, flat_x[sel], v_pool[sel])
+        g_chunks = []
+        chunk = 500 if economy.K >= 40 else 2_000
+        for c in range(0, xs.shape[0], chunk):
+            out = economy._forward(xs[c:c + chunk], vs[c:c + chunk])
+            g_chunks.append(out["g"].detach().cpu().numpy().reshape(-1))
+        g_path = np.concatenate(g_chunks)
+        ae_path = assets_equity_path[sel]
+        if np.std(ae_path) > 0 and np.std(g_path) > 0:
+            corr_ae_g = float(np.corrcoef(ae_path, g_path)[0, 1])
+        else:
+            corr_ae_g = float("nan")
+    else:
+        # NumericalEconomy only exposes premium/drift; leave NN-only fields blank.
+        r = g = iota = corr_ae_g = float("nan")
+        sigma = float(getattr(economy, "sigma", float("nan")))
 
     summary = {
         "source": economy.source,
-        "mean_X_E": float(XE_pool.mean()),
+        "mean_X_E": mean_X_E,
         "mean_v": float(v_pool.mean()),
         "std_X_E": float(XE_pool.std()),
         "std_v": float(v_pool.std()),
         "x_mean_free_shares": x_mean.reshape(-1).tolist(),
+        "risk_premium_aggregate": agg_rp,
+        "risk_free_rate": r,
+        "return_volatility_sig_plus_sigp": sig_agg,
+        "sharpe_ratio_pi": sharpe,
+        "investment_capital_ratio_iota": iota,
+        "output_growth_g": g,
+        "output_growth_volatility_sigma": sigma,
+        "assets_equity_ratio_1_over_X_E": assets_equity,
+        "corr_assets_equity_output_growth": corr_ae_g,
+        "expert_wealth_share_X_E": mean_X_E,
         "pi_at_mean": pi,
         "sig_plus_sigp_at_mean": sig_agg,
         "aggregate_risk_premium_pi*(sig+sigp)": agg_rp,
