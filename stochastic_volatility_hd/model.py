@@ -236,6 +236,9 @@ class PDEModelTimeStepNAgentsSV(_SVNAgentMixin, PDEModelTimeStep):
         self.lr_decay_gamma = float(config.get("lr_decay_gamma", 0.5))
         self._lr_decay_outer = 0
         self.OnInnerLoopStart += self._lr_decay_step
+        self._boundary_outer = 0
+        if self.statics["K"] >= 40:
+            self.OnInnerLoopStart += self._resample_time_boundary
 
     def _lr_decay_step(self):
         """Step the LR every ``lr_decay_every`` outer iterations.  Fired once per
@@ -254,6 +257,38 @@ class PDEModelTimeStepNAgentsSV(_SVNAgentMixin, PDEModelTimeStep):
         if opt is not None:
             for pg in opt.param_groups:
                 pg["lr"] = new_lr
+
+    def _resample_time_boundary(self):
+        """For K >= 40, redraw the time-boundary points every outer iteration.
+
+        A single fixed draw of ``batch_size`` points cannot cover a 40-agent
+        simplex, so p(t=max_t) = p_prev(t=min_t) went unenforced in the ergodic
+        region and p kept a ~13%/yr t-slope there.  Fired via OnInnerLoopStart,
+        i.e. after the library set the conditions from ``prev_vals`` and while
+        the networks still hold the previous outer iterate, so evaluating them
+        at (new points, min_t) gives the correct boundary values.  Iteration 0
+        keeps the library's initial-guess boundary.  ``prev_vals`` / ``SV_T0``
+        (convergence tracking) stay on the original fixed points.
+        """
+        k = self._boundary_outer
+        self._boundary_outer += 1
+        if k == 0:
+            return
+        self.boundary_uniform_points = self.sample_simplex_v(0)
+        SV_min = self.sample_boundary_cond(self.config.get("min_t", 0.0))
+        SV_min.requires_grad_(True)
+        vals = {}
+        with torch.no_grad():
+            self.update_variables(SV_min, vd=vals)
+        reduction = self.time_boundary_loss_reduction
+        for name in self.agents:
+            self._PDEModelTimeStep__set_agent_time_boundary_condition(
+                name, vals[name].detach(), loss_reduction=reduction)
+        for name in self.endog_vars:
+            self._PDEModelTimeStep__set_endog_time_boundary_condition(
+                name, vals[name].detach(), loss_reduction=reduction)
+        del vals, SV_min
+        gc.collect(); torch.cuda.empty_cache()
 
     def sample_simplex_v_ts(self, epoch=0):
         """Simplex over shares + uniform v + uniform t in [min_t, max_t]."""

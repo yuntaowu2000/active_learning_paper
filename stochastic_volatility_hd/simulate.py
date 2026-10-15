@@ -151,14 +151,14 @@ class NNEconomy:
         theta_full = vd["theta_full"].detach().cpu().numpy()  # (P, K)
         return x_full, theta_full
 
-    def _forward(self, x_states, v):
+    def _forward(self, x_states, v, t=0.0):
         model = self.model
         has_t = model.statics["has_t"]
         P = x_states.shape[0]
         dtype = torch.get_default_dtype()
         SV_np = np.concatenate([x_states, v[:, None]], axis=1)        # (P, K)
-        if has_t:                                                     # pad t = min_t
-            SV_np = np.concatenate([SV_np, np.zeros((P, 1))], axis=1)
+        if has_t:                                                     # pad t (default min_t)
+            SV_np = np.concatenate([SV_np, np.full((P, 1), t)], axis=1)
         SV = torch.tensor(SV_np, device=model.device, dtype=dtype)
         SV.requires_grad_(True)                      # update_variables autodiffs
         for i, nm in enumerate(model.state_variables):
@@ -325,6 +325,53 @@ def _expert_total_share(economy, x_states):
     return full[..., economy.expert_idx].sum(axis=-1)
 
 
+def _mu_P_decomposition(economy, vd):
+    """Split mu_P = (sum_d mu_s_d p_d + 0.5 sig_s' H sig_s) / p at the first
+    batch row into share-drift, v-drift, t-drift and diffusion pieces."""
+    statics = economy.model.statics
+    K = statics["K"]; v_index = statics["v_index"]
+    to_np = lambda name: vd[name].detach().cpu().numpy()[0]
+    p = float(to_np(economy.model._p_name).reshape(-1)[0])
+    p_jac = to_np(economy.model._p_name + "_Jac")[0]           # (D,)
+    p_hess = to_np(economy.model._p_name + "_Hess")[0]         # (D, D)
+    mu_x = to_np("mu_x_full")[:K - 1]
+    sig_x = to_np("sigx_full")[:K - 1]
+    v = float(to_np("SV")[v_index])
+    mu_v = statics["lbd"] * (statics["v_mean"] - v)
+    sig_v = statics["sigv_mean"] * np.sqrt(v)
+
+    sig_s = np.zeros_like(p_jac)
+    sig_s[:K - 1] = sig_x
+    sig_s[v_index] = sig_v
+    x_drift = mu_x * p_jac[:K - 1] / p
+    order = np.argsort(-np.abs(x_drift))[:3]
+    t_parts = {}
+    if statics["has_t"]:
+        xi = to_np("xi_active")                                 # (K,)
+        xi_t = np.array([to_np(n + "_Jac")[0, -1] for n in economy.model._xi_names])
+        t_parts["mu_xi_t_drift_mean_over_agents"] = float(np.mean(xi_t / xi))
+        # p at the end of the time-step window; the boundary condition pins
+        # p(t=max_t) to the previous iterate of p(t=min_t).
+        max_t = float(economy.model.config.get("max_t", 1.0))
+        x_states = to_np("SV")[:K - 1][None, :]
+        vd_T = economy._forward(x_states, np.array([v]), t=max_t)
+        p_T = float(vd_T[economy.model._p_name].detach().cpu().numpy().reshape(-1)[0])
+        t_parts["p_at_mean_t_max"] = p_T
+        t_parts["secant_dp_dt_over_p_(p(t_max)-p(t_min))/(max_t*p)"] = (p_T - p) / (max_t * p)
+    return {
+        "mu_P_share_drift": float(x_drift.sum()),
+        "mu_P_share_drift_top3_(index,value)": [
+            (int(i), float(x_drift[i])) for i in order
+        ],
+        "mu_P_v_drift": float(mu_v * p_jac[v_index] / p),
+        "mu_P_t_drift": float(p_jac[-1] / p) if statics["has_t"] else 0.0,
+        "mu_P_diffusion": float(0.5 * sig_s @ p_hess @ sig_s / p),
+        "p_at_mean": p,
+        "sig_p_at_mean": float(sig_s @ p_jac / p),
+        **t_parts,
+    }
+
+
 def analyze(economy, sim, out_dir, burn_in_frac=0.2):
     os.makedirs(out_dir, exist_ok=True)
 
@@ -410,6 +457,7 @@ def analyze(economy, sim, out_dir, burn_in_frac=0.2):
         iota = at_mean("iota")
         p_mean = at_mean(economy.model._p_name)
         consumption_wealth = (float(economy.model.statics["a"]) - iota) / p_mean
+        mu_P_parts = _mu_P_decomposition(economy, vd)
         sigma = float(economy.model.statics["sigma"])
         # Path correlation: evaluate g on a subsample of ergodic states.
         rng = np.random.default_rng(0)
@@ -431,6 +479,7 @@ def analyze(economy, sim, out_dir, burn_in_frac=0.2):
     else:
         # NumericalEconomy only exposes premium/drift; leave NN-only fields blank.
         r = r_implied = mu_P = chi = consumption_wealth = float("nan")
+        mu_P_parts = {}
         g = iota = corr_ae_g = float("nan")
         sigma = float(getattr(economy, "sigma", float("nan")))
 
@@ -447,6 +496,7 @@ def analyze(economy, sim, out_dir, burn_in_frac=0.2):
         "r_implied": r_implied,
         "asset_pricing_resid_r_implied_minus_r_free": r_implied - r,
         "mu_P": mu_P,
+        **mu_P_parts,
         "chi": chi,
         "consumption_wealth_(a-iota)/p": consumption_wealth,
         "return_volatility_sig_plus_sigp": sig_agg,
@@ -1154,7 +1204,7 @@ def run_simulation(case, tau=BASE_TAU, vmean=BASE_V_MEAN,
 
 def main():
     """Reproduce simulations for the three baseline paper cases."""
-    for case in BASE_CASES:
+    for case in ["agents20"]:
         run_simulation(case)
 
 
