@@ -237,8 +237,7 @@ class PDEModelTimeStepNAgentsSV(_SVNAgentMixin, PDEModelTimeStep):
         self._lr_decay_outer = 0
         self.OnInnerLoopStart += self._lr_decay_step
         self._boundary_outer = 0
-        if self.statics["K"] >= 40:
-            self.OnInnerLoopStart += self._resample_time_boundary
+        self.OnInnerLoopStart += self._resample_time_boundary
 
     def _lr_decay_step(self):
         """Step the LR every ``lr_decay_every`` outer iterations.  Fired once per
@@ -272,14 +271,13 @@ class PDEModelTimeStepNAgentsSV(_SVNAgentMixin, PDEModelTimeStep):
         """
         k = self._boundary_outer
         self._boundary_outer += 1
-        if k == 0:
+        if k == 0 or self.statics["K"] < 40:
             return
         self.boundary_uniform_points = self.sample_simplex_v(0)
         SV_min = self.sample_boundary_cond(self.config.get("min_t", 0.0))
         SV_min.requires_grad_(True)
         vals = {}
-        with torch.no_grad():
-            self.update_variables(SV_min, vd=vals)
+        self.update_variables(SV_min, vd=vals)
         reduction = self.time_boundary_loss_reduction
         for name in self.agents:
             self._PDEModelTimeStep__set_agent_time_boundary_condition(
