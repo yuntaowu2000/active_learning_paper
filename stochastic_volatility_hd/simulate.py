@@ -401,9 +401,15 @@ def analyze(economy, sim, out_dir, burn_in_frac=0.2):
 
     if economy.source == "nn":
         vd = economy._forward(x_mean, v_mean)
-        r = float(vd["r"].detach().cpu().numpy().reshape(-1)[0])
-        g = float(vd["g"].detach().cpu().numpy().reshape(-1)[0])
-        iota = float(vd["iota"].detach().cpu().numpy().reshape(-1)[0])
+        at_mean = lambda name: float(vd[name].detach().cpu().numpy().reshape(-1)[0])
+        r = at_mean("r")
+        r_implied = at_mean("r_implied")
+        mu_P = at_mean("mu_P")
+        chi = at_mean("chi")
+        g = at_mean("g")
+        iota = at_mean("iota")
+        p_mean = at_mean(economy.model._p_name)
+        consumption_wealth = (float(economy.model.statics["a"]) - iota) / p_mean
         sigma = float(economy.model.statics["sigma"])
         # Path correlation: evaluate g on a subsample of ergodic states.
         rng = np.random.default_rng(0)
@@ -424,7 +430,8 @@ def analyze(economy, sim, out_dir, burn_in_frac=0.2):
             corr_ae_g = float("nan")
     else:
         # NumericalEconomy only exposes premium/drift; leave NN-only fields blank.
-        r = g = iota = corr_ae_g = float("nan")
+        r = r_implied = mu_P = chi = consumption_wealth = float("nan")
+        g = iota = corr_ae_g = float("nan")
         sigma = float(getattr(economy, "sigma", float("nan")))
 
     summary = {
@@ -436,6 +443,12 @@ def analyze(economy, sim, out_dir, burn_in_frac=0.2):
         "x_mean_free_shares": x_mean.reshape(-1).tolist(),
         "risk_premium_aggregate": agg_rp,
         "risk_free_rate": r,
+        "r_free": r,
+        "r_implied": r_implied,
+        "asset_pricing_resid_r_implied_minus_r_free": r_implied - r,
+        "mu_P": mu_P,
+        "chi": chi,
+        "consumption_wealth_(a-iota)/p": consumption_wealth,
         "return_volatility_sig_plus_sigp": sig_agg,
         "sharpe_ratio_pi": sharpe,
         "investment_capital_ratio_iota": iota,
