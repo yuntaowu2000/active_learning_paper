@@ -78,9 +78,13 @@ def load_model(base_dir=MODEL_ROOT, case="agents2", config="timestep_rar",
             f"no trained checkpoint under {mpath} -- train first"
         )
     metadata_path = os.path.join(os.path.dirname(mpath), "experiment.json")
+    params = case_params(
+        case, tau=float(tau), a=float(a), sigma=float(sigma), v_mean=vmean,
+    )
     expected = {
         "tau": float(tau), "v_mean": float(vmean),
         "a": float(a), "sigma": float(sigma),
+        "delta": float(params["delta"]), "rho": float(params["rho"]),
     }
     if os.path.exists(metadata_path):
         with open(metadata_path, encoding="utf-8") as file:
@@ -110,7 +114,7 @@ def load_model(base_dir=MODEL_ROOT, case="agents2", config="timestep_rar",
         mpath, K, eidx, hidx, gamma_vec,
         model_size=[width] * layers,
         timestepping=ts, rar=rar, loss_balancing=lb,
-        params=BASE_PARAMS | {"tau": float(tau), "a": float(a), "sigma": float(sigma), "v_mean": vmean},
+        params=params,
         train=False,
     )
     return model

@@ -196,6 +196,17 @@ BASE_PARAMS = {
 }
 V_DOMAIN = (0.05, 0.5)
 
+# Per-case departures from BASE_PARAMS.  agents40 uses delta = 0.009 so that
+# output growth g = (p - B)/(2A) - delta is ~2% at the ergodic mean.
+CASE_PARAMS = {
+    "agents40": {"delta": 0.009},
+}
+
+
+def case_params(case, **overrides):
+    """BASE_PARAMS with the case-specific and caller overrides applied."""
+    return BASE_PARAMS | CASE_PARAMS.get(case, {}) | overrides
+
 
 def _module_of(agent):
     """The underlying nn.Module of an Agent / EndogVar wrapper."""

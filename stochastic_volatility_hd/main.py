@@ -40,6 +40,7 @@ from common import (
     SHARE_ALPHA_HI,
     SHARE_ALPHA_LO,
     TRAINING_SEED,
+    case_params,
     configs_for_case,
     df_to_latex,
     make_case,
@@ -68,13 +69,14 @@ TRAINING = {
 }
 
 
-def economic_params(tau=BASE_TAU, v_mean=BASE_V_MEAN):
-    return BASE_PARAMS | {
-        "a": PAPER_A,
-        "sigma": PAPER_SIGMA,
-        "tau": tau,
-        "v_mean": v_mean,
-    }
+def economic_params(case, tau=BASE_TAU, v_mean=BASE_V_MEAN):
+    return case_params(
+        case,
+        a=PAPER_A,
+        sigma=PAPER_SIGMA,
+        tau=tau,
+        v_mean=v_mean,
+    )
 
 
 def train_case(case, tau=BASE_TAU, v_mean=BASE_V_MEAN, configs=None):
@@ -92,7 +94,7 @@ def train_case(case, tau=BASE_TAU, v_mean=BASE_V_MEAN, configs=None):
         "expert_idx": expert_idx,
         "household_idx": household_idx,
         "gamma": gamma_vec,
-        "parameters": economic_params(tau, v_mean),
+        "parameters": economic_params(case, tau, v_mean),
         "configs": configs,
         "training_seed": TRAINING_SEED,
         "training": TRAINING,
@@ -128,7 +130,7 @@ def train_case(case, tau=BASE_TAU, v_mean=BASE_V_MEAN, configs=None):
             bernoulli_prob=TRAINING["bernoulli_prob"],
             t0_frac=TRAINING["t0_frac"],
             init_guess=init_guess,
-            params=economic_params(tau, v_mean),
+            params=economic_params(case, tau, v_mean),
             share_alpha_lo=SHARE_ALPHA_LO,
             share_alpha_hi=SHARE_ALPHA_HI,
             seed=TRAINING_SEED,

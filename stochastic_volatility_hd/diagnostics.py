@@ -44,7 +44,7 @@ import torch
 
 from common import (BASE_PARAMS, BASE_TAU, BASE_V_MEAN, CONFIGS, CORE_CONFIGS,
                     MODEL_ROOT, PAPER_A, PAPER_GAMMA, PAPER_SIGMA, _module_of,
-                    make_case, move_model)
+                    case_params, make_case, move_model)
 from model import (PDEModelNAgentsSV, PDEModelTimeStepNAgentsSV, get_model)
 
 DIAGNOSTIC_CASES = ("agents2", "agents20", "agents40")
@@ -162,10 +162,9 @@ def measure_config(case, config):
     ts, rar, lb = CONFIGS[config]
     gamma = PAPER_GAMMA
     K, eidx, hidx, gamma_vec = make_case(case, gamma)
-    params = BASE_PARAMS | {
-        "tau": BASE_TAU, "a": PAPER_A, "sigma": PAPER_SIGMA,
-        "v_mean": BASE_V_MEAN,
-    }
+    params = case_params(
+        case, tau=BASE_TAU, a=PAPER_A, sigma=PAPER_SIGMA, v_mean=BASE_V_MEAN,
+    )
 
     # A throwaway path: train=False means get_model just assembles the (untrained)
     # networks; nothing is written and no checkpoint is required.
