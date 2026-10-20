@@ -406,13 +406,13 @@ def make_case(case: str, gamma):
         gamma_vec = [5.0 + 1.0 * i / (n_E - 1) for i in range(n_E)] + [7.0, 8.0]
     elif case == "agents40":
         # 36 experts + 4 households.  Same HARD design as agents20/agents50:
-        # wide expert spread [3, 10.5] (anchor index 0 = least averse, so capital
+        # wide expert spread [3, 10] (anchor index 0 = least averse, so capital
         # concentrates there and takes large leverage), households more averse
         # [12..16.5] holding little wealth.  gamma_vec length K (experts then hh).
         K = 40
         n_E = 36
         expert_idx = list(range(n_E)); household_idx = list(range(n_E, K))
-        gamma_vec = [3.0 + 7.5 * i / (n_E - 1) for i in range(n_E)] + [12.0, 13.5, 15.0, 16.5]
+        gamma_vec = [3.0 + 7.0 * i / (n_E - 1) for i in range(n_E)] + [12.0, 13.5, 15.0, 16.5]
     elif case == "agents40_cali":
         # Forty-agent analogue of agents20_cali: a broad, higher risk-aversion
         # calibration with the same 90/10 expert-household composition.
