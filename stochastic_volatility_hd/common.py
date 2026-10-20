@@ -200,6 +200,7 @@ V_DOMAIN = (0.05, 0.5)
 # output growth g = (p - B)/(2A) - delta is ~2% at the ergodic mean.
 CASE_PARAMS = {
     "agents40": {"delta": 0.009},
+    "agents40_cali7": {"delta": 0.009},
 }
 
 
