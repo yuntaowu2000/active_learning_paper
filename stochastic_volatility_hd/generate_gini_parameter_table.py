@@ -2,8 +2,8 @@
 
 Each parameter set loads one checkpoint and is simulated exactly once.  Gini,
 wealth percentiles, and theta buckets are computed from that simulation.
-Prices, premia, and the risk-free rate are evaluated at the same simulation's
-post-burn-in ergodic mean state.
+Prices, premia, and the risk-free rate are evaluated at every post-burn-in
+simulated state (subsampled) and averaged, like the Gini.
 
 The two reported prices of risk are:
 
@@ -25,7 +25,8 @@ import torch
 from common import (CALIBRATED_CASES_20, CALIBRATED_CASES_40, CALIBRATED_TAUS, CALIBRATED_V_MEANS,
                     MODEL_ROOT, PAPER_A, PAPER_GAMMA, PAPER_SIGMA,
                     SIMULATION_SEED, move_model)
-from simulate import NNEconomy, _gini_rows, _project, load_model, simulate
+from simulate import (NNEconomy, _gini_rows, equilibrium_series,
+                      ergodic_states, load_model, simulate)
 
 
 PERCENTILES = (1, 5, 50, 75, 90, 95, 99)
@@ -63,38 +64,15 @@ def collect_simulation_row(
     snapshot_gini = _gini_rows(x_full_sim.reshape(-1, n_agents))
     wealth = x_full_sim.reshape(-1)
 
-    x_states = x_free.reshape(-1, n_agents - 1)
-    v_states = v_post.reshape(-1)
-    x_mean = x_states.mean(axis=0, keepdims=True)
-    mean_v = np.asarray([v_states.mean()])
-    x_mean, mean_v = _project(economy, x_mean, mean_v)
-    values = economy._forward(x_mean, mean_v)
-    x_full_mean = values["x_full"].detach().cpu().numpy()[0]
-    theta_mean = values["theta_full"].detach().cpu().numpy()[0]
-
-    # Evaluate theta over a reproducible subsample of the same simulation.
-    n_states = x_states.shape[0]
-    if n_states > max_theta_states:
-        rng = np.random.default_rng(sim_seed)
-        selected = rng.choice(
-            n_states, size=max_theta_states, replace=False
-        )
-        theta_x = x_states[selected]
-        theta_v = v_states[selected]
-    else:
-        theta_x = x_states
-        theta_v = v_states
-    simulated_wealth = []
-    simulated_theta = []
-    for start in range(0, theta_x.shape[0], theta_chunk):
-        stop = start + theta_chunk
-        wealth_chunk, theta_values = economy.portfolio(
-            theta_x[start:stop], theta_v[start:stop]
-        )
-        simulated_wealth.append(wealth_chunk)
-        simulated_theta.append(theta_values)
-    wealth_for_theta = np.concatenate(simulated_wealth, axis=0)
-    theta_for_buckets = np.concatenate(simulated_theta, axis=0)
+    # Every equilibrium object is evaluated state by state on a reproducible
+    # subsample of the same simulation and then averaged.
+    theta_x, theta_v = ergodic_states(
+        economy, simulation, burn_in_frac, max_theta_states, sim_seed
+    )
+    chunk = min(theta_chunk, 500) if economy.K >= 40 else theta_chunk
+    series = equilibrium_series(economy, theta_x, theta_v, chunk=chunk)
+    wealth_for_theta = series["x_full"]
+    theta_for_buckets = series["theta_full"]
 
     expert_idx = np.asarray(economy.expert_idx, dtype=int)
     household_idx = np.asarray(economy.household_idx, dtype=int)
@@ -106,19 +84,6 @@ def collect_simulation_row(
 
     def group_mean(array, indices):
         return float(np.mean(array[:, indices])) if len(indices) else np.nan
-
-    anchor = expert_idx[0]
-    pi = float(values["pi"].detach().cpu().numpy().reshape(-1)[0])
-    sig_agg = float(
-        values["sig_agg"].detach().cpu().numpy().reshape(-1)[0]
-    )
-    chi = float(values["chi"].detach().cpu().numpy().reshape(-1)[0])
-    sigtilde = values["sigtilde_full"].detach().cpu().numpy()[0]
-    gamma_vec = economy.gamma_vec
-    idio_price = float(gamma_vec[anchor] * sigtilde[anchor])
-    idio_premium = float(
-        chi * theta_mean[anchor] / x_full_mean[anchor]
-    )
 
     row = {
         "case": case,
@@ -136,13 +101,11 @@ def collect_simulation_row(
         "theta_rich_experts": group_mean(
             theta_for_buckets, rich_experts
         ),
-        "risk_free_rate": float(
-            values["r"].detach().cpu().numpy().reshape(-1)[0]
-        ),
-        "aggregate_risk_premium": pi * sig_agg,
-        "idiosyncratic_risk_premium": idio_premium,
-        "aggregate_price_of_risk": pi,
-        "idiosyncratic_price_of_risk": idio_price,
+        "risk_free_rate": float(np.mean(series["r"])),
+        "aggregate_risk_premium": float(np.mean(series["agg_rp"])),
+        "idiosyncratic_risk_premium": float(np.mean(series["idio_rp"])),
+        "aggregate_price_of_risk": float(np.mean(series["pi"])),
+        "idiosyncratic_price_of_risk": float(np.mean(series["idio_price"])),
     }
     for percentile in PERCENTILES:
         row[f"p{percentile}"] = float(

@@ -329,54 +329,111 @@ def _expert_total_share(economy, x_states):
     return full[..., economy.expert_idx].sum(axis=-1)
 
 
-def _mu_P_decomposition(economy, vd):
-    """Split mu_P = (sum_d mu_s_d p_d + 0.5 sig_s' H sig_s) / p at the first
-    batch row into share-drift, v-drift, t-drift and diffusion pieces."""
-    statics = economy.model.statics
-    K = statics["K"]; v_index = statics["v_index"]
-    to_np = lambda name: vd[name].detach().cpu().numpy()[0]
-    p = float(to_np(economy.model._p_name).reshape(-1)[0])
-    p_jac = to_np(economy.model._p_name + "_Jac")[0]           # (D,)
-    p_hess = to_np(economy.model._p_name + "_Hess")[0]         # (D, D)
-    mu_x = to_np("mu_x_full")[:K - 1]
-    sig_x = to_np("sigx_full")[:K - 1]
-    v = float(to_np("SV")[v_index])
-    mu_v = statics["lbd"] * (statics["v_mean"] - v)
-    sig_v = statics["sigv_mean"] * np.sqrt(v)
-
-    sig_s = np.zeros_like(p_jac)
-    sig_s[:K - 1] = sig_x
-    sig_s[v_index] = sig_v
-    x_drift = mu_x * p_jac[:K - 1] / p
-    order = np.argsort(-np.abs(x_drift))[:3]
-    t_parts = {}
-    if statics["has_t"]:
-        xi = to_np("xi_active")                                 # (K,)
-        xi_t = np.array([to_np(n + "_Jac")[0, -1] for n in economy.model._xi_names])
-        t_parts["mu_xi_t_drift_mean_over_agents"] = float(np.mean(xi_t / xi))
-        # p at the end of the time-step window; the boundary condition pins
-        # p(t=max_t) to the previous iterate of p(t=min_t).
-        max_t = float(economy.model.config.get("max_t", 1.0))
-        x_states = to_np("SV")[:K - 1][None, :]
-        vd_T = economy._forward(x_states, np.array([v]), t=max_t)
-        p_T = float(vd_T[economy.model._p_name].detach().cpu().numpy().reshape(-1)[0])
-        t_parts["p_at_mean_t_max"] = p_T
-        t_parts["secant_dp_dt_over_p_(p(t_max)-p(t_min))/(max_t*p)"] = (p_T - p) / (max_t * p)
-    return {
-        "mu_P_share_drift": float(x_drift.sum()),
-        "mu_P_share_drift_top3_(index,value)": [
-            (int(i), float(x_drift[i])) for i in order
-        ],
-        "mu_P_v_drift": float(mu_v * p_jac[v_index] / p),
-        "mu_P_t_drift": float(p_jac[-1] / p) if statics["has_t"] else 0.0,
-        "mu_P_diffusion": float(0.5 * sig_s @ p_hess @ sig_s / p),
-        "p_at_mean": p,
-        "sig_p_at_mean": float(sig_s @ p_jac / p),
-        **t_parts,
-    }
+EQUILIBRIUM_STATES = 20_000
 
 
-def analyze(economy, sim, out_dir, burn_in_frac=0.2):
+def ergodic_states(economy, sim, burn_in_frac=0.2,
+                   max_states=EQUILIBRIUM_STATES, seed=0):
+    """Post-burn-in simulated (x, v) states over all (time, path) pairs,
+    uniformly subsampled to ``max_states`` when there are more."""
+    burn = int(len(sim["t"]) * burn_in_frac)
+    xs = sim["x_hist"][burn:].reshape(-1, economy.K - 1)
+    vs = sim["v_hist"][burn:].reshape(-1)
+    if xs.shape[0] > max_states:
+        sel = np.random.default_rng(seed).choice(
+            xs.shape[0], size=max_states, replace=False
+        )
+        xs, vs = xs[sel], vs[sel]
+    return xs, vs
+
+
+def equilibrium_series(economy, xs, vs, chunk=None):
+    """Equilibrium objects evaluated at every state in (xs, vs).
+
+    Returns a dict of arrays with one row per state, so callers average over
+    simulated paths instead of evaluating at the mean state.
+    mu_P = (sum_d mu_s_d p_d + 0.5 sig_s' H sig_s) / p is also split into its
+    share-drift, v-drift, t-drift and diffusion pieces.
+    """
+    if chunk is None:
+        chunk = 500 if economy.K >= 40 else 2_000
+    if economy.source != "nn":
+        prem = economy.premium(xs, vs)
+        return {k: np.asarray(prem[k]) for k in
+                ("pi", "sig_agg", "agg_rp", "idio_rp", "total_rp")}
+
+    model = economy.model
+    st = model.statics
+    K, v_index, has_t = st["K"], st["v_index"], st["has_t"]
+    a = float(st["a"])
+    anchor = economy.expert_idx[0]
+    gamma0 = float(economy.gamma_vec[anchor])
+    pn = model._p_name
+    max_t = float(model.config.get("max_t", 1.0))
+
+    parts = {}
+    for c in range(0, xs.shape[0], chunk):
+        x, v = xs[c:c + chunk], vs[c:c + chunk]
+        vd = economy._forward(x, v)
+        get = lambda name: vd[name].detach().cpu().numpy()
+        p = get(pn).reshape(-1)
+        p_jac = get(pn + "_Jac")[:, 0]                     # (B, D)
+        p_hess = get(pn + "_Hess")[:, 0]                   # (B, D, D)
+        x_full = get("x_full")
+        theta = get("theta_full")
+        pi = get("pi").reshape(-1)
+        sig_agg = get("sig_agg").reshape(-1)
+        chi = get("chi").reshape(-1)
+        iota = get("iota").reshape(-1)
+        mu_x = get("mu_x_full")[:, :K - 1]
+        sig_x = get("sigx_full")[:, :K - 1]
+        mu_v = st["lbd"] * (st["v_mean"] - v)
+        sig_v = st["sigv_mean"] * np.sqrt(v)
+        sig_s = np.zeros_like(p_jac)
+        sig_s[:, :K - 1] = sig_x
+        sig_s[:, v_index] = sig_v
+        share_drift = mu_x * p_jac[:, :K - 1] / p[:, None]
+        idio_rp = chi * theta[:, anchor] / x_full[:, anchor]
+        row = {
+            "pi": pi,
+            "sig_agg": sig_agg,
+            "agg_rp": pi * sig_agg,
+            "idio_rp": idio_rp,
+            "total_rp": pi * sig_agg + idio_rp,
+            "idio_price": gamma0 * get("sigtilde_full")[:, anchor],
+            "r": get("r").reshape(-1),
+            "r_implied": get("r_implied").reshape(-1),
+            "mu_P": get("mu_P").reshape(-1),
+            "chi": chi,
+            "g": get("g").reshape(-1),
+            "iota": iota,
+            "p": p,
+            "consumption_wealth": (a - iota) / p,
+            "x_full": x_full,
+            "theta_full": theta,
+            "mu_P_share_drift_by_index": share_drift,
+            "mu_P_share_drift": share_drift.sum(axis=1),
+            "mu_P_v_drift": mu_v * p_jac[:, v_index] / p,
+            "mu_P_t_drift": p_jac[:, -1] / p if has_t else np.zeros_like(p),
+            "mu_P_diffusion": 0.5 * np.einsum("bd,bde,be->b", sig_s, p_hess, sig_s) / p,
+            "sig_p": np.einsum("bd,bd->b", sig_s, p_jac) / p,
+        }
+        if has_t:
+            xi = get("xi_active")
+            xi_t = np.stack([get(n + "_Jac")[:, 0, -1] for n in model._xi_names], axis=1)
+            row["mu_xi_t_drift"] = (xi_t / xi).mean(axis=1)
+            # _forward reuses model.variable_val_dict, so read everything above first.
+            # The boundary condition pins p(t=max_t) to the previous p(t=min_t).
+            vd_T = economy._forward(x, v, t=max_t)
+            p_T = vd_T[pn].detach().cpu().numpy().reshape(-1)
+            row["secant_dp_dt_over_p"] = (p_T - p) / (max_t * p)
+        for k, val in row.items():
+            parts.setdefault(k, []).append(val)
+    return {k: np.concatenate(val, axis=0) for k, val in parts.items()}
+
+
+def analyze(economy, sim, out_dir, burn_in_frac=0.2,
+            max_states=EQUILIBRIUM_STATES, seed=0):
     os.makedirs(out_dir, exist_ok=True)
 
     x_hist, v_hist, t = sim["x_hist"], sim["v_hist"], sim["t"]
@@ -433,89 +490,69 @@ def analyze(economy, sim, out_dir, burn_in_frac=0.2):
     fig.savefig(os.path.join(out_dir, "sample_paths_v.pdf"))
     plt.close(fig)
 
-    # ---- moments at the simulated mean state + path correlations ----------
-    x_mean = x_pool.reshape(-1, x_pool.shape[-1]).mean(axis=0)[None, :]  # (1, K-1)
-    v_mean = np.array([v_pool.mean()])
-    x_mean, v_mean = _project(economy, x_mean, v_mean)
-    prem = economy.premium(x_mean, v_mean)
-    pi = float(prem["pi"][0]); sig_agg = float(prem["sig_agg"][0])
-    agg_rp = float(prem["agg_rp"][0])
-    idio_rp = float(prem["idio_rp"][0])
-    total_rp = float(prem["total_rp"][0])
-    sharpe = pi  # aggregate risk premium / return volatility
-
+    # ---- path averages of equilibrium objects over simulated states --------
     # Assets-equity = 1/X_E (experts hold all capital).  Output-growth vol is
-    # the exogenous capital shock sigma.  g and iota need an NN forward.
+    # the exogenous capital shock sigma.
     mean_X_E = float(XE_pool.mean())
-    assets_equity = 1.0 / mean_X_E if mean_X_E > 0 else float("nan")
-    assets_equity_path = 1.0 / np.clip(XE_pool, 1e-12, None)
+    assets_equity = float(np.mean(1.0 / np.clip(XE_pool, 1e-12, None)))
 
-    if economy.source == "nn":
-        vd = economy._forward(x_mean, v_mean)
-        at_mean = lambda name: float(vd[name].detach().cpu().numpy().reshape(-1)[0])
-        r = at_mean("r")
-        r_implied = at_mean("r_implied")
-        mu_P = at_mean("mu_P")
-        chi = at_mean("chi")
-        g = at_mean("g")
-        iota = at_mean("iota")
-        p_mean = at_mean(economy.model._p_name)
-        consumption_wealth = (float(economy.model.statics["a"]) - iota) / p_mean
-        mu_P_parts = _mu_P_decomposition(economy, vd)
-        sigma = float(economy.model.statics["sigma"])
-        # Path correlation: evaluate g on a subsample of ergodic states.
-        rng = np.random.default_rng(0)
-        flat_x = x_pool.reshape(-1, x_pool.shape[-1])
-        n_corr = min(2_000, flat_x.shape[0])
-        sel = rng.choice(flat_x.shape[0], size=n_corr, replace=False)
-        xs, vs = _project(economy, flat_x[sel], v_pool[sel])
-        g_chunks = []
-        chunk = 500 if economy.K >= 40 else 2_000
-        for c in range(0, xs.shape[0], chunk):
-            out = economy._forward(xs[c:c + chunk], vs[c:c + chunk])
-            g_chunks.append(out["g"].detach().cpu().numpy().reshape(-1))
-        g_path = np.concatenate(g_chunks)
-        ae_path = assets_equity_path[sel]
-        if np.std(ae_path) > 0 and np.std(g_path) > 0:
-            corr_ae_g = float(np.corrcoef(ae_path, g_path)[0, 1])
+    xs, vs = ergodic_states(economy, sim, burn_in_frac, max_states, seed)
+    eq = equilibrium_series(economy, xs, vs)
+    avg = lambda k: float(np.mean(eq[k])) if k in eq else float("nan")
+
+    if "g" in eq:
+        ae_states = 1.0 / np.clip(_expert_total_share(economy, xs), 1e-12, None)
+        if np.std(ae_states) > 0 and np.std(eq["g"]) > 0:
+            corr_ae_g = float(np.corrcoef(ae_states, eq["g"])[0, 1])
         else:
             corr_ae_g = float("nan")
+        share_drift = eq["mu_P_share_drift_by_index"].mean(axis=0)
+        top3 = [(int(i), float(share_drift[i]))
+                for i in np.argsort(-np.abs(share_drift))[:3]]
     else:
-        # NumericalEconomy only exposes premium/drift; leave NN-only fields blank.
-        r = r_implied = mu_P = chi = consumption_wealth = float("nan")
-        mu_P_parts = {}
-        g = iota = corr_ae_g = float("nan")
+        corr_ae_g = float("nan")
+        top3 = []
+    if economy.source == "nn":
+        sigma = float(economy.model.statics["sigma"])
+    else:
         sigma = float(getattr(economy, "sigma", float("nan")))
 
     summary = {
         "source": economy.source,
+        "n_equilibrium_states": int(xs.shape[0]),
         "mean_X_E": mean_X_E,
         "mean_v": float(v_pool.mean()),
         "std_X_E": float(XE_pool.std()),
         "std_v": float(v_pool.std()),
-        "x_mean_free_shares": x_mean.reshape(-1).tolist(),
-        "risk_premium_aggregate": agg_rp,
-        "risk_free_rate": r,
-        "r_free": r,
-        "r_implied": r_implied,
-        "asset_pricing_resid_r_implied_minus_r_free": r_implied - r,
-        "mu_P": mu_P,
-        **mu_P_parts,
-        "chi": chi,
-        "consumption_wealth_(a-iota)/p": consumption_wealth,
-        "return_volatility_sig_plus_sigp": sig_agg,
-        "sharpe_ratio_pi": sharpe,
-        "investment_capital_ratio_iota": iota,
-        "output_growth_g": g,
+        "x_mean_free_shares": x_pool.reshape(-1, x_pool.shape[-1]).mean(axis=0).tolist(),
+        "risk_premium_aggregate": avg("agg_rp"),
+        "risk_free_rate": avg("r"),
+        "r_free": avg("r"),
+        "r_implied": avg("r_implied"),
+        "asset_pricing_resid_r_implied_minus_r_free": avg("r_implied") - avg("r"),
+        "mu_P": avg("mu_P"),
+        "mu_P_share_drift": avg("mu_P_share_drift"),
+        "mu_P_share_drift_top3_(index,value)": top3,
+        "mu_P_v_drift": avg("mu_P_v_drift"),
+        "mu_P_t_drift": avg("mu_P_t_drift"),
+        "mu_P_diffusion": avg("mu_P_diffusion"),
+        "mu_xi_t_drift_mean_over_agents": avg("mu_xi_t_drift"),
+        "secant_dp_dt_over_p_(p(t_max)-p(t_min))/(max_t*p)": avg("secant_dp_dt_over_p"),
+        "p": avg("p"),
+        "sig_p": avg("sig_p"),
+        "chi": avg("chi"),
+        "consumption_wealth_(a-iota)/p": avg("consumption_wealth"),
+        "return_volatility_sig_plus_sigp": avg("sig_agg"),
+        "sharpe_ratio_pi": avg("pi"),
+        "investment_capital_ratio_iota": avg("iota"),
+        "output_growth_g": avg("g"),
         "output_growth_volatility_sigma": sigma,
         "assets_equity_ratio_1_over_X_E": assets_equity,
         "corr_assets_equity_output_growth": corr_ae_g,
         "expert_wealth_share_X_E": mean_X_E,
-        "pi_at_mean": pi,
-        "sig_plus_sigp_at_mean": sig_agg,
-        "aggregate_risk_premium_pi*(sig+sigp)": agg_rp,
-        "idiosyncratic_risk_premium_gamma*(phi*v)^2/x^2": idio_rp,
-        "total_risk_premium": total_rp,
+        "aggregate_risk_premium_pi*(sig+sigp)": avg("agg_rp"),
+        "idiosyncratic_risk_premium_gamma*(phi*v)^2/x^2": avg("idio_rp"),
+        "total_risk_premium": avg("total_rp"),
     }
     with open(os.path.join(out_dir, "summary.txt"), "w") as f:
         for k, val in summary.items():
@@ -1111,8 +1148,8 @@ def sweep_risk_premium(a_list, sigmas, gammas, taus=None, base_overrides=None, h
 
     The evaluation state is a fixed representative point ``(eval_x, eval_v)``
     (default x=0.5, v=long-run mean) -- cheap, no simulation.  Set
-    ``use_simulation=True`` to instead evaluate at the *stationary mean* of a
-    forward simulation (slower; ``sim_kwargs`` overrides its settings).
+    ``use_simulation=True`` to instead average over the post-burn-in states of
+    a forward simulation (slower; ``sim_kwargs`` overrides its settings).
 
     Returns a ``pandas.DataFrame`` (also written to ``csv_path`` if given).
     """
@@ -1135,10 +1172,7 @@ def sweep_risk_premium(a_list, sigmas, gammas, taus=None, base_overrides=None, h
         if use_simulation:
             sim = simulate(econ, **(sim_kwargs or dict(
                 n_paths=50, years=300.0, dt=0.08)))
-            burn = int(len(sim["t"]) * 0.2)
-            xq = sim["x_hist"][burn:].reshape(-1, 1).mean(axis=0)[None, :]
-            vq = np.array([sim["v_hist"][burn:].mean()])
-            xq, vq = _project(econ, xq, vq)
+            xq, vq = ergodic_states(econ, sim, burn_in_frac=0.2)
         else:
             vq = np.array([eval_v if eval_v is not None else params["v_mean"]])
             xq = np.array([[eval_x]])
@@ -1147,11 +1181,11 @@ def sweep_risk_premium(a_list, sigmas, gammas, taus=None, base_overrides=None, h
         prem = econ.premium(xq, vq)
         grid_rp = float(np.mean(solver.grid_solution()["risk_premium"]))
         row = dict(a=float(a), sigma=float(sigma), gamma=float(gamma), tau=float(tau),
-                    x_eval=float(xq[0, 0]), v_eval=float(vq[0]),
-                    pi=float(prem["pi"][0]), sig_agg=float(prem["sig_agg"][0]),
-                    agg_rp=float(prem["agg_rp"][0]),
-                    idio_rp=float(prem["idio_rp"][0]),
-                    total_rp=float(prem["total_rp"][0]),
+                    x_eval=float(np.mean(xq[:, 0])), v_eval=float(np.mean(vq)),
+                    pi=float(np.mean(prem["pi"])), sig_agg=float(np.mean(prem["sig_agg"])),
+                    agg_rp=float(np.mean(prem["agg_rp"])),
+                    idio_rp=float(np.mean(prem["idio_rp"])),
+                    total_rp=float(np.mean(prem["total_rp"])),
                     grid_mean_agg_rp=grid_rp)
         rows.append(row)
         if verbose:
@@ -1208,7 +1242,7 @@ def run_simulation(case, tau=BASE_TAU, vmean=BASE_V_MEAN,
 
 def main():
     """Reproduce simulations for the three baseline paper cases."""
-    for case in ["agents20"]:
+    for case in BASE_CASES:
         run_simulation(case)
 
 
