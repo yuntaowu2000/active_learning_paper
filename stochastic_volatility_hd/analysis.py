@@ -304,14 +304,14 @@ def plot_slice_comparison(method_dicts, fd_dict, v_list, out_dir):
                 key = f"{var}_{v}"
                 if key in fd_dict:
                     ax.plot(xfd, fd_dict[key], ls="-.", color=PAPER_BLACK,
-                            marker="x", markevery=3, label=f"FD, $v={v}$")
+                            marker="x", markevery=3, label=f"FD")
         for mi, (name, md) in enumerate(method_dicts.items()):
             xp = md["x_plot"]
             ls, mk = METHOD_PLOT_STYLES[mi % len(METHOD_PLOT_STYLES)]
             for i, v in enumerate(v_list):
                 ax.plot(xp, md[f"{var}_{v}"], ls=ls, marker=mk, markevery=8,
                         color=METHOD_COLORS.get(name, PAPER_BLUE),
-                        label=f"{METHOD_DISPLAY.get(name, name)}, $v={v}$")
+                        label=f"{METHOD_DISPLAY.get(name, name)}")
         ax.set_xlabel("Expert wealth share x"); ax.set_ylabel(parg["ylabel"])
         ax.tick_params(axis="both", which="major", labelsize=PAPER_FONT_SIZE)
         ax.legend(frameon=False)

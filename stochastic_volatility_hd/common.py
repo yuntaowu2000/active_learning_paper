@@ -122,7 +122,7 @@ FD_TABLE_VARS = {
 SLICE_PLOT_ARGS = {
     "p": {"ylabel": r"$p$"},
     "sigx": {"ylabel": r"$\sigma_x$"},
-    "omega": {"ylabel": r"$\Omega=\xi/\zeta$"},
+    "omega": {"ylabel": r"$\Omega=\xi_e/\xi_h$"},
     "sigsigp": {"ylabel": r"$\sigma+\sigma_p$"},
     "signxi": {"ylabel": r"$\pi$"},
     "r": {"ylabel": r"$r$"},
