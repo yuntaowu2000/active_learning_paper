@@ -109,6 +109,7 @@ METHOD_DISPLAY = {
     "timestep_rar":    "Time-stepping + RAR",
     "timestep_lb":     "Time-stepping + LB",
     "timestep_rar_lb": "Time-stepping + RAR + LB",
+    "basic_long":      "Basic (matched epochs)",
 }
 
 FD_TABLE_VARS = {
@@ -183,6 +184,7 @@ METHOD_COLORS = {
     "timestep_rar": PAPER_BLUE,
     "timestep_lb": "#6A8F72",
     "timestep_rar_lb": PAPER_BLACK,
+    "basic_long": PAPER_RED,
     "fd": PAPER_BLACK,
 }
 
