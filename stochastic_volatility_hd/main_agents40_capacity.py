@@ -42,7 +42,18 @@ from common import (
     move_model,
     run_dir,
 )
-from diagnostics import _count_params, _prepopulate_anchors
+from diagnostics import (
+    DIAGNOSTIC_BATCH,
+    DIAGNOSTIC_LR,
+    DIAGNOSTIC_OUT_DIR,
+    DIAGNOSTIC_STEPS,
+    DIAGNOSTIC_WARMUP,
+    _count_params,
+    _make_optimizer,
+    _prepopulate_anchors,
+    _refinement_step,
+    _training_step,
+)
 from main import TRAINING, economic_params
 from model import get_model
 
@@ -78,8 +89,6 @@ VARIANTS = {
 
 N_VALIDATION = 10_000
 VALIDATION_CHUNK = 500
-BENCH_WARMUP = 2
-BENCH_STEPS = 5
 
 
 # ---------------------------------------------------------------------------
@@ -104,10 +113,16 @@ def _reset_peak():
         torch.cuda.reset_peak_memory_stats()
 
 
-def _peak_gb():
+def _peak_mb():
     if not torch.cuda.is_available():
         return float("nan")
-    return torch.cuda.max_memory_allocated() / 1024 ** 3
+    return torch.cuda.max_memory_allocated() / 1024 ** 2
+
+
+def _peak_reserved_mb():
+    if not torch.cuda.is_available():
+        return float("nan")
+    return torch.cuda.max_memory_reserved() / 1024 ** 2
 
 
 def _free(model):
@@ -233,9 +248,8 @@ def train_architecture(name):
         _write_run_info(path, {
             "model_size": spec["size"],
             "wall_seconds": time.perf_counter() - start,
-            "peak_vram_gb": _peak_gb(),
-            "peak_reserved_gb": (torch.cuda.max_memory_reserved() / 1024 ** 3
-                                 if torch.cuda.is_available() else float("nan")),
+            "peak_vram_mb": _peak_mb(),
+            "peak_reserved_mb": _peak_reserved_mb(),
         })
     _free(model)
 
@@ -349,9 +363,8 @@ def train_lbfgs():
         "wall_seconds": time.perf_counter() - start,
         "lbfgs_steps": LBFGS["outer"] * LBFGS["inner"],
         "closure_evals": model.n_closure_evals,
-        "peak_vram_gb": _peak_gb(),
-        "peak_reserved_gb": (torch.cuda.max_memory_reserved() / 1024 ** 3
-                             if torch.cuda.is_available() else float("nan")),
+        "peak_vram_mb": _peak_mb(),
+        "peak_reserved_mb": _peak_reserved_mb(),
     })
     _free(model)
 
@@ -368,46 +381,92 @@ def _load_variant(name):
     return model
 
 
-def benchmark(model, optimizer):
-    """Peak VRAM and median wall time of one training step on the steady-state
-    RAR batch (base batch + anchors), plus one RAR scoring pass -- the same
-    measurement as diagnostics.measure_config, on the trained weights."""
-    move_model(model, "cuda" if torch.cuda.is_available() else "cpu")
-    if optimizer == "LBFGS":
+def _lbfgs_training_step(model, append_anchors=False):
+    """diagnostics._training_step for LBFGS, whose step needs the closure."""
+    SV = model.sample(0)
+    if append_anchors:
+        ap = getattr(model, "anchor_points", None)
+        if torch.is_tensor(ap) and ap.numel() and ap.shape[1] == SV.shape[1]:
+            SV = torch.vstack((SV, ap))
+    loss = model.optimizer.step(lambda: model.closure(SV))
+    return float(loss.detach().cpu())
+
+
+def measure(name):
+    """diagnostics.measure_config for one variant: a fresh, untrained
+    timestep_rar model with this variant's ``model_size`` (and optimizer),
+    measured on the steady-state RAR batch plus one refinement pass."""
+    spec = VARIANTS[name]
+    mpath = os.path.join(DIAGNOSTIC_OUT_DIR, "_scratch", CASE, f"capacity_{name}")
+    model = _build(
+        mpath, spec["size"], train=False,
+        batch_size=DIAGNOSTIC_BATCH, lr=DIAGNOSTIC_LR,
+        num_outer=1, num_inner=2, min_inner=2,
+    )
+    move_dev = "cuda" if torch.cuda.is_available() else "cpu"
+    move_model(model, move_dev)
+
+    n_params = _count_params(model)
+    if spec["optimizer"] == "LBFGS":
         _use_lbfgs(model)
         model.optimizer = _make_lbfgs(model, LBFGS["lr"])
+        step = _lbfgs_training_step
     else:
-        params = []
-        for d in (model.agents, model.endog_vars):
-            for name in d:
-                params += list(d[name].parameters())
-        model.optimizer = torch.optim.Adam(params, lr=TRAINING["lr"])
-    _prepopulate_anchors(model)
+        model.optimizer = _make_optimizer(model, DIAGNOSTIC_LR)
+        step = _training_step
 
-    def step():
-        SV = torch.vstack((model.sample(0), model.anchor_points))
-        model.optimizer.step(lambda: model.closure(SV))
+    n_anchor = _prepopulate_anchors(model)
+    n_train_points = int(model.batch_size + n_anchor)
 
-    _reset_peak()
-    for _ in range(BENCH_WARMUP):
-        step()
-    _cuda_sync()
+    cuda = torch.cuda.is_available()
+    if cuda:
+        gc.collect(); torch.cuda.empty_cache()
+        torch.cuda.reset_peak_memory_stats()
+
+    for _ in range(DIAGNOSTIC_WARMUP):
+        step(model, True)
+    if cuda:
+        torch.cuda.synchronize()
+
     times = []
-    for _ in range(BENCH_STEPS):
+    for _ in range(DIAGNOSTIC_STEPS):
         t0 = time.perf_counter()
-        step()
-        _cuda_sync()
+        step(model, True)
+        if cuda:
+            torch.cuda.synchronize()
         times.append(time.perf_counter() - t0)
-    step_peak = _peak_gb()
 
-    _reset_peak()
-    model.sample_rar_greedy()
-    _cuda_sync()
-    refine_peak = _peak_gb()
-    return {
-        "bench_peak_vram_gb": float(np.nanmax([step_peak, refine_peak])),
-        "bench_ms_per_step": 1e3 * float(np.median(times)),
+    step_mem_mb = (torch.cuda.max_memory_allocated() / 1024 ** 2) if cuda else float("nan")
+
+    refine_mem_mb = float("nan")
+    if cuda:
+        gc.collect(); torch.cuda.empty_cache()
+        torch.cuda.reset_peak_memory_stats()
+    try:
+        _refinement_step(model)
+        if cuda:
+            torch.cuda.synchronize()
+        refine_mem_mb = (torch.cuda.max_memory_allocated() / 1024 ** 2) if cuda else float("nan")
+    except Exception as e:
+        print(f"  [refine] refinement-pass measurement failed ({e})")
+
+    peak_mem_mb = float(np.nanmax([step_mem_mb, refine_mem_mb])) if cuda else float("nan")
+
+    res = {
+        "n_params": n_params,
+        "peak_mem_mb": peak_mem_mb,
+        "ms_per_step": 1e3 * float(np.median(times)),
+        "n_train_points": n_train_points,
+        "n_anchor": int(n_anchor),
+        "step_mem_mb": step_mem_mb,
+        "refine_mem_mb": refine_mem_mb,
     }
+
+    del model
+    gc.collect()
+    if cuda:
+        torch.cuda.empty_cache()
+    return res
 
 
 def evaluate(base_info):
@@ -431,8 +490,8 @@ def evaluate(base_info):
             evals = epochs
         seconds = log["train_seconds"] if log else float("nan")
 
-        bench = benchmark(model, spec["optimizer"])
         _free(model)
+        bench = measure(name)
 
         rows.append({
             "Model": spec["label"],
@@ -444,9 +503,12 @@ def evaluate(base_info):
             "Training time (h)": seconds / 3600,
             "Time / epoch (s)": seconds / epochs,
             "Time / function evaluation (s)": seconds / evals,
-            "Peak VRAM, training (GB)": run.get("peak_vram_gb", float("nan")),
-            "Peak VRAM, benchmark (GB)": bench["bench_peak_vram_gb"],
-            "Step time, benchmark (ms)": bench["bench_ms_per_step"],
+            "Peak VRAM (MB)": bench["peak_mem_mb"],
+            "Step VRAM (MB)": bench["step_mem_mb"],
+            "Refinement VRAM (MB)": bench["refine_mem_mb"],
+            "Step time (ms)": bench["ms_per_step"],
+            "Training points": bench["n_train_points"],
+            "Peak VRAM, training (MB)": run.get("peak_vram_mb", float("nan")),
             **{f"Validation {k}": v for k, v in losses.items() if k != "Total"},
             "Validation loss": losses["Total"],
         })
@@ -465,8 +527,8 @@ TABLE_FORMATS = {
     "Parameters": _fmt(lambda x: f"{int(x):,}"),
     "Epochs": _fmt(lambda x: f"{int(x):,}"),
     "Validation loss": _fmt(format_sci),
-    "Peak VRAM, benchmark (GB)": _fmt(lambda x: f"{x:.2f}"),
-    "Peak VRAM, training (GB)": _fmt(lambda x: f"{x:.2f}"),
+    "Peak VRAM (MB)": _fmt(lambda x: f"{x:,.0f}"),
+    "Step time (ms)": _fmt(lambda x: f"{x:,.1f}"),
     "Time / epoch (s)": _fmt(lambda x: f"{x:.3f}"),
     "Training time (h)": _fmt(lambda x: f"{x:.2f}"),
 }
