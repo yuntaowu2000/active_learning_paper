@@ -477,7 +477,10 @@ def evaluate(base_info):
         model = _load_variant(name)
         if SV_val is None:
             SV_val = _validation_states(model, n_samples=N_VALIDATION, seed=0)
-        losses = compute_validation_losses(model, SV_val, chunk_size=VALIDATION_CHUNK)
+        # Without no_grad the stored outputs keep the forward graph (~8 GB for
+        # agents40) alive on the GPU, which would inflate measure() below.
+        with torch.no_grad():
+            losses = compute_validation_losses(model, SV_val, chunk_size=VALIDATION_CHUNK)
         n_params = _count_params(model)
 
         log = base_info if name == "baseline" else _log_summary(spec["path"])
@@ -491,6 +494,10 @@ def evaluate(base_info):
         seconds = log["train_seconds"] if log else float("nan")
 
         _free(model)
+        del model
+        gc.collect()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
         bench = measure(name)
 
         rows.append({
