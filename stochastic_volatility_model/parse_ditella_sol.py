@@ -32,6 +32,8 @@ required_vars_ditella = {
     r"inter\[Sigma]p": "sigsigp", # price return diffusion partial
     "interpi": "signxi", # price of risk
     "interr": "r", # risk free rate
+    "intere": "e_hat",
+    "interc": "c_hat",
 }
 
 with open("ditella_sol", "r") as f:
@@ -89,3 +91,13 @@ for i, (k, var_name) in enumerate(required_vars_ditella.items()):
         else:
             val = needed_eq[k][v_val]
         ditella_res_dict[f"{var_name}_{v_val}"] = val
+
+for k, var in required_vars_ditella.items():
+    renamed = {}
+    if k == "omega":
+        renamed["original"] = np.array(needed_eq[r"inter\[Xi]"]["original"]) / np.array(needed_eq[r"inter\[Zeta]"]["original"])
+    elif k == r"inter\[Sigma]p":
+        renamed["original"] = 0.0125 + np.array(needed_eq[k]["original"])
+    else:
+        renamed["original"] = np.array(needed_eq[k]["original"])
+    needed_eq[var] = renamed

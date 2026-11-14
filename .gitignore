@@ -163,3 +163,7 @@ figures
 *.jpg
 *.csv
 *.npy
+**/models
+complete_market_model
+n_agents_problem
+**/models_past

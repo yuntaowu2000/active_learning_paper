@@ -1,9 +1,11 @@
 import gc
 import glob
 import os
+import re
 from copy import deepcopy
 from typing import Any, Dict, List, Union
 
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -80,8 +82,7 @@ z_max = 0.99
 a_min = 0.1
 a_max = 0.2
 ae_bar = (a_min + a_max) / 2
-a_list = [a_min, ae_bar, a_max]
-COLORS = ["red", "orange", "blue"]
+a_list = [ae_bar]
 PARAMS = {
     "ah": 0.03,
     "sig": 0.1,
@@ -132,20 +133,20 @@ PLOT_ARGS = {
 
 MODEL_CONFIGS = {
     "Agents": {
-        "Je": {"positive": True, "activation_type": ActivationType.SiLU, "hidden_units": [64] * 4},
-        "Jh": {"positive": True, "activation_type": ActivationType.SiLU, "hidden_units": [64] * 4},
+        "Je": {"positive": True, "activation_type": ActivationType.SiLU, "hidden_units": [64] * 4, "batch_jac_hes": True},
+        "Jh": {"positive": True, "activation_type": ActivationType.SiLU, "hidden_units": [64] * 4, "batch_jac_hes": True},
     },
     "Endogs": {
         "region1": {
-            "q": {"positive": True, "activation_type": ActivationType.SiLU, "hidden_units": [64] * 4},
-            "psi": {"positive": True, "activation_type": ActivationType.SiLU, "hidden_units": [64] * 4},
+            "q": {"positive": True, "activation_type": ActivationType.SiLU, "hidden_units": [64] * 4, "batch_jac_hes": True},
+            "psi": {"positive": True, "activation_type": ActivationType.SiLU, "hidden_units": [64] * 4, "derivative_order": 0},
         },
         "region2": {
-            "q": {"positive": True, "activation_type": ActivationType.SiLU, "hidden_units": [64] * 4},
+            "q": {"positive": True, "activation_type": ActivationType.SiLU, "hidden_units": [64] * 4, "batch_jac_hes": True},
         },
         "region3": {
-            "q": {"positive": True, "activation_type": ActivationType.SiLU, "hidden_units": [64] * 4},
-            "chi": {"positive": True, "activation_type": ActivationType.SiLU, "hidden_units": [64] * 4}
+            "q": {"positive": True, "activation_type": ActivationType.SiLU, "hidden_units": [64] * 4, "batch_jac_hes": True},
+            "chi": {"positive": True, "activation_type": ActivationType.SiLU, "hidden_units": [64] * 4, "derivative_order": 0}
         }   
     }
 }
@@ -156,23 +157,52 @@ TRAINING_CONFIGS = {
         "batch_size": 500,
         "num_epochs": 20000,
         "optimizer_type": OptimizerType.Adam,
+        "stacked": True,
+    },
+    "basic_rar": {
+        "sampling_method": SamplingMethod.RARG, 
+        "batch_size": 500,
+        "num_epochs": 20000,
+        "optimizer_type": OptimizerType.Adam,
+        "stacked": True,
     },
     "timestep": {
         "batch_size": 500, 
-        "num_outer_iterations": 50, 
+        "num_outer_iterations": 70, 
         "num_inner_iterations": 5000,
         "sampling_method": SamplingMethod.UniformRandom, 
         "time_batch_size": 1,
+        "stacked": True,
     },
     "timestep_rar": {
         "batch_size": 500, 
-        "num_outer_iterations": 50, 
+        "num_outer_iterations": 70, 
         "num_inner_iterations": 5000,
         "sampling_method": SamplingMethod.RARG, 
         "time_batch_size": 1,
         "refinement_rounds": 5,
+        "stacked": True,
     }
 }
+
+def get_derivative_equations(timestepping=False):
+    eqs = []
+    for f in ["q", "Je", "Jh"]:
+        eqs += [
+            f"{f}_z = {f}_Jac[:, 0, 0:1]",
+            f"{f}_ae = {f}_Jac[:, 0, 1:2]",
+            f"{f}_zz = {f}_Hess[:, 0, 0, 0:1]",
+            f"{f}_aeae = {f}_Hess[:, 0, 1, 1:2]",
+            f"{f}_zae = {f}_Hess[:, 0, 0, 1:2]",
+            f"{f}_aez = {f}_Hess[:, 0, 1, 0:1]",
+        ]
+    if timestepping:
+        # only the value-function time derivatives enter the time-stepping HJBs
+        eqs += [
+            "Je_t = Je_Jac[:, 0, 2:3]",
+            "Jh_t = Jh_Jac[:, 0, 2:3]",
+        ]
+    return eqs
 
 def get_equations(timestepping=False):
     BASE_EQUATIONS = {
@@ -271,6 +301,11 @@ def get_equations(timestepping=False):
             ]
         }
     equations = deepcopy(BASE_EQUATIONS)
+    # slice the stacked Jacobian/Hessian into the named derivatives the equations
+    # reference (must come first, before anything uses q_z / Je_zz / ...).
+    deriv_eqs = get_derivative_equations(timestepping=timestepping)
+    for k in equations:
+        equations[k] = deriv_eqs + equations[k]
     if timestepping:
         for k in equations:
             equations[k] += [
@@ -364,6 +399,15 @@ def add_boundary_conditions(model: Union[PDEModel, PDEModelTimeStep]):
                                 label="psi_max", weight=0.01)
     return model
 
+class PDEModelTimeStepCustom(PDEModelTimeStep):
+    def sample_rar_greedy(self):
+        refinement_loss_dict = self._PDEModelTimeStep__get_refinement_loss_dict()
+        SV = refinement_loss_dict["SV"]
+        all_losses = refinement_loss_dict["loss"]
+        X_ids = torch.topk(all_losses, self.batch_size//self.refinement_rounds, dim=0)[1].squeeze(-1)
+        self.anchor_points = torch.vstack((self.anchor_points, SV[X_ids]))
+        return self.anchor_points
+
 def setup_model(timestepping=False, rar=False) -> Dict[str, Union[PDEModel, PDEModelTimeStep]]:
     models = {}
     equations = get_equations(timestepping=timestepping)
@@ -371,12 +415,11 @@ def setup_model(timestepping=False, rar=False) -> Dict[str, Union[PDEModel, PDEM
     for k in ["region1", "region2", "region3"]:
         set_seeds(0)
         if timestepping:
-            if rar:
-                model = PDEModelTimeStep(k, TRAINING_CONFIGS["timestep_rar"], LATEX_VAR_MAPPING)
-            else:
-                model = PDEModelTimeStep(k, TRAINING_CONFIGS["timestep"], LATEX_VAR_MAPPING)
+            cfg_name = "timestep_rar" if rar else "timestep"
+            model = PDEModelTimeStepCustom(k, TRAINING_CONFIGS[cfg_name], LATEX_VAR_MAPPING)
         else:
-            model = PDEModel(k, TRAINING_CONFIGS["basic"], LATEX_VAR_MAPPING)
+            cfg_name = "basic_rar" if rar else "basic"
+            model = PDEModel(k, TRAINING_CONFIGS[cfg_name], LATEX_VAR_MAPPING)
         model.set_state(STATES.copy(), PROBLEM_DOMAIN)
         model.add_agents(list(MODEL_CONFIGS["Agents"].keys()), MODEL_CONFIGS["Agents"])
         model.add_endogs(list(MODEL_CONFIGS["Endogs"][k].keys()), MODEL_CONFIGS["Endogs"][k])
@@ -437,53 +480,61 @@ def compute_final_plot_dict(res_dict1: Dict[str, Dict[str, Any]],
     final_plot_dict["x_plot"] = res_dict1["x_plot"]
     return final_plot_dict
 
-def plot_res(res_dicts: Dict[str, Dict[str, Any]], plot_args: Dict[str, Any], a_list: List[float]):
+def plot_res(res_dicts: Dict[str, Dict[str, Any]], plot_args: Dict[str, Any], plot_dir):
     x_label = "Wealth share (z)"
     
     for i, (func_name, plot_arg) in enumerate(plot_args.items()):
-        fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(10, 10))
-        for k, l, ls in [("timestep_rar", "Our Method", "-")]:
+        fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(8, 6))
+        for k, l, ls, color in [("timestep_rar", "Our Method", "-", "#5492ab")]:
             res_dict = res_dicts[k].copy()
             x_plot: np.ndarray = res_dict.pop("x_plot")
-            for i in range(len(a_list)):
-                a = a_list[i]
-                color = COLORS[i]
-                y_vals = res_dict[f"{func_name}_{a}"]
-                if func_name == "thetae":
-                    idx = np.where(x_plot <= 0.2)
-                    x_plot = x_plot[idx]
-                    y_vals = y_vals[idx]
-                ax.plot(x_plot, y_vals, label=r"$a_e$={i} ({l})".format(i=round(a,2), l=l), linestyle=ls, color=color)
-        ax.set_xlabel(x_label)
-        ax.set_ylabel(plot_arg["ylabel"])
+            a = ae_bar
+            y_vals = res_dict[f"{func_name}_{a}"]
+            if func_name == "thetae":
+                idx = np.where(x_plot <= 0.2)
+                x_plot = x_plot[idx]
+                y_vals = y_vals[idx]
+            ax.plot(x_plot, y_vals, label=l, linestyle=ls, color=color)
+        ax.set_xlabel(x_label, fontsize=20)
+        ax.set_ylabel(plot_arg["ylabel"], fontsize=20)
+        ax.tick_params(axis="both", which="major", labelsize=20)
         # ax.set_title(plot_arg["title"])
-        if plot_arg["show_legend"]:
-            ax.legend()
+        # if plot_arg["show_legend"]:
+        #     ax.legend(loc="upper left", frameon=False, fontsize=14)
         plt.tight_layout()
-        fn = os.path.join(BASE_DIR, "plots", f"{func_name}.jpg")
+        fn = os.path.join(plot_dir, f"{func_name}.pdf")
         plt.savefig(fn)
         plt.close()
 
-        fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(10, 10))
-        for k, l, ls, marker in [("basic", "Basic Neural Network", "--", "x"), ("timestep_rar", "Our Method", "-", "")]:
+        fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(8, 6))
+        # Styles match stochastic_volatility_hd/plot_slice_comparison_all.py
+        for k, l, ls, mk, color in [
+            ("basic", "Basic Neural Network", "--", "o", "#D9D9D9"),
+            ("timestep", "Time-stepping", ":", "^", "#317e46"),
+            ("timestep_rar", "Our Method", "-", "", "#5492ab"),
+        ]:
             res_dict = res_dicts[k].copy()
             x_plot = res_dict.pop("x_plot")
-            for i in range(len(a_list)):
-                a = a_list[i]
-                color = COLORS[i]
-                y_vals = res_dict[f"{func_name}_{a}"]
-                if func_name == "thetae":
-                    idx = np.where(x_plot <= 0.2)
-                    x_plot = x_plot[idx]
-                    y_vals = y_vals[idx]
-                ax.plot(x_plot, y_vals, label=r"$a_e$={i} ({l})".format(i=round(a,2), l=l), linestyle=ls, marker=marker, color=color)
-        ax.set_xlabel(x_label)
-        ax.set_ylabel(plot_arg["ylabel"])
+            a = ae_bar
+            y_vals = res_dict[f"{func_name}_{a}"]
+            if func_name == "thetae":
+                idx = np.where(x_plot <= 0.2)
+                x_plot = x_plot[idx]
+                y_vals = y_vals[idx]
+            ax.plot(
+                x_plot, y_vals, label=l, linestyle=ls, color=color,
+                marker=mk, markevery=8 if mk else None,
+            )
+        ax.set_xlabel(x_label, fontsize=20)
+        ax.set_ylabel(plot_arg["ylabel"], fontsize=20)
+        ax.tick_params(axis="both", which="major", labelsize=20)
         # ax.set_title(plot_arg["title"])
         if plot_arg["show_legend"]:
-            ax.legend()
+            ax.legend(loc="upper left", frameon=False, fontsize=16)
+        else:
+            ax.legend(loc="upper right", frameon=False, fontsize=16)
         plt.tight_layout()
-        fn = os.path.join(BASE_DIR, "plots", f"{func_name}_compare.jpg")
+        fn = os.path.join(plot_dir, f"{func_name}_compare.pdf")
         plt.savefig(fn)
         plt.close()
         
@@ -500,41 +551,60 @@ def plot_residual_points(plot_dir):
         plt.savefig(os.path.join(plot_dir, f"rar_sampled_points_{i}.jpg"))
         plt.close()
 
-def plot_residual_points_single_image(plot_dir):
+def plot_residual_points_single_image(plot_dir, max_loops=None):
     anchor_point_files = glob.glob(os.path.join(BASE_DIR, "timestep_rar", "anchor_points", "region1_anchor_points_*.npy"))
-    fig, ax = plt.subplots(1, 1, figsize=(10, 10))
+
+    # glob order is arbitrary; sort by the trailing integer in the filename so
+    # the colour gradient really runs earliest -> latest outer loop.
+    def _loop_idx(f):
+        m = re.findall(r"(\d+)", os.path.basename(f))
+        return int(m[-1]) if m else -1
+    anchor_point_files = sorted(anchor_point_files, key=_loop_idx)
+    if max_loops is not None:
+        anchor_point_files = anchor_point_files[:max_loops]
+    n = len(anchor_point_files)
+
+    fig, ax = plt.subplots(1, 1, figsize=(8, 6))
+    cmap = plt.get_cmap("viridis")
+    # map outer-loop index (1..n) onto the colormap; earliest = dark, latest = bright
+    norm = mpl.colors.Normalize(vmin=1, vmax=max(n, 2))
     for i, anchor_point_file in enumerate(anchor_point_files):
-        curr_rar_sampled_points = np.load(anchor_point_file)     
-        ax.scatter(curr_rar_sampled_points[:, 0], curr_rar_sampled_points[:, 1], label=f"Outer Loop {i+1}")
-        ax.set_xlabel("$z$")
-        ax.set_ylabel("$a_e$")
-        # ax.set_title(f"RARG Sampled Points")
-        if i == 3:
-            break
-    ax.set_ylim(0.05, 0.25)
-    ax.legend(loc="lower right")
+        curr_rar_sampled_points = np.load(anchor_point_file)
+        ax.scatter(curr_rar_sampled_points[:, 0], curr_rar_sampled_points[:, 1],
+                   color=cmap(norm(i + 1)), s=40)
+
+    sm = mpl.cm.ScalarMappable(cmap=cmap, norm=norm)
+    sm.set_array([])
+    cbar = fig.colorbar(sm, ax=ax)
+    cbar.set_label("Outer Loop (earliest \u2192 latest)", fontsize=20)
+    cbar.locator = mpl.ticker.MaxNLocator(integer=True)
+    cbar.update_ticks()
+    cbar.ax.tick_params(labelsize=16)
+
+    ax.set_xlabel("$z$", fontsize=20)
+    ax.set_ylabel("$a_e$", fontsize=20)
+    ax.tick_params(axis="both", which="major", labelsize=20)
     plt.tight_layout()
-    plt.savefig(os.path.join(plot_dir, f"rar_sampled_points.jpg"))
+    plt.savefig(os.path.join(plot_dir, f"rar_sampled_points.pdf"))
     plt.close()
 
-def plot_loss(fn):
-    fig, ax = plt.subplots(nrows=3, ncols=1, figsize=(20, 30))
-    for i, region in enumerate([r"Financing constraint", r"Shorting constraint", r"No constraint"]):
-        ax[i].set_xlabel("Epochs")
-        ax[i].set_ylabel("Loss")
-        ax[i].set_yscale("log")
-        ax[i].set_title(f"Total Loss across Epochs for {region}")
-    for k, l, ls in [("basic", "Basic Neural Network", "--"), ("timestep", "Time-stepping", "-."), ("timestep_rar", "Our Method", "-")]:
-        curr_dir = os.path.join(BASE_DIR, k)
+def plot_loss(plot_dir):
+    for loss_name, plot_prefix in [("total_loss", "loss"), ("hjbeq_1", "loss_hjb_e"), ("hjbeq_2", "loss_hjb_c")]:
         for i, region in enumerate(["region1", "region2", "region3"]):
-            loss_file = os.path.join(curr_dir, f"{region}_min_loss.csv")
-            loss_df = pd.read_csv(loss_file)
-            ax[i].plot(loss_df["epoch"], loss_df["total_loss"], label=l, linestyle=ls)
-    for i in range(3):
-        ax[i].legend()
-    plt.tight_layout()
-    plt.savefig(fn)
-    plt.close()
+            fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(8, 6))
+            ax.set_yscale("log")
+            for k, l, ls, color in [("basic", "Basic Neural Network", "--", "#D9D9D9"), ("timestep", "Time-stepping", "-.", "#317e46"), ("timestep_rar", "Our Method", "-", "#5492ab")]:
+                curr_dir = os.path.join(BASE_DIR, k)
+                if k == "basic":
+                    loss_file = os.path.join(curr_dir, f"{region}_min_loss.csv")
+                else:
+                    loss_file = os.path.join(curr_dir, f"{region}_global_min_loss.csv")
+                loss_df = pd.read_csv(loss_file)
+                ax.plot(loss_df["epoch"], loss_df[loss_name], label=l, linestyle=ls, color=color)
+            ax.legend()
+            plt.tight_layout()
+            plt.savefig(f"{plot_dir}/{plot_prefix}_{region}.pdf")
+            plt.close()
 
 def plot_abs_changes(plot_dir):
     change_dict = pd.read_csv(os.path.join(BASE_DIR, "timestep_rar", "region1_change_dict.csv"))
@@ -545,12 +615,96 @@ def plot_abs_changes(plot_dir):
         ax.set_xlabel("Time Step Iteration")
         ax.set_ylabel(label)
         plt.tight_layout()
-        plt.savefig(os.path.join(plot_dir, f"{var}_change.jpg"))
+        plt.savefig(os.path.join(plot_dir, f"{var}_change.pdf"))
         plt.close()
+
+METHOD_DISPLAY = {
+    "basic": "Basic",
+    "basic_rar": "Basic + RAR",
+    "timestep": "Time-stepping",
+    "timestep_rar": "Time-stepping + RAR",
+}
+
+
+def compute_validation_loss(models_dict, n_samples=5000, seed=0):
+    """Final validation loss (mean total residual) on fresh, uniformly sampled
+    ``(z, a_e)`` states, per region and summed across regions.
+
+    Each region model is trained on the whole domain, so we score every region
+    on the same held-out sample and report its total residual (the library's
+    weighted HJB + endogenous-equation + boundary-condition loss).  Time-stepping
+    models are evaluated on the stationary slice ``t = min_t``.
+    """
+    rng = np.random.default_rng(seed)
+    z = z_min + (z_max - z_min) * rng.random((n_samples,))
+    ae = a_min + (a_max - a_min) * rng.random((n_samples,))
+    res = {}
+    for region, model in models_dict.items():
+        n_state = len(model.state_variables)
+        SV = np.zeros((n_samples, n_state))
+        SV[:, 0] = z
+        SV[:, 1] = ae
+        # a trailing t column (time-stepping models) is left at min_t = 0.
+        SV_t = torch.tensor(SV, device=model.device, dtype=torch.get_default_dtype())
+        if isinstance(model, PDEModelTimeStep):
+            loss_dict = model._PDEModelTimeStep__validation(SV_t)
+        else:
+            loss_dict = model._PDEModel__validation(SV_t)
+        res[region] = float(loss_dict["total_loss"].detach().cpu())
+    res["total"] = sum(res.values())
+    return res
+
+
+def write_validation_table(val_losses, plot_dir, baseline="basic"):
+    """Write the per-method validation-loss table (csv + LaTeX) for the 2-D free
+    boundary model (paper appendix).
+
+    Alongside each region/total loss column an ``... impr.`` column reports the
+    percentage reduction relative to the ``baseline`` method (default ``basic``):
+    ``100 * (basic - method) / |basic|`` (positive = lower loss than basic)."""
+    def fmt_sci(x):
+        if not np.isfinite(x):
+            return "--"
+        base, exp = f"{x:.2e}".split("e")
+        exp = int(exp)
+        return base if exp == 0 else f"${base} \\times 10^{{{exp}}}$"
+
+    def fmt_pct(x):
+        return "--" if not np.isfinite(x) else f"{x:.2f}\\%"
+
+    val_cols = ["Region 1", "Region 2", "Region 3", "Total"]
+    rows = {}
+    for k in METHOD_DISPLAY:
+        if k in val_losses:
+            v = val_losses[k]
+            rows[k] = {"Region 1": v["region1"], "Region 2": v["region2"],
+                       "Region 3": v["region3"], "Total": v["total"]}
+    base = rows[baseline]
+    data = {}
+    for k, r in rows.items():
+        row = dict(r)
+        for c in val_cols:
+            row[f"{c} impr."] = 0.0 if k == baseline else \
+                100.0 * (base[c] - r[c]) / (abs(base[c]) + 1e-30)
+        data[METHOD_DISPLAY[k]] = row
+    ordered = val_cols + [f"{c} impr." for c in val_cols]
+    df = pd.DataFrame.from_dict(data, orient="index")[ordered]
+    df.to_csv(os.path.join(plot_dir, "validation_losses.csv"))
+
+    out = df.copy()
+    for c in ordered:
+        out[c] = out[c].map(fmt_pct if "impr" in c else fmt_sci)
+    with open(os.path.join(plot_dir, "validation_losses.tex"), "w") as f:
+        f.write(out.style.to_latex(hrules=True))
+    print("\n[free_boundary_2d] validation-loss table (impr. vs basic):")
+    print(df.to_string(float_format=lambda x: f"{x:.3e}"))
+
 
 if __name__ == "__main__":
     final_plot_dicts = {}
-    os.makedirs(os.path.join(BASE_DIR, "plots", "residual_points"), exist_ok=True)
+    val_losses = {}
+    plot_dir = os.path.join(BASE_DIR, "plots")
+    os.makedirs(plot_dir, exist_ok=True)
     for k in TRAINING_CONFIGS.keys():
         print(f"{k:=^80}")
         timestepping = "timestep" in k
@@ -564,14 +718,15 @@ if __name__ == "__main__":
             model[region].load_model(torch.load(os.path.join(curr_dir, f"{region}_best.pt"), weights_only=False))
             res_dict = compute_func(model[region], a_list, z_min, z_max, VARS_TO_PLOT)
             res_dicts[i] = res_dict
+        val_losses[k] = compute_validation_loss(model)
         final_plot_dict = compute_final_plot_dict(res_dicts[0], res_dicts[1], res_dicts[2], VARS_TO_PLOT, a_list)
         final_plot_dicts[k] = final_plot_dict
         gc.collect()
         torch.cuda.empty_cache()
-    plot_res(final_plot_dicts, PLOT_ARGS, a_list)
-    plot_loss(os.path.join(BASE_DIR, "plots", "loss.jpg"))
-    plot_residual_points(os.path.join(BASE_DIR, "plots", "residual_points"))
-    plot_residual_points_single_image(os.path.join(BASE_DIR, "plots"))
-    plot_abs_changes(os.path.join(BASE_DIR, "plots"))
+    plot_res(final_plot_dicts, PLOT_ARGS, plot_dir)
+    plot_loss(plot_dir)
+    plot_residual_points_single_image(plot_dir)
+    plot_abs_changes(plot_dir)
+    write_validation_table(val_losses, plot_dir)
 
 
