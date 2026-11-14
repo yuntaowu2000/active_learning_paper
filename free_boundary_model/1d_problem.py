@@ -282,8 +282,11 @@ def plot_models(
         ax.set_ylabel(PLOT_ARGS[var]["ylabel"], fontsize=25)
         ax.set_xlabel(r"$\eta$", fontsize=25)
         ax.tick_params(axis="both", which="major", labelsize=25)
-        if PLOT_ARGS[var]["show_legend"]:
-            ax.legend(loc="lower right", frameon=False, fontsize=25)
+        # if PLOT_ARGS[var]["show_legend"]:
+        if var == "sigq":
+            ax.legend(loc="upper right", frameon=False, fontsize=16)
+        else:
+            ax.legend(loc="lower right", frameon=False, fontsize=16)
         plt.tight_layout()
         plt.savefig(os.path.join(output_folder, f"{LATEX_VAR_MAPPING.get(var, var)}.pdf"))
         plt.close()

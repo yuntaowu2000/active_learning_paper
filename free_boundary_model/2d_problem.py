@@ -507,7 +507,12 @@ def plot_res(res_dicts: Dict[str, Dict[str, Any]], plot_args: Dict[str, Any], pl
         plt.close()
 
         fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(8, 6))
-        for k, l, ls, color in [("basic", "Basic Neural Network", "--", "#D9D9D9"), ("timestep_rar", "Our Method", "-", "#5492ab")]:
+        # Styles match stochastic_volatility_hd/plot_slice_comparison_all.py
+        for k, l, ls, mk, color in [
+            ("basic", "Basic Neural Network", "--", "o", "#D9D9D9"),
+            ("timestep", "Time-stepping", ":", "^", "#317e46"),
+            ("timestep_rar", "Our Method", "-", "", "#5492ab"),
+        ]:
             res_dict = res_dicts[k].copy()
             x_plot = res_dict.pop("x_plot")
             a = ae_bar
@@ -516,13 +521,18 @@ def plot_res(res_dicts: Dict[str, Dict[str, Any]], plot_args: Dict[str, Any], pl
                 idx = np.where(x_plot <= 0.2)
                 x_plot = x_plot[idx]
                 y_vals = y_vals[idx]
-            ax.plot(x_plot, y_vals, label=l, linestyle=ls, color=color)
+            ax.plot(
+                x_plot, y_vals, label=l, linestyle=ls, color=color,
+                marker=mk, markevery=8 if mk else None,
+            )
         ax.set_xlabel(x_label, fontsize=20)
         ax.set_ylabel(plot_arg["ylabel"], fontsize=20)
         ax.tick_params(axis="both", which="major", labelsize=20)
         # ax.set_title(plot_arg["title"])
         if plot_arg["show_legend"]:
-            ax.legend(loc="upper left", frameon=False, fontsize=20)
+            ax.legend(loc="upper left", frameon=False, fontsize=16)
+        else:
+            ax.legend(loc="upper right", frameon=False, fontsize=16)
         plt.tight_layout()
         fn = os.path.join(plot_dir, f"{func_name}_compare.pdf")
         plt.savefig(fn)
